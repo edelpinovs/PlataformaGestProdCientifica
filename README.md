@@ -59,21 +59,35 @@ Requisitos: Node 24 y acceso al proyecto de Supabase de desarrollo (pídelo a In
 ```bash
 git clone https://github.com/edelpinovs/PlataformaGestProdCientifica.git
 cd PlataformaGestProdCientifica
-npm install                 # también genera el cliente de Prisma
-cp .env.example .env.local  # llaves de Supabase de desarrollo
-cp .env.example .env        # la CLI de Prisma lee este archivo
-npx prisma migrate dev      # aplica las migraciones a tu base de desarrollo
-npx prisma db seed          # carga datos ficticios
-npm run dev                 # http://localhost:3000
+npm install          # también genera el cliente de Prisma
+cp .env.example .env # y llénalo con las llaves de Supabase de desarrollo
+npm run dev          # http://localhost:3000
 ```
 
-Para entrar, crea tu usuario en Supabase (Authentication › Users) y agrega su fila en la tabla `Perfil` con tu rol (`ADMINISTRADOR`, `COORDINADOR` o `DOCENTE`).
+La base de desarrollo es compartida: las migraciones y los datos semilla se aplican una sola vez para todo el equipo (`npm run db:migrar` y `npm run db:seed`). Para entrar necesitas un usuario con perfil; pídelo a quien administre la plataforma.
+
+### Configurar Supabase Auth (una vez por proyecto de Supabase)
+
+Si no se configura, los correos de invitación llegan con un enlace a `http://localhost:3000/#access_token=...` que no funciona.
+
+1. **Authentication › URL Configuration**
+   - *Site URL*: la URL de producción de Vercel, por ejemplo `https://plataforma-gest-prod-cientifica.vercel.app`.
+   - *Redirect URLs*: agregar `http://localhost:3000/**` y `https://*-<cuenta-de-vercel>.vercel.app/**` para las vistas previas (el sufijo sale de cualquier URL de vista previa del proyecto). No usar `https://*.vercel.app/**`: aceptaría como destino cualquier app alojada en Vercel.
+2. **Authentication › Emails › Templates**: cambiar el enlace de estas plantillas para que pase por `/auth/confirmar`, que valida el enlace en el servidor:
+   - *Invite user*: `{{ .SiteURL }}/auth/confirmar?token_hash={{ .TokenHash }}&type=invite`
+   - *Reset password*: `{{ .SiteURL }}/auth/confirmar?token_hash={{ .TokenHash }}&type=recovery`
+
+   Quien abre una invitación llega a `/cuenta/contrasena` para definir su contraseña.
+3. **Primer administrador**: con `SUPABASE_SECRET_KEY` y `ADMIN_CORREO` en el `.env`, ejecutar `npm run crear-admin`. Crea el usuario ya confirmado, sin enviar correo, le asigna el rol `ADMINISTRADOR` e imprime una contraseña temporal. Requiere haber aplicado las migraciones (`npm run db:migrar`).
 
 | Comando | Qué hace |
 |---|---|
 | `npm run dev` | Servidor de desarrollo |
 | `npm test` | Pruebas con Vitest |
 | `npm run lint` · `npm run typecheck` | Revisión de estilo y de tipos |
+| `npm run db:migrar` | Aplica a la base las migraciones pendientes de `prisma/migrations` |
+| `npm run db:seed` | Carga los datos ficticios de `prisma/seed.ts` |
+| `npm run crear-admin` | Crea o promueve el usuario de `ADMIN_CORREO` como administrador |
 | `npx prisma migrate dev --name <cambio>` | Crea una migración tras editar `prisma/schema.prisma` |
 | `npx prisma studio` | Explorar la base de datos en el navegador |
 

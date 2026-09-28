@@ -110,6 +110,7 @@ model Profesor {
   reconocimientosSnii   ReconocimientoSnii[]
   reconocimientosProdep ReconocimientoProdep[]
   cuerposAcademicos     IntegranteCa[]
+  cuerposLiderados      CuerpoAcademico[]           @relation("LiderCa")
   lgacs                 Lgac[]
   participaciones       ParticipacionConvocatoria[]
   autorias              Autoria[]
@@ -199,18 +200,19 @@ model CuerpoAcademico {
   departamento    Departamento       @relation(fields: [departamentoId], references: [id])
   anioRegistro    Int
   anioVencimiento Int
+  // Líder único por construcción (RF-014). Debe ser integrante del CA; lo valida
+  // src/modules/cuerpos-academicos antes de guardar.
+  liderId         Int?
+  lider           Profesor?          @relation("LiderCa", fields: [liderId], references: [id])
   integrantes     IntegranteCa[]
   lgacs           Lgac[]
 }
 
-// Un solo líder por CA (RF-014): se refuerza con un índice único parcial
-// en la migración: CREATE UNIQUE INDEX ... ON "IntegranteCa"("cuerpoId") WHERE "esLider".
 model IntegranteCa {
   cuerpoId   Int
   cuerpo     CuerpoAcademico @relation(fields: [cuerpoId], references: [id], onDelete: Cascade)
   profesorId Int
   profesor   Profesor        @relation(fields: [profesorId], references: [id])
-  esLider    Boolean         @default(false)
 
   @@id([cuerpoId, profesorId])
 }
@@ -301,7 +303,8 @@ enum EstadoAutoria {
 }
 
 // RNF-004: DOI único en BD. La similitud de títulos se revisa en la aplicación con
-// pg_trgm; solo se indexa el título normalizado (plan §8, punto 7).
+// similarity() de pg_trgm sobre este índice GIN (plan §8, punto 7). La extensión
+// pg_trgm se crea en la migración inicial.
 model Publicacion {
   id                Int               @id @default(autoincrement())
   tipo              TipoPublicacion
@@ -319,7 +322,7 @@ model Publicacion {
   autorias          Autoria[]
   creadaEn          DateTime          @default(now())
 
-  @@index([tituloNormalizado])
+  @@index([tituloNormalizado(ops: raw("gin_trgm_ops"))], type: Gin)
 }
 
 // Vínculo publicación–profesor; permite coautorías sin duplicar la obra (RF-022).

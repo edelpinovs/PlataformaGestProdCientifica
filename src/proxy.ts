@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const RUTAS_PUBLICAS = ["/login"];
+const RUTAS_PUBLICAS = ["/login", "/auth"];
 
 // Refresca la sesión de Supabase y manda a /login a quien no ha iniciado sesión.
 // Los permisos por rol se validan en cada página con requireRol().
