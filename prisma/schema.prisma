@@ -1,0 +1,369 @@
+// Modelo de datos compartido de la PGPC · BORRADOR v1 para revisión del equipo.
+// Referencias: PGPC-SDD-V4-2026 y docs/PLAN_DE_TRABAJO.md.
+// Cualquier cambio entra por PR con migración (`npx prisma migrate dev --name ...`).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Seguridad (RNF-005) · Integrante 1 ─────────────────────────────────────
+
+enum Rol {
+  ADMINISTRADOR
+  COORDINADOR
+  DOCENTE
+}
+
+// Un perfil por usuario de Supabase Auth; `id` es el uuid de auth.users.
+model Perfil {
+  id         String    @id @db.Uuid
+  correo     String    @unique
+  rol        Rol       @default(DOCENTE)
+  profesorId Int?      @unique
+  profesor   Profesor? @relation(fields: [profesorId], references: [id])
+  creadoEn   DateTime  @default(now())
+}
+
+// ─── M1 Catálogos (RF-001 a RF-003) · Integrante 1 ──────────────────────────
+
+model GradoCientifico {
+  id           Int        @id @default(autoincrement())
+  nombre       String     @unique
+  nomenclatura String     @unique
+  profesores   Profesor[]
+}
+
+model Division {
+  id            Int            @id @default(autoincrement())
+  nombre        String
+  clave         String         @unique
+  departamentos Departamento[]
+}
+
+model Departamento {
+  id                Int                 @id @default(autoincrement())
+  nombre            String
+  nomenclatura      String              @unique
+  divisionId        Int
+  division          Division            @relation(fields: [divisionId], references: [id])
+  profesores        Profesor[]
+  cuerposAcademicos CuerpoAcademico[]
+  programas         ProgramaEducativo[]
+}
+
+// No está en el SDD; lo requiere RF-029 (plan §8, punto 2).
+model ProgramaEducativo {
+  id             Int           @id @default(autoincrement())
+  nombre         String
+  clave          String        @unique
+  departamentoId Int?
+  departamento   Departamento? @relation(fields: [departamentoId], references: [id])
+  profesores     Profesor[]
+}
+
+// ─── M2 Profesores (RF-004 a RF-006) · Integrante 2 ─────────────────────────
+
+enum Genero {
+  M
+  F
+}
+
+enum TipoContratacion {
+  TIEMPO_COMPLETO
+  ASIGNATURA
+}
+
+enum EstatusLaboral {
+  ACTIVO
+  LICENCIA
+  BAJA_TEMPORAL
+  BAJA_POSDOCTORAL
+  TRASLADADO
+}
+
+model Profesor {
+  id                    Int                         @id @default(autoincrement())
+  codigo                String                      @unique // Código CUValles
+  nombres               String
+  apellidos             String
+  // Nombre sin acentos, en minúsculas; lo usa el cruce de listados oficiales (RF-018).
+  nombreNormalizado     String
+  correo                String                      @unique
+  genero                Genero
+  tipoContratacion      TipoContratacion
+  estatusLaboral        EstatusLaboral              @default(ACTIVO)
+  gradoId               Int?
+  grado                 GradoCientifico?            @relation(fields: [gradoId], references: [id])
+  departamentoId        Int?
+  departamento          Departamento?               @relation(fields: [departamentoId], references: [id])
+  cvu                   String?                     @unique
+  orcid                 String?                     @unique
+  scopusId              String?                     @unique
+  scholarId             String?                     @unique
+  programas             ProgramaEducativo[]
+  perfil                Perfil?
+  reconocimientosSnii   ReconocimientoSnii[]
+  reconocimientosProdep ReconocimientoProdep[]
+  cuerposAcademicos     IntegranteCa[]
+  lgacs                 Lgac[]
+  participaciones       ParticipacionConvocatoria[]
+  autorias              Autoria[]
+  cortesEscaneo         CorteEscaneo[]
+  creadoEn              DateTime                    @default(now())
+  actualizadoEn         DateTime                    @updatedAt
+
+  @@index([nombreNormalizado])
+}
+
+// ─── M3 Reconocimientos SNII / PRODEP (RF-007 a RF-011) · Integrante 3 ──────
+
+enum NivelSnii {
+  CANDIDATO
+  NIVEL_1
+  NIVEL_2
+  NIVEL_3
+  EMERITO
+  NO_APROBADO
+}
+
+enum TipoParticipacionSnii {
+  NUEVO_INGRESO
+  RENOVACION
+  REINGRESO_NO_VIGENTE
+}
+
+enum TipoSolicitudProdep {
+  PRIMER_RECONOCIMIENTO
+  RENOVACION
+}
+
+enum ResultadoDictamen {
+  APROBADO
+  NO_APROBADO
+  EN_RECONSIDERACION
+}
+
+model ReconocimientoSnii {
+  id                Int                   @id @default(autoincrement())
+  profesorId        Int
+  profesor          Profesor              @relation(fields: [profesorId], references: [id])
+  nivel             NivelSnii
+  tipoParticipacion TipoParticipacionSnii
+  resultado         ResultadoDictamen
+  inicio            DateTime              @db.Date
+  fin               DateTime              @db.Date
+  convocatoriaId    Int?
+  convocatoria      Convocatoria?         @relation(fields: [convocatoriaId], references: [id])
+  creadoEn          DateTime              @default(now())
+
+  @@index([fin])
+}
+
+// El solapamiento de periodos (RF-011) se valida en src/modules/reconocimientos.
+model ReconocimientoProdep {
+  id             Int                 @id @default(autoincrement())
+  profesorId     Int
+  profesor       Profesor            @relation(fields: [profesorId], references: [id])
+  tipoSolicitud  TipoSolicitudProdep
+  resultado      ResultadoDictamen
+  inicio         DateTime            @db.Date
+  fin            DateTime            @db.Date
+  convocatoriaId Int?
+  convocatoria   Convocatoria?       @relation(fields: [convocatoriaId], references: [id])
+  creadoEn       DateTime            @default(now())
+
+  @@index([fin])
+}
+
+// ─── M4 Cuerpos Académicos (RF-012 a RF-015) · Integrante 4 ─────────────────
+
+enum NivelConsolidacion {
+  EN_FORMACION
+  EN_CONSOLIDACION
+  CONSOLIDADO
+}
+
+model CuerpoAcademico {
+  id              Int                @id @default(autoincrement())
+  clave           String             @unique
+  nombre          String
+  nivel           NivelConsolidacion
+  areaProdep      String
+  disciplina      String
+  departamentoId  Int
+  departamento    Departamento       @relation(fields: [departamentoId], references: [id])
+  anioRegistro    Int
+  anioVencimiento Int
+  integrantes     IntegranteCa[]
+  lgacs           Lgac[]
+}
+
+// Un solo líder por CA (RF-014): se refuerza con un índice único parcial
+// en la migración: CREATE UNIQUE INDEX ... ON "IntegranteCa"("cuerpoId") WHERE "esLider".
+model IntegranteCa {
+  cuerpoId   Int
+  cuerpo     CuerpoAcademico @relation(fields: [cuerpoId], references: [id], onDelete: Cascade)
+  profesorId Int
+  profesor   Profesor        @relation(fields: [profesorId], references: [id])
+  esLider    Boolean         @default(false)
+
+  @@id([cuerpoId, profesorId])
+}
+
+model Lgac {
+  id          Int             @id @default(autoincrement())
+  cuerpoId    Int
+  cuerpo      CuerpoAcademico @relation(fields: [cuerpoId], references: [id], onDelete: Cascade)
+  nombre      String
+  descripcion String?
+  profesores  Profesor[]
+}
+
+// ─── M5 Ingesta de convocatorias (RF-016 a RF-019) · Integrante 5 ───────────
+
+enum ProgramaConvocatoria {
+  SNII
+  PRODEP
+}
+
+enum EstadoCarga {
+  PROCESANDO
+  EN_REVISION
+  CONFIRMADA
+  FALLIDA
+}
+
+model Convocatoria {
+  id                    Int                         @id @default(autoincrement())
+  programa              ProgramaConvocatoria
+  anio                  Int
+  participaciones       ParticipacionConvocatoria[]
+  cargas                CargaResultados[]
+  reconocimientosSnii   ReconocimientoSnii[]
+  reconocimientosProdep ReconocimientoProdep[]
+
+  @@unique([programa, anio])
+}
+
+// Quién participó en la convocatoria (RF-018; plan §8, punto 1).
+model ParticipacionConvocatoria {
+  id             Int                @id @default(autoincrement())
+  convocatoriaId Int
+  convocatoria   Convocatoria       @relation(fields: [convocatoriaId], references: [id])
+  profesorId     Int
+  profesor       Profesor           @relation(fields: [profesorId], references: [id])
+  resultado      ResultadoDictamen?
+
+  @@unique([convocatoriaId, profesorId])
+}
+
+// Archivo oficial cargado y el balance que se muestra antes de confirmar (RF-019).
+model CargaResultados {
+  id             Int          @id @default(autoincrement())
+  convocatoriaId Int
+  convocatoria   Convocatoria @relation(fields: [convocatoriaId], references: [id])
+  archivoRuta    String // ruta en Supabase Storage
+  estado         EstadoCarga  @default(PROCESANDO)
+  balance        Json?
+  cargadaPor     String       @db.Uuid
+  creadaEn       DateTime     @default(now())
+}
+
+// ─── M6 Producción científica (RF-020 a RF-025) · Integrantes 6 y 7 ─────────
+
+enum TipoPublicacion {
+  ARTICULO
+  LIBRO
+  CAPITULO
+  MEMORIA_CONGRESO
+  REGISTRO_SOFTWARE
+  PATENTE
+  OTRO
+}
+
+enum FuentePublicacion {
+  ORCID
+  SCOPUS
+  OPENALEX
+  GOOGLE_SCHOLAR
+  MANUAL
+}
+
+enum EstadoAutoria {
+  PENDIENTE
+  VALIDADA
+  RECHAZADA // queda como registro de exclusiones (CU-013)
+}
+
+// RNF-004: DOI único en BD. La similitud de títulos se revisa en la aplicación con
+// pg_trgm; solo se indexa el título normalizado (plan §8, punto 7).
+model Publicacion {
+  id                Int               @id @default(autoincrement())
+  tipo              TipoPublicacion
+  titulo            String
+  tituloNormalizado String
+  doi               String?           @unique
+  autoresTexto      String
+  revistaEditorial  String?
+  isbnIssn          String?
+  fechaPublicacion  DateTime?         @db.Date
+  volumen           String?
+  paginas           String?
+  evidenciaUrl      String?
+  fuente            FuentePublicacion
+  autorias          Autoria[]
+  creadaEn          DateTime          @default(now())
+
+  @@index([tituloNormalizado])
+}
+
+// Vínculo publicación–profesor; permite coautorías sin duplicar la obra (RF-022).
+model Autoria {
+  publicacionId Int
+  publicacion   Publicacion   @relation(fields: [publicacionId], references: [id], onDelete: Cascade)
+  profesorId    Int
+  profesor      Profesor      @relation(fields: [profesorId], references: [id])
+  estado        EstadoAutoria @default(PENDIENTE)
+  revisadaEn    DateTime?
+
+  @@id([publicacionId, profesorId])
+  @@index([profesorId, estado])
+}
+
+// Última fecha de corte por profesor y fuente para el escaneo incremental (RF-020).
+model CorteEscaneo {
+  profesorId  Int
+  profesor    Profesor          @relation(fields: [profesorId], references: [id])
+  fuente      FuentePublicacion
+  ultimaFecha DateTime
+
+  @@id([profesorId, fuente])
+}
+
+// ─── Trabajos en segundo plano (RNF-001) · Integrante 5 ─────────────────────
+
+enum EstadoJob {
+  PENDIENTE
+  EN_PROCESO
+  COMPLETADO
+  FALLIDO
+}
+
+model Job {
+  id            Int       @id @default(autoincrement())
+  tipo          String // p. ej. "escaneo", "carga-resultados"
+  estado        EstadoJob @default(PENDIENTE)
+  avance        Int       @default(0)
+  total         Int       @default(0)
+  datos         Json?
+  error         String?
+  creadoEn      DateTime  @default(now())
+  actualizadoEn DateTime  @updatedAt
+
+  @@index([estado, tipo])
+}
