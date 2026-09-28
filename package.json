@@ -8,8 +8,11 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit",
-    "postinstall": "prisma generate"
+    "typecheck": "next typegen && tsc --noEmit",
+    "postinstall": "prisma generate",
+    "db:migrar": "prisma migrate deploy",
+    "db:seed": "prisma db seed",
+    "crear-admin": "tsx scripts/crear-admin.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "~7.10.0",
