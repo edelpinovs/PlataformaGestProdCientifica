@@ -75,7 +75,7 @@ Si no se configura, los correos de invitación llegan con un enlace a `http://lo
 
 1. **Authentication › URL Configuration**
    - *Site URL*: la URL de producción de Vercel, por ejemplo `https://plataforma-gest-prod-cientifica.vercel.app`.
-   - *Redirect URLs*: agregar `http://localhost:3000/**` y `https://*.vercel.app/**` (vistas previas).
+   - *Redirect URLs*: agregar `http://localhost:3000/**` y `https://*-<cuenta-de-vercel>.vercel.app/**` para las vistas previas (el sufijo sale de cualquier URL de vista previa del proyecto). No usar `https://*.vercel.app/**`: aceptaría como destino cualquier app alojada en Vercel.
 2. **Authentication › Emails › Templates**: cambiar el enlace de estas plantillas para que pase por `/auth/confirmar`, que valida el enlace en el servidor:
    - *Invite user*: `{{ .SiteURL }}/auth/confirmar?token_hash={{ .TokenHash }}&type=invite`
    - *Reset password*: `{{ .SiteURL }}/auth/confirmar?token_hash={{ .TokenHash }}&type=recovery`
