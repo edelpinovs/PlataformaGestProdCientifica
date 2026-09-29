@@ -1,0 +1,8 @@
+# Copia este archivo como scripts/equipo.txt (está en .gitignore: no se sube).
+# Una persona por línea:   correo  [ROL]  [# comentario]
+# ROL: ADMINISTRADOR (por defecto), COORDINADOR o DOCENTE.
+# Comenta con # a quien ya aceptó su invitación.
+
+persona.uno@alumnos.udg.mx                 # Integrante 1
+persona.dos@alumnos.udg.mx   COORDINADOR   # Integrante 2
+# persona.tres@alumnos.udg.mx              # ya aceptó

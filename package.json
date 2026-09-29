@@ -13,7 +13,9 @@
     "db:migrar": "prisma migrate deploy",
     "db:seed": "prisma db seed",
     "crear-admin": "tsx scripts/crear-admin.ts",
-    "invitar": "tsx scripts/invitar.ts"
+    "invitar": "tsx scripts/invitar.ts",
+    "invitar:lote": "tsx scripts/invitar-lote.ts",
+    "db:nueva-migracion": "tsx scripts/nueva-migracion.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "~7.10.0",

@@ -51,3 +51,7 @@ desktop.ini
 .agents/
 .windsurf/
 skills-lock.json
+
+# Lista del equipo y enlaces de invitación: datos personales
+/scripts/equipo.txt
+/scripts/invitaciones-*.txt
