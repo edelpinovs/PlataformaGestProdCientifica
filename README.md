@@ -78,7 +78,8 @@ Si no se configura, los correos de invitación llegan con un enlace a `http://lo
    - *Reset password*: `{{ .SiteURL }}/auth/confirmar?token_hash={{ .TokenHash }}&type=recovery`
 
    Quien abre una invitación llega a `/cuenta/contrasena` para definir su contraseña.
-3. **Primer administrador**: con `SUPABASE_SECRET_KEY` y `ADMIN_CORREO` en el `.env`, ejecutar `npm run crear-admin`. Crea el usuario ya confirmado, sin enviar correo, le asigna el rol `ADMINISTRADOR` e imprime una contraseña temporal. Requiere haber aplicado las migraciones (`npm run db:migrar`).
+3. **Data API**: en *Project Settings › Data API*, desactivar la Data API o quitar `public` de *Exposed schemas*. La app no la usa (accede con Prisma) y la llave publishable es pública. Como segunda barrera, la migración `habilitar_rls` activa Row Level Security en todas las tablas; **toda migración que cree tablas nuevas debe incluir** `ALTER TABLE "<Tabla>" ENABLE ROW LEVEL SECURITY;`.
+4. **Primer administrador**: con `SUPABASE_SECRET_KEY` y `ADMIN_CORREO` en el `.env`, ejecutar `npm run crear-admin`. Crea el usuario ya confirmado, sin enviar correo, le asigna el rol `ADMINISTRADOR` e imprime una contraseña temporal. Requiere haber aplicado las migraciones (`npm run db:migrar`).
 
 | Comando | Qué hace |
 |---|---|
