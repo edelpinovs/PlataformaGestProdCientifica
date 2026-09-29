@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { iniciarSesion, type EstadoLogin } from "./actions";
+import { SesionDesdeEnlace } from "./sesion-desde-enlace";
 
 export function FormularioLogin({ aviso }: { aviso?: string }) {
   const [estado, accion, enviando] = useActionState<EstadoLogin, FormData>(iniciarSesion, {});
@@ -12,6 +13,7 @@ export function FormularioLogin({ aviso }: { aviso?: string }) {
         <h1 className="text-2xl font-semibold">Iniciar sesión</h1>
         <p className="text-sm text-neutral-500">Plataforma de Gestión de la Producción Científica</p>
       </div>
+      <SesionDesdeEnlace />
       <form action={accion} className="flex flex-col gap-4">
         <label className="flex flex-col gap-1 text-sm">
           Correo institucional
