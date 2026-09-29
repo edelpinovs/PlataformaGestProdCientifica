@@ -9,21 +9,20 @@ const credenciales = z.object({
   contrasena: z.string().min(1),
 });
 
-export type EstadoLogin = { error?: string };
+// `correo` vuelve al formulario: React 19 lo reinicia al terminar la acción.
+export type EstadoLogin = { error?: string; correo?: string };
 
 export async function iniciarSesion(_: EstadoLogin, formData: FormData): Promise<EstadoLogin> {
-  const datos = credenciales.safeParse({
-    correo: formData.get("correo"),
-    contrasena: formData.get("contrasena"),
-  });
-  if (!datos.success) return { error: "Escribe un correo válido y tu contraseña." };
+  const correo = String(formData.get("correo") ?? "");
+  const datos = credenciales.safeParse({ correo, contrasena: formData.get("contrasena") });
+  if (!datos.success) return { error: "Escribe un correo válido y tu contraseña.", correo };
 
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({
     email: datos.data.correo,
     password: datos.data.contrasena,
   });
-  if (error) return { error: "El correo o la contraseña no coinciden." };
+  if (error) return { error: "El correo o la contraseña no coinciden.", correo };
 
   redirect("/");
 }
