@@ -1,109 +1,154 @@
 # PlataformaGestProdCientifica
 
-Plataforma web para gestionar la producción científica y los reconocimientos (SNII, PRODEP, Cuerpos Académicos) del profesorado investigador de CUValles. El diseño está definido en el documento **PGPC-SDD-V4-2026** (versión 4.0).
+Plataforma web para gestionar la producción científica y los reconocimientos (SNII, PRODEP, Cuerpos Académicos) del profesorado investigador de CUValles, según el documento de diseño **PGPC-SDD-V4-2026**.
+
+- **Sitio en producción:** https://plataforma-gest-prod-cientifica.vercel.app
+- **Plan de trabajo:** [docs/PLAN_DE_TRABAJO.md](docs/PLAN_DE_TRABAJO.md) · [versión interactiva](https://claude.ai/artifact/X4SdM8WyxKD8gzkio8tTUW)
+- **Tareas:** [Issues](https://github.com/edelpinovs/PlataformaGestProdCientifica/issues), un issue por requisito (RF) con la etiqueta de su módulo.
 
 ## Equipo
 
-Integrantes del repositorio: 4 de 8 confirmados, más los que tienen la invitación pendiente de aceptar. El integrante y módulo de cada quien se asigna según el [plan de trabajo](docs/PLAN_DE_TRABAJO.md#2-equipo-y-responsabilidades).
-
 <table>
   <tr>
-    <td align="center" width="160">
-      <a href="https://github.com/edelpinovs"><img src="https://github.com/edelpinovs.png?size=120" width="80" alt="edelpinovs"><br><b>Edel</b></a><br>
+    <td align="center" width="140">
+      <a href="https://github.com/edelpinovs"><img src="https://github.com/edelpinovs.png?size=120" width="72" alt="edelpinovs"><br><b>Edel</b></a><br>
       <sub>@edelpinovs</sub><br>
-      <sub>Administrador del repo</sub><br>
-      <sub>Integrante: por asignar</sub>
+      <sub>Coordinación y DevOps</sub>
     </td>
-    <td align="center" width="160">
-      <a href="https://github.com/dpfuentes92"><img src="https://github.com/dpfuentes92.png?size=120" width="80" alt="dpfuentes92"><br><b>dpfuentes92</b></a><br>
+    <td align="center" width="140">
+      <a href="https://github.com/dpfuentes92"><img src="https://github.com/dpfuentes92.png?size=120" width="72" alt="dpfuentes92"><br><b>dpfuentes92</b></a><br>
       <sub>@dpfuentes92</sub><br>
-      <sub>Acceso de escritura</sub><br>
-      <sub>Integrante: por asignar</sub>
+      <sub>Módulo por asignar</sub>
     </td>
-    <td align="center" width="160">
-      <a href="https://github.com/Ared11"><img src="https://github.com/Ared11.png?size=120" width="80" alt="Ared11"><br><b>Ared11</b></a><br>
+    <td align="center" width="140">
+      <a href="https://github.com/Ared11"><img src="https://github.com/Ared11.png?size=120" width="72" alt="Ared11"><br><b>Ared11</b></a><br>
       <sub>@Ared11</sub><br>
-      <sub>Acceso de escritura</sub><br>
-      <sub>Integrante: por asignar</sub>
+      <sub>Módulo por asignar</sub>
     </td>
-    <td align="center" width="160">
-      <a href="https://github.com/marisleidysvazquez8293-arch"><img src="https://github.com/marisleidysvazquez8293-arch.png?size=120" width="80" alt="marisleidysvazquez8293-arch"><br><b>marisleidysvazquez8293</b></a><br>
+    <td align="center" width="140">
+      <a href="https://github.com/marisleidysvazquez8293-arch"><img src="https://github.com/marisleidysvazquez8293-arch.png?size=120" width="72" alt="marisleidysvazquez8293-arch"><br><b>marisleidysvazquez8293</b></a><br>
       <sub>@marisleidysvazquez8293-arch</sub><br>
-      <sub>Acceso de escritura</sub><br>
-      <sub>Integrante: por asignar</sub>
+      <sub>Módulo por asignar</sub>
     </td>
-    <td align="center" width="160">
-      <a href="https://github.com/Grillo-de-Alambre"><img src="https://github.com/Grillo-de-Alambre.png?size=120" width="80" alt="Grillo-de-Alambre"><br><b>Alan Ramírez</b></a><br>
+    <td align="center" width="140">
+      <a href="https://github.com/Grillo-de-Alambre"><img src="https://github.com/Grillo-de-Alambre.png?size=120" width="72" alt="Grillo-de-Alambre"><br><b>Alan Ramírez</b></a><br>
       <sub>@Grillo-de-Alambre</sub><br>
-      <sub>Invitación pendiente</sub><br>
-      <sub>Integrante: por asignar</sub>
+      <sub>Módulo por asignar</sub>
     </td>
   </tr>
 </table>
 
-## Documentación
+Cada integrante trabaja el módulo que tiene asignado (ver issues y `src/modules/registry.ts`).
 
-- **Plan de trabajo del equipo:** [docs/PLAN_DE_TRABAJO.md](docs/PLAN_DE_TRABAJO.md). Reparto de módulos y roles de los 8 integrantes, cronograma por sprints, arquitectura, contratos entre módulos, riesgos y huecos del SDD por resolver.
-- **Versión interactiva del plan:** [https://claude.ai/artifact/X4SdM8WyxKD8gzkio8tTUW](https://claude.ai/artifact/X4SdM8WyxKD8gzkio8tTUW). El mismo contenido con cronograma visual.
+## Primeros pasos
 
-## Stack
+Necesitas **Git**, **Node.js 24** y un editor (recomendado VS Code).
 
-Next.js 16 (App Router, TypeScript) · Supabase (PostgreSQL, Auth, Storage) · Prisma 7 · Tailwind CSS · desplegado en Vercel desde GitHub. Detalle y motivos en la [sección 4 del plan](docs/PLAN_DE_TRABAJO.md#4-arquitectura-recomendada).
+1. **Clona el repositorio** en una carpeta que **no** esté sincronizada con Google Drive, OneDrive o Dropbox, por ejemplo `C:\dev`. Esos servicios se atoran con las miles de dependencias de `node_modules`.
 
-## Cómo empezar
+   ```bash
+   git clone https://github.com/edelpinovs/PlataformaGestProdCientifica.git
+   cd PlataformaGestProdCientifica
+   npm install
+   ```
 
-Requisitos: Node 24 y acceso al proyecto de Supabase de desarrollo (pídelo a Integrante 1).
+2. **Pide el archivo `.env` a Edel** por mensaje privado y guárdalo en la raíz del proyecto. Tiene las llaves de la base de datos de desarrollo: nunca lo subas ni lo compartas en el chat del grupo.
 
-> Clona el repositorio **fuera** de carpetas sincronizadas con Google Drive, OneDrive o Dropbox (por ejemplo en `C:\dev`). `node_modules` tiene miles de archivos y la sincronización lo vuelve lento o lo corrompe.
+3. **Arranca la aplicación:**
 
-```bash
-git clone https://github.com/edelpinovs/PlataformaGestProdCientifica.git
-cd PlataformaGestProdCientifica
-npm install          # también genera el cliente de Prisma
-cp .env.example .env # y llénalo con las llaves de Supabase de desarrollo
-npm run dev          # http://localhost:3000
-```
+   ```bash
+   npm run dev
+   ```
 
-La base de desarrollo es compartida: las migraciones y los datos semilla se aplican una sola vez para todo el equipo (`npm run db:migrar` y `npm run db:seed`). Para entrar necesitas un usuario con perfil; pídelo a quien administre la plataforma.
+   Abre http://localhost:3000.
 
-### Configurar Supabase Auth (una vez por proyecto de Supabase)
+4. **Entra con tu cuenta.** Edel te envía un enlace de invitación. Ábrelo, define tu contraseña y listo: con ese correo y contraseña entras tanto en tu máquina como en el sitio de producción. El enlace sirve una sola vez y caduca en 1 hora; si caduca, pide otro.
 
-1. **Authentication › URL Configuration**
-   - *Site URL*: `https://plataforma-gest-prod-cientifica.vercel.app`.
-   - *Redirect URLs*: `http://localhost:3000/**`, `https://plataforma-gest-prod-cientifica.vercel.app/**` y `https://plataforma-gest-prod-cientifica-*-edelpinovs-projects.vercel.app/**` (vistas previas). No usar `https://*.vercel.app/**`: aceptaría como destino cualquier app alojada en Vercel.
-2. **Plantillas de correo: no hay que editarlas.** Supabase solo permite cambiarlas con un SMTP propio. La página `/login` acepta el enlace de las plantillas por defecto (la sesión llega en `#access_token=...`), la guarda y manda a `/cuenta/contrasena` a quien viene de una invitación o de recuperar su contraseña.
-3. **Data API**: en *Project Settings › Data API*, desactivar la Data API o quitar `public` de *Exposed schemas*. La app no la usa (accede con Prisma) y la llave publishable es pública. Como segunda barrera, la migración `habilitar_rls` activa Row Level Security en todas las tablas; **toda migración que cree tablas nuevas debe incluir** `ALTER TABLE "<Tabla>" ENABLE ROW LEVEL SECURITY;`.
-4. **Primer administrador**: con `SUPABASE_SECRET_KEY` y `ADMIN_CORREO` en el `.env`, ejecutar `npm run crear-admin`. Crea el usuario ya confirmado, sin enviar correo, le asigna el rol `ADMINISTRADOR` e imprime una contraseña temporal. Requiere haber aplicado las migraciones (`npm run db:migrar`).
+## Cómo trabajamos
 
-### Dar acceso a una persona
+Cada cambio entra por **pull request**. Nadie sube directo a `main`.
 
-```bash
-npm run invitar -- persona@cuvalles.udg.mx COORDINADOR   # ADMINISTRADOR, COORDINADOR o DOCENTE
-```
+1. **Toma tu issue** y actualiza tu copia:
+   ```bash
+   git checkout main
+   git pull
+   npm install        # por si alguien agregó dependencias
+   npm run db:migrar  # por si alguien cambió la base de datos
+   ```
+2. **Crea una rama** con el módulo y el requisito:
+   ```bash
+   git checkout -b feat/M3-RF-008-candidato
+   ```
+3. **Programa** en las carpetas de tu módulo (ver tabla abajo) y **prueba**:
+   ```bash
+   npm test
+   npm run lint
+   npm run typecheck
+   ```
+4. **Haz commit** mencionando el requisito y sube la rama:
+   ```bash
+   git commit -m "RF-008: impide renovar a un Candidato en el mismo nivel"
+   git push -u origin feat/M3-RF-008-candidato
+   ```
+5. **Abre el pull request** en GitHub. Escribe `Cierra #<número del issue>` en la descripción para que el issue se cierre solo al integrarlo.
+6. **Revisión.** GitHub ejecuta las pruebas (CI) y Vercel publica una **vista previa** con tu cambio, cuyo enlace aparece en el PR. Otro integrante lo revisa y lo aprueba. Con el CI en verde y la aprobación, se integra a `main` y se publica en producción.
 
-Crea el usuario con su rol en `Perfil` e imprime un **enlace de invitación sin enviar correo**; compártelo por el medio que prefieras. El enlace caduca en 1 hora (Supabase › Authentication › Providers › Email › *Email OTP Expiration*) y sirve una sola vez. Si la persona ya existía, genera un enlace para restablecer su contraseña.
+Revisa también los PR de tus compañeros: cada PR necesita una aprobación.
 
-No uses *Invite user* del panel de Supabase: no crea el perfil con el rol, y el correo por defecto de Supabase solo llega a miembros de la organización y con un límite de pocos correos por hora. Para enviar correos a profesores reales hará falta un SMTP propio (por ejemplo Resend).
-
-| Comando | Qué hace |
-|---|---|
-| `npm run dev` | Servidor de desarrollo |
-| `npm test` | Pruebas con Vitest |
-| `npm run lint` · `npm run typecheck` | Revisión de estilo y de tipos |
-| `npm run db:migrar` | Aplica a la base las migraciones pendientes de `prisma/migrations` |
-| `npm run db:seed` | Carga los datos ficticios de `prisma/seed.ts` |
-| `npm run crear-admin` | Crea o promueve el usuario de `ADMIN_CORREO` como administrador |
-| `npm run invitar -- <correo> <ROL>` | Crea un usuario con su rol e imprime su enlace de invitación |
-| `npx prisma migrate dev --name <cambio>` | Crea una migración tras editar `prisma/schema.prisma` |
-| `npx prisma studio` | Explorar la base de datos en el navegador |
-
-### Dónde va cada cosa
+## Dónde va cada cosa
 
 | Carpeta | Contenido |
 |---|---|
-| `prisma/schema.prisma` | Modelo de datos compartido (borrador v1, se revisa en equipo) |
-| `src/app/<módulo>/` | Pantallas de cada módulo |
-| `src/modules/<módulo>/` | Reglas de negocio, servicios y validaciones de cada módulo |
-| `src/modules/registry.ts` | Lista de módulos con su integrante, RF, roles y fecha de liberación |
-| `src/lib/` | Prisma, Supabase y autenticación por roles |
-| `src/app/api/cron/` | Tareas programadas de Vercel Cron |
+| `src/app/<módulo>/` | Pantallas del módulo (Next.js App Router) |
+| `src/modules/<módulo>/` | Reglas de negocio, servicios y validaciones (Zod) del módulo, con sus pruebas |
+| `src/modules/registry.ts` | Módulos con su integrante, requisitos, roles con acceso y fecha de liberación |
+| `src/components/` | Componentes compartidos de la interfaz |
+| `src/lib/` | Conexión a la base (Prisma), sesión y roles. Cámbialo solo si tu tarea lo pide |
+| `prisma/schema.prisma` | Modelo de datos de todo el equipo |
+| `prisma/migrations/` | Historial de cambios a la base de datos |
+
+Para proteger una pantalla por rol usa `requireModulo("<módulo>")` o `requireRol([...])` de `src/lib/auth/session.ts`.
+
+## Base de datos
+
+Todo el equipo usa **la misma base de desarrollo**, así que un cambio en ella afecta a todos.
+
+**Para cambiar el modelo de datos:**
+
+1. Avisa en el chat del equipo qué vas a cambiar, para no pisarte con alguien más.
+2. Actualiza tu copia (`git pull` y `npm run db:migrar`).
+3. Edita `prisma/schema.prisma`.
+4. Crea la migración:
+   ```bash
+   npm run db:nueva-migracion -- agrega_cvu_a_profesor
+   ```
+   Genera el SQL en `prisma/migrations/` y activa la protección RLS en cada tabla nueva. Revisa el archivo antes de seguir.
+5. Aplícala a la base con `npm run db:migrar` y súbela en tu PR junto con el cambio a `schema.prisma`.
+
+> **No uses** `npx prisma migrate dev` ni `npx prisma migrate reset`: con una base compartida pueden proponer **borrarla completa**.
+
+Para ver y editar datos: `npx prisma studio`. Usa solo datos ficticios; nunca datos reales de profesores.
+
+## Pruebas
+
+Las pruebas usan **Vitest** y viven junto al código, con el sufijo `.test.ts`. Hay un ejemplo en `src/modules/reportes/semaforo.test.ts`. Cada regla de negocio de tu módulo (validaciones, cálculos de vigencia, deduplicación) debe tener su prueba.
+
+```bash
+npm test               # todas las pruebas
+npx vitest semaforo    # solo las que coinciden con el nombre
+```
+
+## Comandos
+
+| Comando | Qué hace |
+|---|---|
+| `npm run dev` | Arranca la aplicación en http://localhost:3000 |
+| `npm test` | Ejecuta las pruebas |
+| `npm run lint` · `npm run typecheck` | Revisa estilo y tipos (lo mismo que el CI) |
+| `npm run db:migrar` | Aplica a la base las migraciones que falten |
+| `npm run db:nueva-migracion -- <nombre>` | Crea una migración a partir de tus cambios en `schema.prisma` |
+| `npx prisma studio` | Explora la base de datos en el navegador |
+
+## Stack
+
+Next.js 16 (App Router, TypeScript) · Prisma 7 · PostgreSQL y Auth de Supabase · Tailwind CSS · Vitest · Vercel. El detalle está en la [sección 4 del plan](docs/PLAN_DE_TRABAJO.md#4-arquitectura-recomendada). La configuración de infraestructura y accesos está en [docs/OPERACION.md](docs/OPERACION.md).
