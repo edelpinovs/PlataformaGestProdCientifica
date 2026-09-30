@@ -35,6 +35,11 @@ Plataforma web para gestionar la producción científica y los reconocimientos (
       <sub>@Grillo-de-Alambre</sub><br>
       <sub>Módulo por asignar</sub>
     </td>
+    <td align="center" width="140">
+      <a href="https://github.com/irybyron"><img src="https://github.com/irybyron.png?size=120" width="72" alt="irybyron"><br><b>irybyron</b></a><br>
+      <sub>@irybyron</sub><br>
+      <sub>Módulo por asignar</sub>
+    </td>
   </tr>
 </table>
 
