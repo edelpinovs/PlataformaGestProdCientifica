@@ -13,37 +13,49 @@ Plataforma web para gestionar la producción científica y los reconocimientos (
     <td align="center" width="140">
       <a href="https://github.com/edelpinovs"><img src="https://github.com/edelpinovs.png?size=120" width="72" alt="edelpinovs"><br><b>Edel</b></a><br>
       <sub>@edelpinovs</sub><br>
-      <sub>Coordinación y DevOps</sub>
+      <sub>M1 Catálogos · líder técnico y DevOps</sub>
     </td>
     <td align="center" width="140">
       <a href="https://github.com/dpfuentes92"><img src="https://github.com/dpfuentes92.png?size=120" width="72" alt="dpfuentes92"><br><b>dpfuentes92</b></a><br>
       <sub>@dpfuentes92</sub><br>
-      <sub>Módulo por asignar</sub>
+      <sub>M2 Profesores · Scrum master</sub>
     </td>
     <td align="center" width="140">
       <a href="https://github.com/Ared11"><img src="https://github.com/Ared11.png?size=120" width="72" alt="Ared11"><br><b>Ared11</b></a><br>
       <sub>@Ared11</sub><br>
-      <sub>Módulo por asignar</sub>
+      <sub>M3 SNII/PRODEP · reglas de vigencia</sub>
     </td>
     <td align="center" width="140">
       <a href="https://github.com/marisleidysvazquez8293-arch"><img src="https://github.com/marisleidysvazquez8293-arch.png?size=120" width="72" alt="marisleidysvazquez8293-arch"><br><b>marisleidysvazquez8293</b></a><br>
       <sub>@marisleidysvazquez8293-arch</sub><br>
-      <sub>Módulo por asignar</sub>
+      <sub>M4 Cuerpos Académicos · QA</sub>
     </td>
+  </tr>
+  <tr>
     <td align="center" width="140">
       <a href="https://github.com/Grillo-de-Alambre"><img src="https://github.com/Grillo-de-Alambre.png?size=120" width="72" alt="Grillo-de-Alambre"><br><b>Alan Ramírez</b></a><br>
       <sub>@Grillo-de-Alambre</sub><br>
-      <sub>Módulo por asignar</sub>
+      <sub>M5 Convocatorias · segundo plano</sub>
     </td>
     <td align="center" width="140">
       <a href="https://github.com/irybyron"><img src="https://github.com/irybyron.png?size=120" width="72" alt="irybyron"><br><b>irybyron</b></a><br>
       <sub>@irybyron</sub><br>
-      <sub>Módulo por asignar</sub>
+      <sub>M6 Motor de escaneo · integraciones</sub>
+    </td>
+    <td align="center" width="140">
+      <a href="https://github.com/yanetzijimeno8297"><img src="https://github.com/yanetzijimeno8297.png?size=120" width="72" alt="yanetzijimeno8297"><br><b>yanetzijimeno8297</b></a><br>
+      <sub>@yanetzijimeno8297</sub><br>
+      <sub>M6 Validación · UX/UI</sub>
+    </td>
+    <td align="center" width="140">
+      <a href="https://github.com/leonelmartinez8296-LMP"><img src="https://github.com/leonelmartinez8296-LMP.png?size=120" width="72" alt="leonelmartinez8296-LMP"><br><b>leonelmartinez8296</b></a><br>
+      <sub>@leonelmartinez8296-LMP</sub><br>
+      <sub>M7 Reportes · exportación</sub>
     </td>
   </tr>
 </table>
 
-Cada integrante trabaja el módulo que tiene asignado (ver issues y `src/modules/registry.ts`).
+Cada integrante trabaja los issues que tiene asignados, uno por requisito (ver [Issues](https://github.com/edelpinovs/PlataformaGestProdCientifica/issues) y `src/modules/registry.ts`).
 
 ## Primeros pasos
 
