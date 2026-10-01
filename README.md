@@ -57,6 +57,53 @@ Plataforma web para gestionar la producción científica y los reconocimientos (
 
 Cada integrante trabaja los issues que tiene asignados, uno por requisito (ver [Issues](https://github.com/edelpinovs/PlataformaGestProdCientifica/issues) y `src/modules/registry.ts`).
 
+## Reparto del trabajo
+
+Cada integrante es dueño de uno o más módulos del SDD y de un rol transversal. Los issues están asignados en GitHub, uno por requisito (RF), con el hito de la liberación que le toca. Detalle y razones en el [plan de trabajo](docs/PLAN_DE_TRABAJO.md#2-equipo-y-responsabilidades).
+
+| Rol | Integrante | Módulo (issues) | Rol transversal | Libera |
+|---|---|---|---|---|
+| I1 | @edelpinovs | M1 Catálogos: RF-001 a 003 (#6 a #8) | Líder técnico y DevOps: CI, Vercel, Supabase, autenticación y roles. Apoya M7 desde el 6 oct | 5 oct |
+| I2 | @dpfuentes92 | M2 Profesores: RF-004 a 006 (#9 a #11) | Scrum master: tablero, minutas y dudas del SDD con la Coordinación. Apoya M5 desde el 6 oct | 5 oct |
+| I3 | @Ared11 | M3 SNII/PRODEP: RF-007 a 011 (#12 a #16) | Reglas de vigencia (`vigencia_actual()`, `tiene_prodep_activo()`) | 26 oct |
+| I4 | @marisleidysvazquez8293-arch | M4 Cuerpos Académicos: RF-012 a 015 (#17 a #20) | QA: datos semilla y pruebas end-to-end | 26 oct |
+| I5 | @Grillo-de-Alambre | M5 Convocatorias: RF-016 a 019 (#21 a #24) | Trabajos en segundo plano (tabla `jobs`, cron) | 9 nov |
+| I6 | @irybyron | M6 Motor de escaneo: RF-020 a 022 (#25 a #27) | Integraciones externas, llaves de APIs y deduplicación | 23 nov |
+| I7 | @yanetzijimeno8297 | M6 Validación: RF-023 a 025 (#28 a #30) | UX/UI: componentes compartidos y regla de 3 clics | 23 nov |
+| I8 | @leonelmartinez8296-LMP | M7 Vigencias y reportes: RF-026 a 030 (#31 a #35) | Exportación Excel/PDF y documentación de usuario | 30 nov |
+
+Los issues transversales también tienen dueño: modelo de datos (#3) con I1, huecos del SDD (#5) con I2, y accesos y Supabase de producción (#41, #42) con I1.
+
+### Entregas entre módulos
+
+Lo que un integrante le debe a otro. Si una fecha se mueve, se avisa en la reunión semanal.
+
+| Entrega | De | Para | Fecha |
+|---|---|---|---|
+| Catálogos consultables | I1 | I2, I4, I8 | 30 sep |
+| Kit de UI (plantilla, tablas, formularios) | I7 | Todos | 2 oct |
+| Datos semilla ficticios | I4 | Todos | 2 oct |
+| Búsqueda de profesor por código, CVU y nombre | I2 | I5, I6 | 5 oct |
+| `vigencia_actual()` y `tiene_prodep_activo()` | I3 | I4, I5, I8 | 12 oct |
+| Ejecutor de tareas asíncronas con avance | I5 | I6 | 19 oct |
+| Servicio de exportación .xlsx / PDF | I8 | I5, I7 | 19 oct |
+| Modelos `Publicacion` y `Autoria` | I6 | I7, I8 | 26 oct |
+
+### Fechas clave
+
+| Hito | Fecha | Incluye |
+|---|---|---|
+| Liberación 1 | 5 oct | M1 y M2 |
+| Liberación 2 | 26 oct | M3 y M4 |
+| Liberación 3 | 9 nov | M5 |
+| Liberación 4 | 23 nov | M6 |
+| Liberación 5 | 30 nov | M7 |
+| Integración final | 9 dic | Pruebas, manual y despliegue |
+
+### Si hay que cambiar un reparto
+
+Reasigna el issue en GitHub (columna derecha, **Assignees**) y avisa en el chat. Si cambia el dueño de un módulo completo, actualiza también `integrante` en `src/modules/registry.ts` y la tabla de arriba, en un pull request.
+
 ## Primeros pasos
 
 Necesitas **Git**, **Node.js 24** y un editor (recomendado VS Code).
