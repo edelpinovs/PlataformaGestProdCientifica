@@ -1,15 +1,17 @@
-// Invita por lotes a las personas de scripts/equipo.txt y guarda sus enlaces.
-// Uso: npm run invitar:lote            (usa scripts/equipo.txt)
-//      npm run invitar:lote -- otra-lista.txt
+// Da acceso por lotes a las personas de scripts/equipo.txt.
+// Uso: npm run invitar:lote                      enlaces de invitación (caducan, sirven una vez)
+//      npm run invitar:lote -- --contrasena      contraseñas temporales (no caducan)
+//      npm run invitar:lote -- otra-lista.txt    usa otra lista
 //
 // Formato de la lista, una persona por línea:   correo  [ROL]  [# comentario]
 // - El ROL es opcional (ADMINISTRADOR por defecto: es el entorno de desarrollo).
-// - Las líneas que empiezan con # se ignoran: comenta a quien ya aceptó.
-// La lista y los enlaces tienen datos personales y están en .gitignore.
+// - Las líneas que empiezan con # se ignoran: comenta a quien ya entró.
+// La lista y los resultados tienen datos personales y están en .gitignore.
 import { readFileSync, writeFileSync } from "node:fs";
-import { conectar, esRol, invitar, type ResultadoInvitacion } from "./lib/invitacion";
+import { asignarContrasenaTemporal, conectar, esRol, invitar } from "./lib/invitacion";
 
 const ROL_POR_DEFECTO = "ADMINISTRADOR";
+const SITIO = "https://plataforma-gest-prod-cientifica.vercel.app";
 
 function leerLista(ruta: string) {
   return readFileSync(ruta, "utf-8")
@@ -27,7 +29,9 @@ function leerLista(ruta: string) {
 }
 
 async function main() {
-  const ruta = process.argv[2] ?? "scripts/equipo.txt";
+  const args = process.argv.slice(2);
+  const conContrasena = args.includes("--contrasena");
+  const ruta = args.find((a) => !a.startsWith("--")) ?? "scripts/equipo.txt";
   const personas = leerLista(ruta);
   if (personas.length === 0) {
     console.log(`No hay personas activas en ${ruta}: todas las líneas están comentadas.`);
@@ -35,12 +39,19 @@ async function main() {
   }
 
   const conexion = conectar();
-  const enviados: ResultadoInvitacion[] = [];
+  const bloques: string[] = [];
   const fallidos: string[] = [];
   try {
     for (const { correo, rol } of personas) {
       try {
-        enviados.push(await invitar(conexion, correo, rol));
+        if (conContrasena) {
+          const r = await asignarContrasenaTemporal(conexion, correo, rol);
+          bloques.push(`${r.correo} · ${r.rol}\nContraseña temporal: ${r.contrasena}`);
+        } else {
+          const r = await invitar(conexion, correo, rol);
+          const nota = r.tipo === "recuperacion" ? " · ya existía: enlace para restablecer contraseña" : "";
+          bloques.push(`${r.correo} · ${r.rol}${nota}\n${r.enlace}`);
+        }
         console.log(`✓ ${correo} · ${rol}`);
       } catch (error) {
         fallidos.push(correo);
@@ -51,21 +62,22 @@ async function main() {
     await conexion.prisma.$disconnect();
   }
 
-  if (enviados.length > 0) {
+  if (bloques.length > 0) {
     const hora = new Date().toLocaleString("es-MX", { timeZone: "America/Mexico_City" });
-    const salida = `scripts/invitaciones-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-")}.txt`;
-    const texto = [
-      `Enlaces generados el ${hora} (hora de Ciudad de México).`,
-      "Cada enlace sirve una sola vez y caduca en 1 hora. Envíalo solo a su dueño.",
-      "",
-      ...enviados.flatMap((r) => [
-        `${r.correo} · ${r.rol}${r.tipo === "recuperacion" ? " · ya existía: enlace para restablecer contraseña" : ""}`,
-        r.enlace,
-        "",
-      ]),
-    ].join("\n");
-    writeFileSync(salida, texto);
-    console.log(`\n${enviados.length} enlace(s) guardados en ${salida}`);
+    const marca = new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-");
+    const salida = `scripts/invitaciones-${conContrasena ? "contrasenas-" : ""}${marca}.txt`;
+    const instrucciones = conContrasena
+      ? [
+          `Contraseñas temporales asignadas el ${hora} (hora de Ciudad de México).`,
+          `Cada persona entra en ${SITIO} con su correo y su contraseña temporal,`,
+          "y la cambia en «Cambiar contraseña» (junto a «Cerrar sesión»). Envía cada una solo a su dueño.",
+        ]
+      : [
+          `Enlaces generados el ${hora} (hora de Ciudad de México).`,
+          "Cada enlace sirve una sola vez y caduca en 1 hora. Envíalo solo a su dueño.",
+        ];
+    writeFileSync(salida, [...instrucciones, "", ...bloques.flatMap((b) => [b, ""])].join("\n"));
+    console.log(`\n${bloques.length} resultado(s) guardados en ${salida}`);
   }
   if (fallidos.length > 0) {
     console.log(`${fallidos.length} con error: ${fallidos.join(", ")}`);
