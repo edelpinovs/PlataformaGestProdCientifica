@@ -9,6 +9,7 @@ export function Encabezado({ correo, rol }: { correo: string; rol: Rol }) {
         <Link href="/" className="font-semibold">PGPC · CUValles</Link>
         <div className="flex items-center gap-4 text-sm">
           <span className="text-neutral-500">{correo} · {ETIQUETA_ROL[rol]}</span>
+          <Link href="/cuenta/contrasena" className="underline underline-offset-2">Cambiar contraseña</Link>
           <form action={cerrarSesion}>
             <button type="submit" className="underline underline-offset-2">Cerrar sesión</button>
           </form>

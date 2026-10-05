@@ -38,6 +38,8 @@ Los enlaces se generan **sin enviar correo**: compártelos por el medio que pref
 2. Ejecuta `npm run invitar:lote`. Los enlaces quedan en `scripts/invitaciones-<fecha>.txt` (también ignorado).
 3. Comenta con `#` a quien ya aceptó y vuelve a ejecutarlo cuando haga falta: solo invita las líneas activas.
 
+**Contraseñas temporales (recomendado si los enlaces dan problemas):** `npm run invitar:lote -- --contrasena` deja cada cuenta confirmada con una contraseña temporal y su rol, y las guarda en `scripts/invitaciones-contrasenas-<fecha>.txt`. No caducan. Cada persona entra con su correo y esa contraseña y la cambia en *Cambiar contraseña*. Reemplaza la contraseña que la persona tuviera.
+
 **Una persona:** `npm run invitar -- persona@alumnos.udg.mx COORDINADOR`
 
 **Primer administrador de un proyecto nuevo:** `npm run crear-admin` (usa `ADMIN_CORREO`; imprime una contraseña temporal).
