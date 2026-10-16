@@ -20,6 +20,28 @@ describe("gradoCientifico (RF-001)", () => {
     const resultado = gradoCientifico.parse({ nombre: "  Doctorado   en  Ciencias ", nomenclatura: " DC " });
     expect(resultado).toEqual({ nombre: "Doctorado en Ciencias", nomenclatura: "DC" });
   });
+
+  it("acepta nombres con acentos y puntos", () => {
+    expect(gradoCientifico.safeParse({ nombre: "Maestría en C. Sociales", nomenclatura: "MCS" }).success).toBe(true);
+  });
+
+  it("rechaza nombres con números, símbolos o muy cortos", () => {
+    for (const nombre of ["Nombre 1", "123", "-- Doctorado", "Dr"]) {
+      const resultado = gradoCientifico.safeParse({ nombre, nomenclatura: "DR" });
+      expect(resultado.success, nombre).toBe(false);
+    }
+  });
+
+  it("guarda la nomenclatura en mayúsculas", () => {
+    expect(gradoCientifico.parse({ nombre: "Especialidad", nomenclatura: "esp" }).nomenclatura).toBe("ESP");
+  });
+
+  it("rechaza nomenclaturas de una letra, con números, espacios o puntos", () => {
+    for (const nomenclatura of ["d", "D1", "M C", "M.C.", "ABCDEFGHIJK"]) {
+      const resultado = gradoCientifico.safeParse({ nombre: "Especialidad", nomenclatura });
+      expect(resultado.success, nomenclatura).toBe(false);
+    }
+  });
 });
 
 describe("buscarDuplicado (RF-001)", () => {

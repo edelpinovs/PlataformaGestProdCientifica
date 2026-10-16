@@ -40,8 +40,8 @@ Comportamiento esperado: el login con correo y contraseña funciona igual que an
 | 1 | El formulario de `/login` pide correo y contraseña, sin campo de código UDG | Correcto | El HTML de `/login` solo envía `correo` y `contrasena` |
 | 2 | Ninguna parte del código hace peticiones a `148.202.89.11` | Correcto | Búsqueda en `src/`: la IP solo aparece en `docs/diseno/LOGIN_SIIAU.md` y comentada en `.env.example` |
 | 3 | Las funciones de `siiau.ts` no se llaman desde la app | Correcto | Búsqueda en `src/`: solo las usa `siiau.test.ts` |
-| 4 | Iniciar sesión con correo y contraseña entra como antes | **Pendiente** | Confirmar en el navegador |
-| 5 | Una contraseña incorrecta muestra "El correo o la contraseña no coinciden" | **Pendiente** | Confirmar en el navegador |
+| 4 | Iniciar sesión con correo y contraseña entra como antes | Correcto | Confirmado en el navegador por Edel Pino |
+| 5 | Una contraseña incorrecta muestra "El correo o la contraseña no coinciden" | Correcto | Confirmado en el navegador por Edel Pino |
 
 ## 4. Revisión de código y cambios hechos
 
@@ -59,4 +59,4 @@ Los cambios los hizo el revisor en la rama del PR, con acuerdo del responsable d
 
 ## 5. Dictamen
 
-Se aprueba la integración del PR #51 a `main` con los cambios de la sección 4, una vez confirmados en el navegador los casos 4 y 5. El PR no cambia el comportamiento de la app. El login SIIAU no debe activarse hasta resolver las decisiones de `docs/diseno/LOGIN_SIIAU.md`.
+Se aprueba la integración del PR #51 a `main` con los cambios de la sección 4. Los casos 4 y 5 se confirmaron en el navegador antes de fusionar. El PR no cambia el comportamiento de la app. El login SIIAU no debe activarse hasta resolver las decisiones de `docs/diseno/LOGIN_SIIAU.md`.
