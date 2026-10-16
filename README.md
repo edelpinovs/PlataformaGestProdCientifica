@@ -48,8 +48,8 @@ Plataforma web para gestionar la producción científica y los reconocimientos (
       <sub>M6 Validación · UX/UI</sub>
     </td>
     <td align="center" width="140">
-      <a href="https://github.com/leonelmartinez8296-LMP"><img src="https://github.com/leonelmartinez8296-LMP.png?size=120" width="72" alt="leonelmartinez8296-LMP"><br><b>leonelmartinez8296</b></a><br>
-      <sub>@leonelmartinez8296-LMP</sub><br>
+      <a href="https://github.com/layon-king"><img src="https://github.com/layon-king.png?size=120" width="72" alt="layon-king"><br><b>layon-king</b></a><br>
+      <sub>@layon-king</sub><br>
       <sub>M7 Reportes · exportación</sub>
     </td>
   </tr>
@@ -70,7 +70,7 @@ Cada integrante es dueño de uno o más módulos del SDD y de un rol transversal
 | I5 | @Grillo-de-Alambre | M5 Convocatorias: RF-016 a 019 (#21 a #24) | Trabajos en segundo plano (tabla `jobs`, cron) | 9 nov |
 | I6 | @irybyron | M6 Motor de escaneo: RF-020 a 022 (#25 a #27) | Integraciones externas, llaves de APIs y deduplicación | 23 nov |
 | I7 | @yanetzijimeno8297 | M6 Validación: RF-023 a 025 (#28 a #30) | UX/UI: componentes compartidos y regla de 3 clics | 23 nov |
-| I8 | @leonelmartinez8296-LMP | M7 Vigencias y reportes: RF-026 a 030 (#31 a #35) | Exportación Excel/PDF y documentación de usuario | 30 nov |
+| I8 | @layon-king | M7 Vigencias y reportes: RF-026 a 030 (#31 a #35) | Exportación Excel/PDF y documentación de usuario | 30 nov |
 
 Los issues transversales también tienen dueño: modelo de datos (#3) con I1, huecos del SDD (#5) con I2, y accesos y Supabase de producción (#41, #42) con I1.
 
