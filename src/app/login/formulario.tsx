@@ -15,9 +15,8 @@ export function FormularioLogin({ aviso }: { aviso?: string }) {
       </div>
       <SesionDesdeEnlace />
       <form action={accion} className="flex flex-col gap-4">
-        {/* Código UDG: cuando SIIAU esté en la red de la universidad, este formulario
-            también pedirá el código (name="codigo"). Hoy la UI sigue siendo solo correo.
-            El flujo comentado está en src/lib/auth/siiau.ts. */}
+        {/* Si se activa SIIAU, este formulario también pedirá el código UDG (name="codigo").
+            Ver docs/diseno/LOGIN_SIIAU.md. */}
         <label className="flex flex-col gap-1 text-sm">
           Correo institucional
           <input id="correo" name="correo" type="email" required autoComplete="email" defaultValue={estado.correo}
