@@ -1,10 +1,13 @@
 import { z } from "zod";
 
-// Texto obligatorio: recorta y colapsa espacios internos antes de validar.
+// Recorta y colapsa espacios internos.
+export const limpiar = (s: string) => s.trim().replace(/\s+/g, " ");
+
+// Texto obligatorio: limpia los espacios antes de validar.
 export const texto = (campo: string, max: number) =>
   z
     .string()
-    .transform((s) => s.trim().replace(/\s+/g, " "))
+    .transform(limpiar)
     .pipe(
       z
         .string()

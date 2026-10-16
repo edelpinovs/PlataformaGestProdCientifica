@@ -22,7 +22,7 @@ export function FormularioGrado() {
         </label>
         <label className="flex flex-col gap-1 text-sm sm:w-40">
           Nomenclatura
-          <input name="nomenclatura" required maxLength={20} placeholder="DR"
+          <input name="nomenclatura" required maxLength={10} placeholder="DR"
             defaultValue={estado.valores?.nomenclatura}
             aria-invalid={estado.campo === "nomenclatura"}
             className={estado.campo === "nomenclatura" ? campoConError : campo} />

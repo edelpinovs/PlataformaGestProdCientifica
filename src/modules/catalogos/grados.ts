@@ -1,9 +1,29 @@
 import { z } from "zod";
-import { normalizar, texto } from "./comun";
+import { limpiar, normalizar } from "./comun";
 
 export const gradoCientifico = z.object({
-  nombre: texto("El nombre", 100),
-  nomenclatura: texto("La nomenclatura", 20),
+  // Letras (con acentos), espacios y puntos: "Doctorado en Ciencias", "Maestría en C. Sociales".
+  nombre: z
+    .string()
+    .transform(limpiar)
+    .pipe(
+      z
+        .string()
+        .min(1, "El nombre es obligatorio.")
+        .min(3, "El nombre debe tener al menos 3 caracteres.")
+        .max(100, "El nombre admite como máximo 100 caracteres.")
+        .regex(/^\p{L}[\p{L} .]*$/u, "El nombre solo admite letras, espacios y puntos."),
+    ),
+  // Solo letras y siempre en mayúsculas, como DR, MTRO o LIC.
+  nomenclatura: z
+    .string()
+    .transform((s) => limpiar(s).toUpperCase())
+    .pipe(
+      z
+        .string()
+        .min(1, "La nomenclatura es obligatoria.")
+        .regex(/^\p{L}{2,10}$/u, "La nomenclatura debe tener de 2 a 10 letras, sin espacios ni números."),
+    ),
 });
 
 export type GradoCientifico = z.infer<typeof gradoCientifico>;
