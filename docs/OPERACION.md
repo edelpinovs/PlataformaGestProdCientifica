@@ -30,7 +30,7 @@ Entrega el `.env` del equipo por un canal privado, nunca por el chat del grupo, 
 
 ## Accesos a la plataforma
 
-Los enlaces se generan **sin enviar correo**: compártelos por el medio que prefieras. Cada uno sirve una vez y caduca en 1 hora (*Authentication › Providers › Email › Email OTP Expiration*). Si la persona ya existía, se genera un enlace para restablecer su contraseña.
+Los enlaces se generan **sin enviar correo**: compártelos por el medio que prefieras. Cada uno apunta a `/auth/confirmar`, que muestra un botón *Continuar*: el enlace se gasta al pulsarlo, no al abrirlo, así que puedes mandarlo por chat sin que la vista previa lo consuma. Sirve una vez y caduca en 1 hora (*Authentication › Providers › Email › Email OTP Expiration*). Si la persona ya existía, se genera un enlace para restablecer su contraseña.
 
 **Por lotes:**
 

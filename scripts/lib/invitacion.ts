@@ -4,6 +4,7 @@ import { randomBytes } from "node:crypto";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { PrismaClient } from "../../src/generated/prisma/client";
+import { enlaceConfirmacion } from "../../src/lib/auth/enlace";
 import { ROLES, type Rol } from "../../src/lib/auth/roles";
 
 export type ResultadoInvitacion = {
@@ -32,7 +33,8 @@ export function conectar() {
 }
 
 // Crea el usuario (o lo encuentra), le asigna el rol y genera su enlace SIN enviar correo.
-// El enlace caduca según Supabase (Email OTP Expiration, 1 hora por defecto) y sirve una vez.
+// El enlace caduca según Supabase (Email OTP Expiration, 1 hora por defecto) y sirve una vez,
+// aunque alguien lo abra antes de pulsar el botón.
 export async function invitar(
   { supabase, prisma, redirectTo }: { supabase: SupabaseClient; prisma: PrismaClient; redirectTo: string },
   correo: string,
@@ -52,7 +54,9 @@ export async function invitar(
     create: { id: data.user.id, correo, rol },
   });
 
-  return { correo, rol, tipo, enlace: data.properties.action_link };
+  // El enlace apunta a la aplicación (no a Supabase): abrirlo no gasta el token, solo el botón.
+  const tipoEnlace = tipo === "invitacion" ? "invite" : "recovery";
+  return { correo, rol, tipo, enlace: enlaceConfirmacion(redirectTo, data.properties.hashed_token, tipoEnlace) };
 }
 
 export type ResultadoContrasena = { correo: string; rol: Rol; contrasena: string; nuevo: boolean };
