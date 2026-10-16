@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { Prisma } from "@/generated/prisma/client";
 import { requireModulo } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
-import { buscarClaveDuplicada, division } from "@/modules/catalogos/divisiones";
+import { buscarDuplicada, division } from "@/modules/catalogos/divisiones";
 
 export type EstadoDivision = {
   error?: string;
@@ -28,8 +28,8 @@ export async function registrarDivision(_: EstadoDivision, formData: FormData): 
   }
 
   const existentes = await prisma.division.findMany({ select: { nombre: true, clave: true } });
-  const duplicada = buscarClaveDuplicada(datos.data, existentes);
-  if (duplicada) return { error: duplicada, campo: "clave", valores };
+  const duplicada = buscarDuplicada(datos.data, existentes);
+  if (duplicada) return { error: duplicada.mensaje, campo: duplicada.campo, valores };
 
   try {
     await prisma.division.create({ data: datos.data });

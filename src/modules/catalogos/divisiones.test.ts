@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buscarClaveDuplicada, division } from "./divisiones";
+import { buscarDuplicada, division } from "./divisiones";
 
 const existentes = [{ nombre: "División de Ejemplo A", clave: "DIV-A" }];
 
@@ -21,14 +21,22 @@ describe("division (RF-002)", () => {
   });
 });
 
-describe("buscarClaveDuplicada (RF-002)", () => {
-  it("acepta una clave nueva", () => {
-    expect(buscarClaveDuplicada({ nombre: "División B", clave: "DIV-B" }, existentes)).toBeNull();
+describe("buscarDuplicada (RF-002)", () => {
+  it("acepta una división nueva", () => {
+    expect(buscarDuplicada({ nombre: "División B", clave: "DIV-B" }, existentes)).toBeNull();
   });
 
   it("rechaza una clave existente sin importar mayúsculas", () => {
-    expect(buscarClaveDuplicada({ nombre: "Otra", clave: "div-a" }, existentes)).toBe(
-      "Ya existe una división con la clave «DIV-A» (División de Ejemplo A).",
-    );
+    expect(buscarDuplicada({ nombre: "Otra", clave: "div-a" }, existentes)).toEqual({
+      campo: "clave",
+      mensaje: "Ya existe una división con la clave «DIV-A» (División de Ejemplo A).",
+    });
+  });
+
+  it("rechaza un nombre existente sin importar mayúsculas ni acentos", () => {
+    expect(buscarDuplicada({ nombre: "division de ejemplo a", clave: "DIV-Z" }, existentes)).toEqual({
+      campo: "nombre",
+      mensaje: "Ya existe una división con el nombre «División de Ejemplo A» (clave DIV-A).",
+    });
   });
 });
