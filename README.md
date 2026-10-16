@@ -226,3 +226,5 @@ npx vitest semaforo    # solo las que coinciden con el nombre
 ## Stack
 
 Next.js 16 (App Router, TypeScript) · Prisma 7 · PostgreSQL y Auth de Supabase · Tailwind CSS · Vitest · Vercel. El detalle está en la [sección 4 del plan](docs/PLAN_DE_TRABAJO.md#4-arquitectura-recomendada). La configuración de infraestructura y accesos está en [docs/OPERACION.md](docs/OPERACION.md).
+
+Por qué elegimos este stack, frente a las alternativas con Python, y dónde sí cabe Python: [docs/STACK.md](docs/STACK.md).
