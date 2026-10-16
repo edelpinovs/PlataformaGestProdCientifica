@@ -159,6 +159,16 @@ Cada cambio entra por **pull request**. Nadie sube directo a `main`.
 
 Revisa también los PR de tus compañeros: cada PR necesita una aprobación.
 
+### Si programas con un agente de IA
+
+Puedes usar el asistente que prefieras (Claude Code, Codex, Copilot, Cursor, Gemini…). Las reglas del equipo para los agentes están en **[AGENTS.md](AGENTS.md)** y son **obligatorias**: base de datos compartida, secretos, permisos por rol, pruebas y flujo de Git. Tú respondes por lo que tu agente entrega.
+
+- **Claude Code** las lee a través de `CLAUDE.md`. **Codex**, **Cursor** y **GitHub Copilot** (modo agente de VS Code) leen `AGENTS.md` directamente.
+- **Gemini CLI** busca `GEMINI.md`: agrega `"context": { "fileName": ["AGENTS.md", "GEMINI.md"] }` a tu `.gemini/settings.json`.
+- Con otra herramienta, comprueba que cargue `AGENTS.md`; si no, pídele que lo lea al iniciar cada sesión.
+- Antes de aceptar un cambio, revisa el diff. El agente no debe ejecutar `prisma migrate dev`/`reset`, subir a `main` ni integrar PRs; si lo intenta, recházalo.
+- Si una regla estorba, propón el cambio a `AGENTS.md` en un PR; no la ignores en tu copia.
+
 ## Dónde va cada cosa
 
 | Carpeta | Contenido |
@@ -216,3 +226,5 @@ npx vitest semaforo    # solo las que coinciden con el nombre
 ## Stack
 
 Next.js 16 (App Router, TypeScript) · Prisma 7 · PostgreSQL y Auth de Supabase · Tailwind CSS · Vitest · Vercel. El detalle está en la [sección 4 del plan](docs/PLAN_DE_TRABAJO.md#4-arquitectura-recomendada). La configuración de infraestructura y accesos está en [docs/OPERACION.md](docs/OPERACION.md).
+
+Por qué elegimos este stack, frente a las alternativas con Python, y dónde sí cabe Python: [docs/STACK.md](docs/STACK.md).

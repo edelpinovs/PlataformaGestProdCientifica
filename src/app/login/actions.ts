@@ -18,6 +18,9 @@ export async function iniciarSesion(_: EstadoLogin, formData: FormData): Promise
   if (!datos.success) return { error: "Escribe un correo válido y tu contraseña.", correo };
 
   const supabase = await createClient();
+
+  // El login con código UDG (SIIAU) iría aquí, antes del correo. No está activo:
+  // ver docs/diseno/LOGIN_SIIAU.md.
   const { error } = await supabase.auth.signInWithPassword({
     email: datos.data.correo,
     password: datos.data.contrasena,
