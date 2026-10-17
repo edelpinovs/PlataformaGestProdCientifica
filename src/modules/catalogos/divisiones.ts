@@ -1,9 +1,21 @@
 import { z } from "zod";
-import { normalizar, texto } from "./comun";
+import { limpiar, nombreCatalogo, normalizar } from "./comun";
 
 export const division = z.object({
-  nombre: texto("El nombre", 150),
-  clave: texto("La clave institucional", 20),
+  nombre: nombreCatalogo(150),
+  // Letras, números y guiones, empieza con letra y siempre en mayúsculas, como DIV-A.
+  clave: z
+    .string()
+    .transform((s) => limpiar(s).toUpperCase())
+    .pipe(
+      z
+        .string()
+        .min(1, "La clave institucional es obligatoria.")
+        .regex(
+          /^\p{L}[\p{L}\d-]{1,19}$/u,
+          "La clave debe tener de 2 a 20 caracteres: letras, números y guiones, empezando con letra.",
+        ),
+    ),
 });
 
 export type Division = z.infer<typeof division>;
