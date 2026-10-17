@@ -1,26 +1,93 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* Pauta visual: docs/diseno/PAUTA_VISUAL.md.
+   Los colores se usan por su nombre (bg-marca, text-texto-3…), nunca en hexadecimal.
+   El tema claro es el predeterminado; el oscuro lo elige cada persona (data-tema en <html>). */
+
+:root,
+[data-tema="claro"] {
+  color-scheme: light;
+  --fondo: #efeaf8;
+  --superficie: #ffffff;
+  --superficie-alt: #f7f5fc;
+  --hover: #f6f4fb;
+  --linea: #eeeaf8;
+  --marca: #443cde;
+  --sobre-marca: #ffffff;
+  --marca-suave: #eee9ff;
+  --marca-tenue: #f3f0ff;
+  --texto: #16141f;
+  --texto-2: #5c5872;
+  --texto-3: #6e6a86;
+  --exito: #065f46;
+  --exito-suave: #ecfdf5;
+  --aviso: #92400e;
+  --aviso-suave: #fffbeb;
+  --peligro: #b91c1c;
+  --peligro-suave: #fef2f2;
+  --grafica: #c4b8f5;
+  --grafica-2: #ddd6fe;
+  --grafica-acento: #7c6bf2;
+  --sombra-marco: 0 20px 50px rgb(68 60 222 / 0.08);
 }
 
+[data-tema="oscuro"] {
+  color-scheme: dark;
+  --fondo: #0b0a12;
+  --superficie: #16141f;
+  --superficie-alt: #1c1a27;
+  --hover: #221f2e;
+  --linea: #2a2738;
+  --marca: #a39df7;
+  --sobre-marca: #16141f;
+  --marca-suave: #2b2650;
+  --marca-tenue: #221f33;
+  --texto: #edebf5;
+  --texto-2: #c4c1d4;
+  --texto-3: #a19db5;
+  --exito: #6ee7b7;
+  --exito-suave: #0f2a22;
+  --aviso: #fcd34d;
+  --aviso-suave: #2e2410;
+  --peligro: #fca5a5;
+  --peligro-suave: #3a1616;
+  --grafica: #4b4390;
+  --grafica-2: #3a3566;
+  --grafica-acento: #8f86f5;
+  --sombra-marco: 0 20px 50px rgb(0 0 0 / 0.4);
+}
+
+/* `dark:` sigue la elección de la persona, no la del sistema operativo. */
+@custom-variant dark (&:where([data-tema="oscuro"], [data-tema="oscuro"] *));
+
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-fondo: var(--fondo);
+  --color-superficie: var(--superficie);
+  --color-superficie-alt: var(--superficie-alt);
+  --color-hover: var(--hover);
+  --color-linea: var(--linea);
+  --color-marca: var(--marca);
+  --color-sobre-marca: var(--sobre-marca);
+  --color-marca-suave: var(--marca-suave);
+  --color-marca-tenue: var(--marca-tenue);
+  --color-texto: var(--texto);
+  --color-texto-2: var(--texto-2);
+  --color-texto-3: var(--texto-3);
+  --color-exito: var(--exito);
+  --color-exito-suave: var(--exito-suave);
+  --color-aviso: var(--aviso);
+  --color-aviso-suave: var(--aviso-suave);
+  --color-peligro: var(--peligro);
+  --color-peligro-suave: var(--peligro-suave);
+  --color-grafica: var(--grafica);
+  --color-grafica-2: var(--grafica-2);
+  --color-grafica-acento: var(--grafica-acento);
+  --shadow-marco: var(--sombra-marco);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--fondo);
+  color: var(--texto);
 }
