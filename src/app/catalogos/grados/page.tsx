@@ -1,8 +1,9 @@
+import { FilaEditable } from "@/components/fila-editable";
 import { Marco } from "@/components/marco";
 import { Aviso, claseTabla, EstadoVacio, Panel } from "@/components/ui";
 import { requireModulo } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
-import { FilaGrado } from "./fila";
+import { editarGrado, eliminarGrado } from "./actions";
 import { FormularioGrado } from "./formulario";
 
 export default async function GradosPage({ searchParams }: PageProps<"/catalogos/grados">) {
@@ -41,7 +42,13 @@ export default async function GradosPage({ searchParams }: PageProps<"/catalogos
             <tbody>
               {grados.map((g) => (
                 // La key incluye los datos: tras guardar, la fila vuelve a mostrarse cerrada.
-                <FilaGrado key={`${g.id}-${g.nombre}-${g.nomenclatura}`} grado={g} />
+                <FilaEditable key={`${g.id}-${g.nombre}-${g.nomenclatura}`} id={g.id} nombre={g.nombre}
+                  detalle={g.nomenclatura} editar={editarGrado} eliminar={eliminarGrado}
+                  celdas={[{ contenido: g.nombre }, { contenido: g.nomenclatura, className: "font-mono" }]}
+                  campos={[
+                    { nombre: "nombre", etiqueta: "Nombre", valor: g.nombre, maxLength: 100 },
+                    { nombre: "nomenclatura", etiqueta: "Nomenclatura", valor: g.nomenclatura, maxLength: 10, ancho: "corto" },
+                  ]} />
               ))}
             </tbody>
           </table>

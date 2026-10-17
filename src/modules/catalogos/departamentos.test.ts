@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { departamento, revisarDepartamento } from "./departamentos";
+import { departamento, motivoDepartamentoNoEliminable, revisarDepartamento } from "./departamentos";
 
 const contexto = {
   divisiones: [
@@ -97,5 +97,59 @@ describe("revisarDepartamento (RF-003)", () => {
     expect(
       revisarDepartamento({ nombre: "Departamento de Ciencias", nomenclatura: "X", divisionId: 2 }, contexto),
     ).toBeNull();
+  });
+});
+
+describe("revisarDepartamento al editar (#59)", () => {
+  const conId = {
+    divisiones: contexto.divisiones,
+    departamentos: [
+      { id: 1, nombre: "Departamento de Ciencias", nomenclatura: "DEP-A1", divisionId: 1 },
+      { id: 2, nombre: "Departamento de Física", nomenclatura: "FIS", divisionId: 1 },
+    ],
+  };
+
+  it("un departamento puede conservar su nombre y nomenclatura", () => {
+    expect(
+      revisarDepartamento({ nombre: "Departamento de Ciencias", nomenclatura: "dep-a1", divisionId: 1 }, conId, 1),
+    ).toBeNull();
+  });
+
+  it("un departamento puede cambiar de división", () => {
+    expect(
+      revisarDepartamento({ nombre: "Departamento de Ciencias", nomenclatura: "DEP-A1", divisionId: 2 }, conId, 1),
+    ).toBeNull();
+  });
+
+  it("no puede tomar la nomenclatura de otro departamento", () => {
+    expect(
+      revisarDepartamento({ nombre: "Departamento de Ciencias", nomenclatura: "FIS", divisionId: 1 }, conId, 1)?.campo,
+    ).toBe("nomenclatura");
+  });
+
+  it("no puede repetir el nombre de otro departamento de su división", () => {
+    expect(
+      revisarDepartamento({ nombre: "departamento de fisica", nomenclatura: "DEP-A1", divisionId: 1 }, conId, 1)?.campo,
+    ).toBe("nombre");
+  });
+});
+
+describe("motivoDepartamentoNoEliminable (#59)", () => {
+  const sinUso = { profesores: 0, programas: 0, cuerpos: 0 };
+
+  it("permite eliminar un departamento sin registros que dependan de él", () => {
+    expect(motivoDepartamentoNoEliminable("Física", sinUso)).toBeNull();
+  });
+
+  it("nombra lo único que lo mantiene en uso", () => {
+    expect(motivoDepartamentoNoEliminable("Física", { ...sinUso, profesores: 1 })).toBe(
+      "No se puede eliminar «Física»: tiene 1 profesor. Cámbialos de departamento antes de eliminarlo.",
+    );
+  });
+
+  it("enumera todo lo que lo mantiene en uso, con plurales", () => {
+    expect(motivoDepartamentoNoEliminable("Física", { profesores: 3, programas: 1, cuerpos: 2 })).toBe(
+      "No se puede eliminar «Física»: tiene 3 profesores, 1 programa educativo y 2 cuerpos académicos. Cámbialos de departamento antes de eliminarlo.",
+    );
   });
 });

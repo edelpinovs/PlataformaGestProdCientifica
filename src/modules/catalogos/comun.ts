@@ -39,6 +39,22 @@ export const claveCatalogo = (campo: { obligatoria: string; nombre: string }) =>
         ),
     );
 
+// Identificador que envía una fila editable (campo oculto `id`); null si no es válido.
+export function idDeFormulario(formData: FormData): number | null {
+  const id = Number(formData.get("id"));
+  return Number.isInteger(id) && id > 0 ? id : null;
+}
+
+// "1 profesor", "3 profesores".
+export function cantidad(n: number, singular: string, plural: string) {
+  return `${n} ${n === 1 ? singular : plural}`;
+}
+
+// ["a", "b", "c"] → "a, b y c".
+export function enumerar(partes: string[]) {
+  return partes.length <= 1 ? (partes[0] ?? "") : `${partes.slice(0, -1).join(", ")} y ${partes.at(-1)}`;
+}
+
 // Forma de comparación: sin mayúsculas ni acentos ("Maestría" = "maestria").
 export function normalizar(s: string) {
   return s.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
