@@ -79,7 +79,7 @@ export const MODULOS: Modulo[] = [
     slug: "reportes",
     nombre: "Vigencias y reportes",
     descripcion: "Semáforo de vigencias, reportes de convocatoria y matriz de acreditación.",
-    integrante: "@leonelmartinez8296-LMP",
+    integrante: "@layon-king",
     requisitos: "RF-026 a RF-030",
     liberacion: "2026-11-30",
     roles: ["ADMINISTRADOR", "COORDINADOR"],
