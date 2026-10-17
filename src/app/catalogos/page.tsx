@@ -5,7 +5,7 @@ import { getModulo } from "@/modules/registry";
 
 const CATALOGOS = [
   { href: "/catalogos/grados", nombre: "Grados científicos", requisito: "RF-001" },
-  { href: null, nombre: "Divisiones académicas", requisito: "RF-002" },
+  { href: "/catalogos/divisiones", nombre: "Divisiones académicas", requisito: "RF-002" },
   { href: null, nombre: "Departamentos", requisito: "RF-003" },
 ];
 
