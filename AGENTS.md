@@ -43,7 +43,21 @@ El repositorio es **público**.
 - Valida en el servidor con Zod aunque el formulario ya valide en el navegador. Devuelve errores legibles para la persona, no excepciones.
 - Unicidad: compruébala en el servicio y además respáldala con `@unique` en la base; captura el error `P2002` de Prisma.
 - Acceso a datos solo con `prisma` de `@/lib/prisma`. Sin dependencias nuevas sin acordarlo en el equipo.
-- Interfaz con Tailwind, usable en celular (columnas que se apilan, sin desplazamiento horizontal) y con modo oscuro como las pantallas existentes.
+- Interfaz con Tailwind, usable en celular (columnas que se apilan, sin desplazamiento horizontal) y siguiendo la sección *Diseño visual*.
+
+## Diseño visual
+
+Toda pantalla sigue la pauta de `docs/diseno/PAUTA_VISUAL.md` (léela antes de crear o cambiar una pantalla). La prueba `src/components/pauta-visual.test.ts` la hace cumplir en el CI: si falla, corrige el código; no la desactives ni la edites para que pase.
+
+- **Estructura:** toda página con sesión va dentro de `<Marco>` de `@/components/marco` (menú lateral, título, usuario), con `activo` igual al slug del módulo. Subpáginas con `volver={{ href, texto }}`. Las pantallas sin sesión usan `<PantallaAcceso>`. No crees otro encabezado ni otro menú.
+- **Piezas:** usa las de `@/components/ui` antes de escribir clases: `Panel`, `EstadoVacio`, `Aviso`, `EtiquetaEstado`, `Icono`, `claseBoton`, `claseCampo(conError)`, `claseEtiqueta`, `claseTabla`. Si falta una pieza que se repetirá, agrégala ahí (es un cambio en `src/components/`: avísalo).
+- **Colores solo por nombre** (definidos en `src/app/globals.css`): `bg-fondo`, `bg-superficie`, `bg-superficie-alt`, `bg-marca`, `text-sobre-marca`, `bg-marca-suave`, `bg-marca-tenue`, `hover:bg-hover`, `border-linea`, `text-texto`, `text-texto-2`, `text-texto-3`, `text-exito`/`bg-exito-suave`, `text-aviso`/`bg-aviso-suave`, `text-peligro`/`bg-peligro-suave`. En `style` usa `var(--marca)`, etc.
+- **Prohibido en `.tsx`:** hexadecimales (`#443CDE`), `rgb()`/`hsl()`, colores de la paleta de Tailwind (`teal-700`, `neutral-500`, `red-600`, `text-white`…) y colores con `dark:`. Un color nuevo se agrega en `globals.css` con su versión clara y oscura, con contraste AA (4.5:1) en ambas.
+- **Tema oscuro:** lo elige cada persona desde el menú (cookie `tema`). No lo actives según el sistema operativo ni escribas variantes oscuras a mano: los colores con nombre ya cambian solos.
+- **Forma:** paneles `rounded-2xl` sin borde ni sombra; botones, campos y enlaces del menú `rounded-xl`; etiquetas de estado `rounded-full`. Separación `gap-4` dentro de una sección y `gap-5` entre secciones (la da `Marco`).
+- **Texto:** título de página en `Marco` (no pongas otro `<h1>`); títulos de panel `text-base font-semibold`; notas y subtítulos `text-xs` o `text-sm` en `text-texto-3`. Mensajes en español, cortos y sin culpar a la persona.
+- **Accesibilidad:** cada campo dentro de su `<label>`, `aria-invalid` en el campo con error, errores con `<Aviso tipo="error">` (anuncia con `role="alert"`), iconos decorativos con `aria-hidden`.
+- **Antes de entregar una pantalla** revisa en el navegador: tema claro, tema oscuro (botón *Tema oscuro* del menú) y vista de celular. Si no pudiste verla, dilo.
 
 ## Git y pull requests
 

@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { Aviso } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
 
 const ENLACE_INVALIDO = "El enlace del correo ya se usó o caducó. Pide que te envíen una invitación nueva.";
@@ -40,5 +41,5 @@ export function SesionDesdeEnlace() {
   }, [router]);
 
   if (!error) return null;
-  return <p role="status" className="text-sm text-amber-700">{error}</p>;
+  return <Aviso tipo="aviso">{error}</Aviso>;
 }

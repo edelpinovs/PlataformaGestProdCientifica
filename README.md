@@ -176,12 +176,14 @@ Puedes usar el asistente que prefieras (Claude Code, Codex, Copilot, Cursor, Gem
 | `src/app/<módulo>/` | Pantallas del módulo (Next.js App Router) |
 | `src/modules/<módulo>/` | Reglas de negocio, servicios y validaciones (Zod) del módulo, con sus pruebas |
 | `src/modules/registry.ts` | Módulos con su integrante, requisitos, roles con acceso y fecha de liberación |
-| `src/components/` | Componentes compartidos de la interfaz |
+| `src/components/` | Componentes compartidos de la interfaz: `Marco` (menú y encabezado de toda página) y las piezas de `ui.tsx` |
 | `src/lib/` | Conexión a la base (Prisma), sesión y roles. Cámbialo solo si tu tarea lo pide |
 | `prisma/schema.prisma` | Modelo de datos de todo el equipo |
 | `prisma/migrations/` | Historial de cambios a la base de datos |
 
 Para proteger una pantalla por rol usa `requireModulo("<módulo>")` o `requireRol([...])` de `src/lib/auth/session.ts`.
+
+Toda pantalla sigue la [pauta visual](docs/diseno/PAUTA_VISUAL.md): va dentro de `<Marco>`, usa las piezas de `src/components/ui.tsx` y los colores por nombre (`bg-marca`, `text-texto-3`…), nunca en hexadecimal. La pauta trae una plantilla de pantalla nueva y la prueba `pauta-visual.test.ts` la verifica en el CI.
 
 ## Base de datos
 
