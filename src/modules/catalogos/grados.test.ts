@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buscarDuplicado, gradoCientifico } from "./grados";
+import { buscarDuplicado, gradoCientifico, motivoNoEliminable } from "./grados";
 
 const existentes = [
   { nombre: "Maestría", nomenclatura: "MTRO" },
@@ -61,5 +61,52 @@ describe("buscarDuplicado (RF-001)", () => {
       campo: "nomenclatura",
       mensaje: "Ya existe un grado científico con la nomenclatura «DR».",
     });
+  });
+});
+
+describe("buscarDuplicado al editar (#55)", () => {
+  const conId = [
+    { id: 1, nombre: "Maestría", nomenclatura: "MTRO" },
+    { id: 2, nombre: "Doctorado", nomenclatura: "DR" },
+  ];
+
+  it("un grado puede conservar su propio nombre y nomenclatura", () => {
+    expect(buscarDuplicado({ nombre: "Maestría", nomenclatura: "MTRO" }, conId, 1)).toBeNull();
+  });
+
+  it("un grado puede cambiar mayúsculas o acentos de su propio nombre", () => {
+    expect(buscarDuplicado({ nombre: "Maestria", nomenclatura: "MTRO" }, conId, 1)).toBeNull();
+  });
+
+  it("no puede tomar el nombre de otro grado", () => {
+    expect(buscarDuplicado({ nombre: "doctorado", nomenclatura: "MTRO" }, conId, 1)).toEqual({
+      campo: "nombre",
+      mensaje: "Ya existe un grado científico con el nombre «Doctorado».",
+    });
+  });
+
+  it("no puede tomar la nomenclatura de otro grado", () => {
+    expect(buscarDuplicado({ nombre: "Maestría", nomenclatura: "DR" }, conId, 1)).toEqual({
+      campo: "nomenclatura",
+      mensaje: "Ya existe un grado científico con la nomenclatura «DR».",
+    });
+  });
+});
+
+describe("motivoNoEliminable (#55)", () => {
+  it("permite eliminar un grado sin profesores", () => {
+    expect(motivoNoEliminable("Especialidad", 0)).toBeNull();
+  });
+
+  it("explica por qué no se elimina un grado asignado a un profesor", () => {
+    expect(motivoNoEliminable("Doctorado", 1)).toBe(
+      "No se puede eliminar «Doctorado»: está asignado a 1 profesor. Cambia su grado antes de eliminarlo.",
+    );
+  });
+
+  it("usa el plural con varios profesores", () => {
+    expect(motivoNoEliminable("Maestría", 12)).toBe(
+      "No se puede eliminar «Maestría»: está asignado a 12 profesores. Cambia su grado antes de eliminarlo.",
+    );
   });
 });
