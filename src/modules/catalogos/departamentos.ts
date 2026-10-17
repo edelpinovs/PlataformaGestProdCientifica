@@ -1,11 +1,11 @@
 import { z } from "zod";
-import { normalizar, texto } from "./comun";
+import { claveCatalogo, nombreCatalogo, normalizar } from "./comun";
 
 const sinDivision = "Elige la división a la que pertenece.";
 
 export const departamento = z.object({
-  nombre: texto("El nombre", 150),
-  nomenclatura: texto("La nomenclatura", 20),
+  nombre: nombreCatalogo(150),
+  nomenclatura: claveCatalogo({ obligatoria: "La nomenclatura es obligatoria.", nombre: "La nomenclatura" }),
   // Llega del <select> como texto; "" (sin elegir) se convierte en 0 y no pasa.
   divisionId: z.coerce.number({ error: sinDivision }).int(sinDivision).positive(sinDivision),
 });

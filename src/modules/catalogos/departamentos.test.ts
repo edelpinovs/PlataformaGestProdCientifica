@@ -32,6 +32,39 @@ describe("departamento (RF-003)", () => {
   });
 });
 
+describe("formato de departamento (#8)", () => {
+  const valido = { nombre: "Departamento de Física", nomenclatura: "FIS", divisionId: "1" };
+
+  it("acepta nombres con comas, guiones y acentos", () => {
+    for (const nombre of [
+      "Departamento de Humanidades, Artes y Culturas",
+      "Departamento de Ciencias Económico-Administrativas",
+    ]) {
+      expect(departamento.safeParse({ ...valido, nombre }).success, nombre).toBe(true);
+    }
+  });
+
+  it("rechaza nombres con números, símbolos o muy cortos", () => {
+    for (const nombre of ["Departamento 1", "123", "-- Física", "De", "Física @"]) {
+      expect(departamento.safeParse({ ...valido, nombre }).success, nombre).toBe(false);
+    }
+  });
+
+  it("guarda la primera letra del nombre en mayúscula", () => {
+    expect(departamento.parse({ ...valido, nombre: "departamento de física" }).nombre).toBe("Departamento de física");
+  });
+
+  it("guarda la nomenclatura en mayúsculas y admite números y guiones", () => {
+    expect(departamento.parse({ ...valido, nomenclatura: "dep-a3" }).nomenclatura).toBe("DEP-A3");
+  });
+
+  it("rechaza nomenclaturas de una letra, que empiezan con número o con espacios y símbolos", () => {
+    for (const nomenclatura of ["d", "1DEP", "DEP A", "DEP.A", "DEP_A", "A".repeat(21)]) {
+      expect(departamento.safeParse({ ...valido, nomenclatura }).success, nomenclatura).toBe(false);
+    }
+  });
+});
+
 describe("revisarDepartamento (RF-003)", () => {
   it("acepta un departamento nuevo en una división existente", () => {
     expect(revisarDepartamento({ nombre: "Física", nomenclatura: "FIS", divisionId: 2 }, contexto)).toBeNull();
