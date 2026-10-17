@@ -6,7 +6,7 @@ import { getModulo } from "@/modules/registry";
 const CATALOGOS = [
   { href: "/catalogos/grados", nombre: "Grados científicos", requisito: "RF-001" },
   { href: "/catalogos/divisiones", nombre: "Divisiones académicas", requisito: "RF-002" },
-  { href: null, nombre: "Departamentos", requisito: "RF-003" },
+  { href: "/catalogos/departamentos", nombre: "Departamentos", requisito: "RF-003" },
 ];
 
 export default async function CatalogosPage() {
@@ -24,19 +24,11 @@ export default async function CatalogosPage() {
         <ul className="grid gap-4 sm:grid-cols-3">
           {CATALOGOS.map((c) => (
             <li key={c.requisito}>
-              {c.href ? (
-                <Link href={c.href}
-                  className="flex h-full flex-col gap-1 rounded border border-neutral-200 p-4 hover:border-teal-700 dark:border-neutral-800">
-                  <span className="font-mono text-xs text-teal-700">{c.requisito}</span>
-                  <span className="font-medium">{c.nombre}</span>
-                </Link>
-              ) : (
-                <div className="flex h-full flex-col gap-1 rounded border border-dashed border-neutral-200 p-4 text-neutral-400 dark:border-neutral-800">
-                  <span className="font-mono text-xs">{c.requisito}</span>
-                  <span className="font-medium">{c.nombre}</span>
-                  <span className="text-xs">En desarrollo</span>
-                </div>
-              )}
+              <Link href={c.href}
+                className="flex h-full flex-col gap-1 rounded border border-neutral-200 p-4 hover:border-teal-700 dark:border-neutral-800">
+                <span className="font-mono text-xs text-teal-700">{c.requisito}</span>
+                <span className="font-medium">{c.nombre}</span>
+              </Link>
             </li>
           ))}
         </ul>
