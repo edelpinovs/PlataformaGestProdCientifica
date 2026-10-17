@@ -20,10 +20,13 @@ export type GradoCientifico = z.infer<typeof gradoCientifico>;
 export type Duplicado = { campo: keyof GradoCientifico; mensaje: string };
 
 // RF-001: nombre y nomenclatura no deben existir previamente en el catálogo.
+// Al editar (#55) se pasa `idPropio`, para que el grado no choque consigo mismo.
 export function buscarDuplicado(
   nuevo: GradoCientifico,
-  existentes: GradoCientifico[],
+  catalogo: (GradoCientifico & { id?: number })[],
+  idPropio?: number,
 ): Duplicado | null {
+  const existentes = idPropio === undefined ? catalogo : catalogo.filter((g) => g.id !== idPropio);
   const porNombre = existentes.find((g) => normalizar(g.nombre) === normalizar(nuevo.nombre));
   if (porNombre) {
     return { campo: "nombre", mensaje: `Ya existe un grado científico con el nombre «${porNombre.nombre}».` };
@@ -40,4 +43,12 @@ export function buscarDuplicado(
   }
 
   return null;
+}
+
+// #55: un grado asignado a profesores no se elimina. La base no lo impediría:
+// la relación es opcional y Prisma dejaría a esos profesores sin grado.
+export function motivoNoEliminable(nombre: string, profesores: number): string | null {
+  if (profesores === 0) return null;
+  const quienes = profesores === 1 ? "1 profesor" : `${profesores} profesores`;
+  return `No se puede eliminar «${nombre}»: está asignado a ${quienes}. Cambia su grado antes de eliminarlo.`;
 }

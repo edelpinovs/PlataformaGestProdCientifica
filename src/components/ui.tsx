@@ -11,6 +11,15 @@ export const claseBoton =
 export const claseBotonSecundario =
   "rounded-xl px-4 py-2.5 text-sm font-medium text-texto-2 hover:bg-hover disabled:opacity-60";
 
+/** Botón que confirma una acción destructiva (eliminar). */
+export const claseBotonPeligro =
+  "rounded-xl bg-peligro px-4 py-2.5 text-sm font-medium text-superficie hover:opacity-90 disabled:opacity-60";
+
+/** Acción compacta dentro de una fila de tabla; `peligro` para eliminar. */
+export function claseAccionFila(peligro = false) {
+  return `rounded-lg px-2.5 py-1.5 text-sm font-medium hover:bg-hover ${peligro ? "text-peligro" : "text-marca"}`;
+}
+
 /** Campo de texto; con `conError` se marca en rojo. Acompáñalo de aria-invalid. */
 export function claseCampo(conError = false) {
   return `rounded-xl border bg-superficie px-3 py-2.5 text-sm text-texto placeholder:text-texto-3 focus:outline-2 focus:outline-marca ${
