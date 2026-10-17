@@ -167,6 +167,19 @@ export function FormularioCosa() {
 
 Ejemplos reales: `src/app/catalogos/grados/` y `src/app/catalogos/departamentos/`.
 
+### Filas con Editar y Eliminar
+
+Todo listado ofrece *Editar* y *Eliminar* en cada fila a los roles que pueden registrar (regla de `AGENTS.md`, issue #59). La fila sigue el modelo de `src/app/catalogos/grados/fila.tsx`:
+
+| Estado de la fila | Qué muestra |
+| --- | --- |
+| Normal | Datos y, a la derecha, `Editar` (`claseAccionFila()`) y `Eliminar` (`claseAccionFila(true)`), con `aria-label` que nombra el registro |
+| Editando | La fila se abre a todo el ancho sobre `bg-superficie-alt`: campos con las reglas del alta, `Guardar` (`claseBoton`) y `Cancelar` (`claseBotonSecundario`) |
+| Confirmando | La fila se abre sobre `bg-peligro-suave`: pregunta con el nombre del registro, `Eliminar` (`claseBotonPeligro`) y `Cancelar` |
+| Error | `Aviso tipo="error"` dentro de la fila; si no se puede borrar, explica por qué y el botón pasa a `Cerrar` |
+
+Edición y confirmación son subcomponentes que se montan de nuevo al abrirse, para no arrastrar errores anteriores. Tras guardar o eliminar, la acción redirige al listado con un aviso de éxito (`RedirectType.replace`). Nada de ventanas del navegador (`confirm()`).
+
 ## 8. Antes de entregar una pantalla
 
 - [ ] Usa `Marco` (o `PantallaAcceso` si no hay sesión) y piezas de `@/components/ui`.
@@ -174,3 +187,4 @@ Ejemplos reales: `src/app/catalogos/grados/` y `src/app/catalogos/departamentos/
 - [ ] Se ve bien en tema claro y en tema oscuro.
 - [ ] Vista de celular: columnas apiladas, sin desplazamiento horizontal.
 - [ ] Campos dentro de su `<label>`, con `aria-invalid` cuando tienen error.
+- [ ] Si es un listado: cada fila tiene *Editar* y *Eliminar* para los roles que registran, y eliminar no deja registros relacionados sin referencia.
