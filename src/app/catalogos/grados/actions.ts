@@ -2,9 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect, RedirectType } from "next/navigation";
+import type { EstadoFila } from "@/components/fila-editable";
 import { Prisma } from "@/generated/prisma/client";
 import { requireModulo } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
+import { idDeFormulario } from "@/modules/catalogos/comun";
 import { buscarDuplicado, gradoCientifico, motivoNoEliminable } from "@/modules/catalogos/grados";
 
 export type EstadoGrado = {
@@ -46,24 +48,13 @@ export async function registrarGrado(_: EstadoGrado, formData: FormData): Promis
   return { registrado: datos.data.nombre };
 }
 
-export type EstadoFila = {
-  error?: string;
-  campo?: "nombre" | "nomenclatura";
-  valores?: { nombre: string; nomenclatura: string };
-};
-
 const NO_EXISTE = "Ese grado ya no existe en el catálogo. Recarga la página.";
-
-function leerId(formData: FormData) {
-  const id = Number(formData.get("id"));
-  return Number.isInteger(id) && id > 0 ? id : null;
-}
 
 // #55: cambia nombre y nomenclatura con las mismas reglas del registro.
 export async function editarGrado(_: EstadoFila, formData: FormData): Promise<EstadoFila> {
   await requireModulo("catalogos");
 
-  const id = leerId(formData);
+  const id = idDeFormulario(formData);
   if (!id) return { error: NO_EXISTE };
 
   const valores = {
@@ -73,7 +64,7 @@ export async function editarGrado(_: EstadoFila, formData: FormData): Promise<Es
   const datos = gradoCientifico.safeParse(valores);
   if (!datos.success) {
     const issue = datos.error.issues[0];
-    return { error: issue.message, campo: issue.path[0] as EstadoFila["campo"], valores };
+    return { error: issue.message, campo: String(issue.path[0]), valores };
   }
 
   const catalogo = await prisma.gradoCientifico.findMany({ select: { id: true, nombre: true, nomenclatura: true } });
@@ -100,7 +91,7 @@ export async function editarGrado(_: EstadoFila, formData: FormData): Promise<Es
 export async function eliminarGrado(_: EstadoFila, formData: FormData): Promise<EstadoFila> {
   await requireModulo("catalogos");
 
-  const id = leerId(formData);
+  const id = idDeFormulario(formData);
   if (!id) return { error: NO_EXISTE };
 
   const grado = await prisma.gradoCientifico.findUnique({
