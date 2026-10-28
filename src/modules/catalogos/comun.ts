@@ -3,6 +3,13 @@ import { z } from "zod";
 // Recorta y colapsa espacios internos.
 export const limpiar = (s: string) => s.trim().replace(/\s+/g, " ");
 
+// Texto libre obligatorio, ya limpio, con tope de longitud. `campo` va en los mensajes.
+export const texto = (campo: string, max: number) =>
+  z
+    .string()
+    .transform(limpiar)
+    .pipe(z.string().min(1, `${campo} es obligatorio.`).max(max, `${campo} admite como máximo ${max} caracteres.`));
+
 // Nombre de un elemento de catálogo: letras (con acentos), espacios, puntos, comas y guiones;
 // empieza con letra y no admite números: "Doctorado en Ciencias", "División de C. Económicas",
 // "Departamento de Humanidades, Artes y Culturas", "Ciencias Económico-Administrativas".
