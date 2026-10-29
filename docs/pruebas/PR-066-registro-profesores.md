@@ -49,6 +49,8 @@ src/app/cuerpos-academicos/actions.ts(77,43): error TS2322: ... missing the foll
 - El PR #66 parte de un `main` viejo (`3f58045`), donde `texto` todavía existía, y también la usa. Los dos errores de `profesores` sí son del PR. El de `gradoId` sale en cadena: sin `texto`, los tipos de `nombres` y `apellidos` se vuelven `any`. En el PR solo, el typecheck pasa.
 - **Solución:** primero arreglar `main` (devolver `texto` a `comun.ts` o pasar `cuerpos-academicos` a otra validación), y luego actualizar el PR #66 con `main`.
 
+> **Actualización (2026-10-28).** `main` se corrigió en el PR #68 (`9d6b13e`), que devolvió `texto` a `catalogos/comun.ts`, y su CI pasa. El paso 1 del dictamen ya está hecho: al PR #66 le basta con actualizarse con `main` para que desaparezcan los errores de `texto` y el de `gradoId`, que sale en cadena. Los demás puntos de este registro siguen pendientes.
+
 ## 3. Suite del PR: 63 de 63 pasan (sobre `b367768`)
 
 ### Nuevas en este PR: `src/modules/profesores/profesores.test.ts` (15)
@@ -137,7 +139,7 @@ Se corrieron sobre el PR solo (`b367768`), con su propio `vitest.config.ts`. Sim
 
 **No se aprueba todavía.** Orden sugerido:
 
-1. Arreglar `main` (fuera de este PR): devolver `texto` a `catalogos/comun.ts` o cambiar `cuerpos-academicos`.
+1. ~~Arreglar `main` (fuera de este PR): devolver `texto` a `catalogos/comun.ts` o cambiar `cuerpos-academicos`.~~ Hecho en el PR #68.
 2. En el PR #66: actualizar con `main`, quitar `.vitest/json/output.json`, agregar *Editar* y *Eliminar* (#59), capturar `P2003` (A1) y enlazar `Cierra #9`.
 3. Acordar `vitest.config.ts` con el equipo, o moverlo a su propio PR.
 4. Corregir V1, V2 y V3, y sumar las pruebas de la sección 8; deben pasar las 11.
