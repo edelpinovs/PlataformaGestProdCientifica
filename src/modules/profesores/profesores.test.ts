@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   buscarDuplicadoProfesor,
+  filtroCandidatosDuplicado,
   generarNombreNormalizado,
+  mensajeUnicidadPrisma,
   motivoProfesorNoEliminable,
   registrarProfesor,
 } from "./profesores";
@@ -23,7 +25,7 @@ const existentes = [
     correo: "existente@cuvalles.udg.mx",
     orcid: "0000-0001-2345-6789",
     scholarId: "scholar123",
-    scopusId: "scopus456",
+    scopusId: "57204190023",
     cvu: "cvu789",
   },
 ];
@@ -156,9 +158,19 @@ describe("registrarProfesor (RF-004)", () => {
   it("rechaza ORCID con formato incorrecto", () => {
     expect(registrarProfesor.safeParse({ ...datosValidos, orcid: "0000-0001-2345" }).success).toBe(false);
   });
+
+  it("acepta un Scopus ID de dígitos y rechaza letras", () => {
+    expect(registrarProfesor.safeParse({ ...datosValidos, scopusId: "57204190023" }).success).toBe(true);
+    expect(registrarProfesor.safeParse({ ...datosValidos, scopusId: "scopus456" }).success).toBe(false);
+  });
+
+  it("acepta un Scholar ID con letras y números y rechaza uno muy corto", () => {
+    expect(registrarProfesor.safeParse({ ...datosValidos, scholarId: "abc123def" }).success).toBe(true);
+    expect(registrarProfesor.safeParse({ ...datosValidos, scholarId: "ab" }).success).toBe(false);
+  });
 });
 
-describe("buscarDuplicadoProfesor (RF-004)", () => {
+describe("buscarDuplicadoProfesor (RF-005)", () => {
   it("acepta un profesor completamente nuevo", () => {
     expect(buscarDuplicadoProfesor({ ...registrarProfesor.parse(datosValidos) }, existentes)).toBeNull();
   });
@@ -184,12 +196,57 @@ describe("buscarDuplicadoProfesor (RF-004)", () => {
     expect(resultado?.campo).toBe("orcid");
   });
 
-  it("detecta Scholar ID duplicado", () => {
+  it("detecta Scholar ID duplicado sin importar mayúsculas", () => {
     const resultado = buscarDuplicadoProfesor(
-      registrarProfesor.parse({ ...datosValidos, scholarId: "scholar123" }),
+      registrarProfesor.parse({ ...datosValidos, scholarId: "SCHOLAR123" }),
       existentes,
     );
     expect(resultado?.campo).toBe("scholarId");
+  });
+
+  it("detecta Scopus ID duplicado", () => {
+    const resultado = buscarDuplicadoProfesor(
+      registrarProfesor.parse({ ...datosValidos, scopusId: "57204190023" }),
+      existentes,
+    );
+    expect(resultado?.campo).toBe("scopusId");
+  });
+
+  it("identificadores vacíos no chocan entre sí", () => {
+    expect(buscarDuplicadoProfesor(registrarProfesor.parse(datosValidos), existentes)).toBeNull();
+  });
+});
+
+describe("mensajeUnicidadPrisma (RF-005)", () => {
+  it("traduce el campo único de Prisma a un mensaje en español", () => {
+    expect(mensajeUnicidadPrisma(["correo"])).toEqual({
+      campo: "correo",
+      mensaje: "Ese correo institucional ya está registrado.",
+    });
+  });
+
+  it("da un mensaje genérico si no reconoce el campo", () => {
+    expect(mensajeUnicidadPrisma(["otro"])).toEqual({
+      campo: "codigo",
+      mensaje: "Algunos de los identificadores ingresados ya están registrados.",
+    });
+  });
+});
+
+describe("filtroCandidatosDuplicado (RF-005)", () => {
+  it("siempre busca por código y correo, y solo añade identificadores presentes", () => {
+    const minimo = filtroCandidatosDuplicado(registrarProfesor.parse(datosValidos));
+    expect(minimo).toEqual([{ codigo: "ABC123" }, { correo: "juan.garcia@cuvalles.udg.mx" }]);
+
+    const conIds = filtroCandidatosDuplicado(
+      registrarProfesor.parse({ ...datosValidos, orcid: "0000-0001-2345-678X", scopusId: "57204190023" }),
+    );
+    expect(conIds).toEqual([
+      { codigo: "ABC123" },
+      { correo: "juan.garcia@cuvalles.udg.mx" },
+      { orcid: "0000-0001-2345-678X" },
+      { scopusId: "57204190023" },
+    ]);
   });
 });
 

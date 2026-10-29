@@ -9,7 +9,9 @@ import { prisma } from "@/lib/prisma";
 import {
   buscarDuplicadoProfesor,
   datosProfesor,
+  filtroCandidatosDuplicado,
   idDeFormulario,
+  mensajeUnicidadPrisma,
   motivoProfesorNoEliminable,
   registrarProfesor,
   type UsoProfesor,
@@ -112,10 +114,21 @@ const sinRelaciones = {
   programas: { none: {} },
 } as const;
 
+const SELECCION_UNICIDAD = {
+  id: true,
+  codigo: true,
+  correo: true,
+  orcid: true,
+  scholarId: true,
+  scopusId: true,
+  cvu: true,
+} as const;
+
 function errorPrisma(e: unknown, valores: Record<string, string>): EstadoProfesor | null {
   if (!(e instanceof Prisma.PrismaClientKnownRequestError)) return null;
   if (e.code === "P2002") {
-    return { error: "Algunos de los identificadores ingresados ya están registrados.", valores };
+    const duplicado = mensajeUnicidadPrisma(e.meta?.target);
+    return { error: duplicado.mensaje, campo: duplicado.campo, valores };
   }
   if (e.code === "P2003") return { error: CATALOGO_AUSENTE, valores };
   if (e.code === "P2025") return { error: NO_EXISTE };
@@ -134,7 +147,8 @@ export async function crearProfesor(_: EstadoProfesor, formData: FormData): Prom
   }
 
   const existentes = await prisma.profesor.findMany({
-    select: { codigo: true, correo: true, orcid: true, scholarId: true, scopusId: true, cvu: true },
+    where: { OR: filtroCandidatosDuplicado(datos.data) },
+    select: SELECCION_UNICIDAD,
   });
   const duplicado = buscarDuplicadoProfesor(datos.data, existentes);
   if (duplicado) return { error: duplicado.mensaje, campo: duplicado.campo, valores };
@@ -165,10 +179,12 @@ export async function editarProfesor(_: EstadoFila, formData: FormData): Promise
     return { error: issue.message, campo: String(issue.path[0]), valores };
   }
 
+  const actual = await prisma.profesor.findUnique({ where: { id }, select: { id: true } });
+  if (!actual) return { error: NO_EXISTE };
   const existentes = await prisma.profesor.findMany({
-    select: { id: true, codigo: true, correo: true, orcid: true, scholarId: true, scopusId: true, cvu: true },
+    where: { OR: filtroCandidatosDuplicado(datos.data) },
+    select: SELECCION_UNICIDAD,
   });
-  if (!existentes.some((p) => p.id === id)) return { error: NO_EXISTE };
   const duplicado = buscarDuplicadoProfesor(datos.data, existentes, id);
   if (duplicado) return { error: duplicado.mensaje, campo: duplicado.campo, valores };
 

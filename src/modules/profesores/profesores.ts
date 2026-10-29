@@ -73,8 +73,18 @@ export const registrarProfesor = z.object({
       .regex(/^\d{4}-\d{4}-\d{4}-\d{3}[\dX]$/, "El ORCID debe tener el formato 0000-0000-0000-0000.")
       .optional(),
   ),
-  scholarId: textoOpcional(50, "El Scholar ID admite hasta 50 caracteres."),
-  scopusId: textoOpcional(20, "El Scopus ID admite hasta 20 caracteres."),
+  scholarId: z.preprocess(
+    (s) => (typeof s === "string" && s.trim() !== "" ? limpiar(s) : undefined),
+    z
+      .string()
+      .max(50, "El Scholar ID admite hasta 50 caracteres.")
+      .regex(/^[\p{L}\d._-]{5,50}$/u, "El Scholar ID solo admite letras, números, puntos, guiones y guiones bajos.")
+      .optional(),
+  ),
+  scopusId: z.preprocess(
+    (s) => (typeof s === "string" && s.trim() !== "" ? limpiar(s) : undefined),
+    z.string().regex(/^\d{4,20}$/, "El Scopus ID debe tener de 4 a 20 dígitos.").optional(),
+  ),
 });
 
 export type RegistrarProfesor = z.infer<typeof registrarProfesor>;
@@ -94,7 +104,7 @@ export type ExistenteProfesor = {
   cvu?: string | null;
 };
 
-// RF-004: código, correo e identificadores no deben existir previamente.
+// RF-005: código, correo, ORCID, Scopus y Scholar no deben existir previamente.
 // Al editar (#59) se pasa `idPropio`, para que el profesor no choque consigo mismo.
 export function buscarDuplicadoProfesor(
   nuevo: RegistrarProfesor,
@@ -121,9 +131,10 @@ export function buscarDuplicadoProfesor(
   }
 
   if (nuevo.scholarId) {
-    const porScholar = otros.find((p) => p.scholarId === nuevo.scholarId);
+    const scholar = nuevo.scholarId.toLowerCase();
+    const porScholar = otros.find((p) => p.scholarId && p.scholarId.toLowerCase() === scholar);
     if (porScholar) {
-      return { campo: "scholarId", mensaje: `El Scholar ID «${nuevo.scholarId}» ya está registrado.` };
+      return { campo: "scholarId", mensaje: `El Scholar ID «${porScholar.scholarId}» ya está registrado.` };
     }
   }
 
@@ -142,6 +153,35 @@ export function buscarDuplicadoProfesor(
   }
 
   return null;
+}
+
+const MENSAJE_UNICIDAD: Record<DuplicadoProfesor["campo"], string> = {
+  codigo: "Ya existe un profesor con ese código institucional.",
+  correo: "Ese correo institucional ya está registrado.",
+  orcid: "Ese ORCID ya está registrado.",
+  scholarId: "Ese Scholar ID ya está registrado.",
+  scopusId: "Ese Scopus ID ya está registrado.",
+  cvu: "Ese CVU ya está registrado.",
+};
+
+// P2002: otro alta tomó el identificador entre la consulta y el INSERT.
+export function mensajeUnicidadPrisma(target: unknown): DuplicadoProfesor {
+  const campos = Array.isArray(target) ? target.map(String) : [];
+  const campo = (["codigo", "correo", "orcid", "scholarId", "scopusId", "cvu"] as const).find((c) =>
+    campos.includes(c),
+  );
+  if (!campo) return { campo: "codigo", mensaje: "Algunos de los identificadores ingresados ya están registrados." };
+  return { campo, mensaje: MENSAJE_UNICIDAD[campo] };
+}
+
+// Condiciones para buscar en la BD solo a quien podría chocar (RF-005).
+export function filtroCandidatosDuplicado(nuevo: RegistrarProfesor) {
+  const or: Record<string, string>[] = [{ codigo: nuevo.codigo }, { correo: nuevo.correo }];
+  if (nuevo.orcid) or.push({ orcid: nuevo.orcid });
+  if (nuevo.scholarId) or.push({ scholarId: nuevo.scholarId });
+  if (nuevo.scopusId) or.push({ scopusId: nuevo.scopusId });
+  if (nuevo.cvu) or.push({ cvu: nuevo.cvu });
+  return or;
 }
 
 /** Genera el nombre normalizado para cruce de listados (RF-018). */

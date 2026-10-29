@@ -232,7 +232,7 @@ export function FormularioProfesor({ grados, departamentos }: Props) {
               id="scholarId"
               name="scholarId"
               maxLength={50}
-              placeholder="Ej. abc123def456"
+              placeholder="Ej. abc123XYZ"
               defaultValue={v.scholarId}
               aria-invalid={err("scholarId")}
               className={claseCampo(err("scholarId"))}
@@ -245,7 +245,7 @@ export function FormularioProfesor({ grados, departamentos }: Props) {
               id="scopusId"
               name="scopusId"
               maxLength={20}
-              placeholder="Ej. 57204190023"
+              placeholder="57204190023"
               defaultValue={v.scopusId}
               aria-invalid={err("scopusId")}
               className={claseCampo(err("scopusId"))}
