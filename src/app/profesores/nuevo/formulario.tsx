@@ -17,7 +17,7 @@ export function FormularioProfesor({ grados, departamentos }: Props) {
   const err = (campo: string) => estado.campo === campo;
 
   return (
-    <form action={accion} className="flex flex-col gap-6">
+    <form key={estado.registrado ?? "formulario"} action={accion} className="flex flex-col gap-6">
       {/* ── Datos personales ───────────────────────────────── */}
       <fieldset className="flex flex-col gap-4">
         <legend className="mb-2 text-sm font-semibold text-texto-2">Datos personales</legend>
@@ -32,7 +32,7 @@ export function FormularioProfesor({ grados, departamentos }: Props) {
               maxLength={150}
               placeholder="Ej. María José"
               defaultValue={v.nombres}
-              aria-invalid={err("nombres") || undefined}
+              aria-invalid={err("nombres")}
               className={claseCampo(err("nombres"))}
             />
           </label>
@@ -46,7 +46,7 @@ export function FormularioProfesor({ grados, departamentos }: Props) {
               maxLength={150}
               placeholder="Ej. García López"
               defaultValue={v.apellidos}
-              aria-invalid={err("apellidos") || undefined}
+              aria-invalid={err("apellidos")}
               className={claseCampo(err("apellidos"))}
             />
           </label>
@@ -76,7 +76,7 @@ export function FormularioProfesor({ grados, departamentos }: Props) {
               </label>
             ))}
           </div>
-          {err("genero") && <Aviso tipo="error">{estado.error}</Aviso>}
+          {err("genero") && estado.error && <Aviso tipo="error">{estado.error}</Aviso>}
         </div>
       </fieldset>
 
@@ -94,7 +94,7 @@ export function FormularioProfesor({ grados, departamentos }: Props) {
               maxLength={20}
               placeholder="Ej. GALO1234"
               defaultValue={v.codigo}
-              aria-invalid={err("codigo") || undefined}
+              aria-invalid={err("codigo")}
               className={claseCampo(err("codigo"))}
             />
           </label>
@@ -109,7 +109,7 @@ export function FormularioProfesor({ grados, departamentos }: Props) {
               maxLength={200}
               placeholder="correo@cuvalles.udg.mx"
               defaultValue={v.correo}
-              aria-invalid={err("correo") || undefined}
+              aria-invalid={err("correo")}
               className={claseCampo(err("correo"))}
             />
           </label>
@@ -123,7 +123,7 @@ export function FormularioProfesor({ grados, departamentos }: Props) {
               name="tipoContratacion"
               required
               defaultValue={v.tipoContratacion ?? ""}
-              aria-invalid={err("tipoContratacion") || undefined}
+              aria-invalid={err("tipoContratacion")}
               className={claseCampo(err("tipoContratacion"))}
             >
               <option value="" disabled>
@@ -158,7 +158,8 @@ export function FormularioProfesor({ grados, departamentos }: Props) {
               id="departamentoId"
               name="departamentoId"
               defaultValue={v.departamentoId ?? ""}
-              className={claseCampo()}
+              aria-invalid={err("departamentoId")}
+              className={claseCampo(err("departamentoId"))}
             >
               <option value="">— Sin asignar —</option>
               {departamentos.map((d) => (
@@ -175,7 +176,8 @@ export function FormularioProfesor({ grados, departamentos }: Props) {
               id="gradoId"
               name="gradoId"
               defaultValue={v.gradoId ?? ""}
-              className={claseCampo()}
+              aria-invalid={err("gradoId")}
+              className={claseCampo(err("gradoId"))}
             >
               <option value="">— Sin especificar —</option>
               {grados.map((g) => (
@@ -204,7 +206,7 @@ export function FormularioProfesor({ grados, departamentos }: Props) {
               maxLength={20}
               placeholder="Ej. 123456"
               defaultValue={v.cvu}
-              aria-invalid={err("cvu") || undefined}
+              aria-invalid={err("cvu")}
               className={claseCampo(err("cvu"))}
             />
           </label>
@@ -217,7 +219,7 @@ export function FormularioProfesor({ grados, departamentos }: Props) {
               maxLength={20}
               placeholder="0000-0000-0000-0000"
               defaultValue={v.orcid}
-              aria-invalid={err("orcid") || undefined}
+              aria-invalid={err("orcid")}
               className={claseCampo(err("orcid"))}
             />
           </label>
@@ -232,7 +234,7 @@ export function FormularioProfesor({ grados, departamentos }: Props) {
               maxLength={50}
               placeholder="Ej. abc123def456"
               defaultValue={v.scholarId}
-              aria-invalid={err("scholarId") || undefined}
+              aria-invalid={err("scholarId")}
               className={claseCampo(err("scholarId"))}
             />
           </label>
@@ -245,7 +247,7 @@ export function FormularioProfesor({ grados, departamentos }: Props) {
               maxLength={20}
               placeholder="Ej. 57204190023"
               defaultValue={v.scopusId}
-              aria-invalid={err("scopusId") || undefined}
+              aria-invalid={err("scopusId")}
               className={claseCampo(err("scopusId"))}
             />
           </label>

@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { buscarDuplicadoProfesor, generarNombreNormalizado, registrarProfesor } from "./profesores";
+import {
+  buscarDuplicadoProfesor,
+  generarNombreNormalizado,
+  motivoProfesorNoEliminable,
+  registrarProfesor,
+} from "./profesores";
 
 const datosValidos = {
   codigo: "ABC123",
@@ -13,6 +18,7 @@ const datosValidos = {
 
 const existentes = [
   {
+    id: 1,
     codigo: "EXI001",
     correo: "existente@cuvalles.udg.mx",
     orcid: "0000-0001-2345-6789",
@@ -22,12 +28,21 @@ const existentes = [
   },
 ];
 
-// ─── Validación de schema (RF-004) ────────────────────────────────────────────
+const usoVacio = {
+  perfil: 0,
+  reconocimientos: 0,
+  cuerpos: 0,
+  liderazgos: 0,
+  lgacs: 0,
+  participaciones: 0,
+  autorias: 0,
+  cortes: 0,
+  programas: 0,
+};
 
 describe("registrarProfesor (RF-004)", () => {
   it("acepta datos mínimos válidos", () => {
-    const resultado = registrarProfesor.safeParse(datosValidos);
-    expect(resultado.success).toBe(true);
+    expect(registrarProfesor.safeParse(datosValidos).success).toBe(true);
   });
 
   it("exige código, nombres, apellidos, correo, género y tipo de contratación", () => {
@@ -49,72 +64,121 @@ describe("registrarProfesor (RF-004)", () => {
   });
 
   it("transforma el código a mayúsculas y elimina espacios", () => {
-    const resultado = registrarProfesor.safeParse({ ...datosValidos, codigo: "  abc123  " });
-    expect(resultado.success).toBe(true);
-    if (resultado.success) expect(resultado.data.codigo).toBe("ABC123");
+    const resultado = registrarProfesor.parse({ ...datosValidos, codigo: "  abc123  " });
+    expect(resultado.codigo).toBe("ABC123");
   });
 
   it("rechaza código con espacios internos", () => {
-    const resultado = registrarProfesor.safeParse({ ...datosValidos, codigo: "ABC 123" });
-    expect(resultado.success).toBe(false);
+    expect(registrarProfesor.safeParse({ ...datosValidos, codigo: "ABC 123" }).success).toBe(false);
+  });
+
+  it("limpia espacios y pone mayúscula inicial en nombres y apellidos", () => {
+    const resultado = registrarProfesor.parse({
+      ...datosValidos,
+      nombres: "  maría  josé ",
+      apellidos: "  garcía  lópez ",
+    });
+    expect(resultado.nombres).toBe("María josé");
+    expect(resultado.apellidos).toBe("García lópez");
+  });
+
+  it("rechaza nombres o apellidos con números", () => {
+    expect(registrarProfesor.safeParse({ ...datosValidos, nombres: "Ana123" }).success).toBe(false);
+    expect(registrarProfesor.safeParse({ ...datosValidos, apellidos: "López2" }).success).toBe(false);
+  });
+
+  it("acepta apellidos con acentos, apóstrofos y guiones", () => {
+    expect(registrarProfesor.safeParse({ ...datosValidos, apellidos: "O'Connor-Pérez" }).success).toBe(true);
   });
 
   it("transforma el correo a minúsculas", () => {
-    const resultado = registrarProfesor.safeParse({
+    const resultado = registrarProfesor.parse({
       ...datosValidos,
       correo: "Juan.GARCIA@CUValles.UDG.MX",
     });
-    expect(resultado.success).toBe(true);
-    if (resultado.success) expect(resultado.data.correo).toBe("juan.garcia@cuvalles.udg.mx");
+    expect(resultado.correo).toBe("juan.garcia@cuvalles.udg.mx");
   });
 
   it("rechaza un correo sin formato válido", () => {
-    const resultado = registrarProfesor.safeParse({ ...datosValidos, correo: "no-es-correo" });
-    expect(resultado.success).toBe(false);
+    expect(registrarProfesor.safeParse({ ...datosValidos, correo: "no-es-correo" }).success).toBe(false);
   });
 
   it("rechaza género distinto de M o F", () => {
-    const resultado = registrarProfesor.safeParse({ ...datosValidos, genero: "X" });
-    expect(resultado.success).toBe(false);
+    expect(registrarProfesor.safeParse({ ...datosValidos, genero: "X" }).success).toBe(false);
+  });
+
+  it("acepta un departamento o grado elegido en el formulario", () => {
+    const resultado = registrarProfesor.parse({
+      ...datosValidos,
+      departamentoId: "4",
+      gradoId: "2",
+    });
+    expect(resultado.departamentoId).toBe(4);
+    expect(resultado.gradoId).toBe(2);
+  });
+
+  it("deja el departamento y el grado ausentes si no se eligen", () => {
+    const resultado = registrarProfesor.parse({
+      ...datosValidos,
+      departamentoId: "",
+      gradoId: "",
+    });
+    expect(resultado.departamentoId).toBeUndefined();
+    expect(resultado.gradoId).toBeUndefined();
+  });
+
+  it("rechaza un identificador de departamento o grado que no es un número, en español", () => {
+    const departamento = registrarProfesor.safeParse({ ...datosValidos, departamentoId: "abc" });
+    expect(departamento.success).toBe(false);
+    if (!departamento.success) {
+      expect(departamento.error.issues[0].message).toBe("Elige una opción de la lista o recarga la página.");
+    }
+
+    const grado = registrarProfesor.safeParse({ ...datosValidos, gradoId: "no-id" });
+    expect(grado.success).toBe(false);
+    if (!grado.success) {
+      expect(grado.error.issues[0].message).toBe("Elige una opción de la lista o recarga la página.");
+    }
+  });
+
+  it("acepta ORCID con x minúscula y lo guarda en mayúscula", () => {
+    const resultado = registrarProfesor.parse({
+      ...datosValidos,
+      orcid: "0000-0001-2345-678x",
+    });
+    expect(resultado.orcid).toBe("0000-0001-2345-678X");
   });
 
   it("acepta ORCID con formato correcto", () => {
-    const resultado = registrarProfesor.safeParse({
-      ...datosValidos,
-      orcid: "0000-0001-2345-678X",
-    });
-    expect(resultado.success).toBe(true);
+    expect(registrarProfesor.safeParse({ ...datosValidos, orcid: "0000-0001-2345-678X" }).success).toBe(true);
   });
 
   it("rechaza ORCID con formato incorrecto", () => {
-    const resultado = registrarProfesor.safeParse({ ...datosValidos, orcid: "0000-0001-2345" });
-    expect(resultado.success).toBe(false);
+    expect(registrarProfesor.safeParse({ ...datosValidos, orcid: "0000-0001-2345" }).success).toBe(false);
   });
 });
 
-// ─── Reglas de negocio de unicidad ────────────────────────────────────────────
-
 describe("buscarDuplicadoProfesor (RF-004)", () => {
   it("acepta un profesor completamente nuevo", () => {
-    expect(buscarDuplicadoProfesor(datosValidos, existentes)).toBeNull();
+    expect(buscarDuplicadoProfesor({ ...registrarProfesor.parse(datosValidos) }, existentes)).toBeNull();
   });
 
   it("detecta código duplicado", () => {
-    const resultado = buscarDuplicadoProfesor({ ...datosValidos, codigo: "EXI001" }, existentes);
+    const resultado = buscarDuplicadoProfesor(registrarProfesor.parse({ ...datosValidos, codigo: "EXI001" }), existentes);
     expect(resultado?.campo).toBe("codigo");
   });
 
   it("detecta correo duplicado sin importar mayúsculas ni acentos", () => {
     const resultado = buscarDuplicadoProfesor(
-      { ...datosValidos, correo: "EXISTENTE@cuvalles.udg.mx" },
+      registrarProfesor.parse({ ...datosValidos, correo: "EXISTENTE@cuvalles.udg.mx" }),
       existentes,
     );
     expect(resultado?.campo).toBe("correo");
   });
 
-  it("detecta ORCID duplicado", () => {
+  it("detecta ORCID duplicado aunque llegue en minúsculas", () => {
     const resultado = buscarDuplicadoProfesor(
-      { ...datosValidos, orcid: "0000-0001-2345-6789" },
+      registrarProfesor.parse({ ...datosValidos, orcid: "0000-0001-2345-6789" }),
       existentes,
     );
     expect(resultado?.campo).toBe("orcid");
@@ -122,17 +186,54 @@ describe("buscarDuplicadoProfesor (RF-004)", () => {
 
   it("detecta Scholar ID duplicado", () => {
     const resultado = buscarDuplicadoProfesor(
-      { ...datosValidos, scholarId: "scholar123" },
+      registrarProfesor.parse({ ...datosValidos, scholarId: "scholar123" }),
       existentes,
     );
     expect(resultado?.campo).toBe("scholarId");
   });
 });
 
-// ─── Nombre normalizado ───────────────────────────────────────────────────────
+describe("buscarDuplicadoProfesor al editar (#59)", () => {
+  it("un profesor puede conservar su propio código y correo", () => {
+    expect(
+      buscarDuplicadoProfesor(
+        registrarProfesor.parse({ ...datosValidos, codigo: "EXI001", correo: "existente@cuvalles.udg.mx" }),
+        existentes,
+        1,
+      ),
+    ).toBeNull();
+  });
+
+  it("no puede tomar el código de otro profesor", () => {
+    expect(
+      buscarDuplicadoProfesor(registrarProfesor.parse({ ...datosValidos, codigo: "EXI001" }), existentes, 2),
+    ).toEqual({
+      campo: "codigo",
+      mensaje: "Ya existe un profesor con el código «EXI001».",
+    });
+  });
+});
 
 describe("generarNombreNormalizado", () => {
   it("convierte a minúsculas sin acentos y combina apellidos y nombres", () => {
     expect(generarNombreNormalizado("María José", "García López")).toBe("garcia lopez maria jose");
+  });
+});
+
+describe("motivoProfesorNoEliminable (#59)", () => {
+  it("permite eliminar un profesor sin relaciones", () => {
+    expect(motivoProfesorNoEliminable("Juan García", usoVacio)).toBeNull();
+  });
+
+  it("explica por qué no se elimina un profesor con reconocimientos", () => {
+    expect(motivoProfesorNoEliminable("Juan García", { ...usoVacio, reconocimientos: 2 })).toBe(
+      "No se puede eliminar a «Juan García»: tiene 2 reconocimientos. Quita esas relaciones antes de eliminarlo.",
+    );
+  });
+
+  it("enumera varias relaciones", () => {
+    expect(motivoProfesorNoEliminable("Ana Pérez", { ...usoVacio, perfil: 1, autorias: 3 })).toBe(
+      "No se puede eliminar a «Ana Pérez»: tiene un perfil de acceso y 3 autorías. Quita esas relaciones antes de eliminarlo.",
+    );
   });
 });
