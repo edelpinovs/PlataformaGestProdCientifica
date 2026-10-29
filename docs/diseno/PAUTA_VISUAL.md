@@ -13,6 +13,7 @@ Esta pauta vale para personas y agentes de IA. Las reglas obligatorias para agen
 | `src/components/marco.tsx` | `Marco`: menú lateral, encabezado y zona de contenido de toda página con sesión |
 | `src/components/pantalla-acceso.tsx` | `PantallaAcceso`: tarjeta centrada para iniciar sesión, confirmar enlace y definir contraseña |
 | `src/components/ui.tsx` | Piezas: `Panel`, `EstadoVacio`, `Aviso`, `EtiquetaEstado`, `Icono` y las clases de botón, campo, etiqueta y tabla |
+| `src/components/fila-editable.tsx` | `FilaEditable`: fila de listado con *Editar* y *Eliminar* (sección 7) |
 | `src/components/selector-tema.tsx` | Botón *Tema oscuro* / *Tema claro* del menú |
 | `src/components/pauta-visual.test.ts` | Prueba que impide colores sueltos y páginas sin `Marco` |
 
@@ -167,6 +168,19 @@ export function FormularioCosa() {
 
 Ejemplos reales: `src/app/catalogos/grados/` y `src/app/catalogos/departamentos/`.
 
+### Filas con Editar y Eliminar
+
+Todo listado ofrece *Editar* y *Eliminar* en cada fila a los roles que pueden registrar (regla de `AGENTS.md`, issue #59). La fila es el componente `<FilaEditable>` de `src/components/fila-editable.tsx`: la página le pasa las celdas, los campos editables (texto o lista de opciones) y las Server Actions `editar` y `eliminar`, que reciben `id` y los campos en el `FormData` y devuelven `EstadoFila`. Ejemplos: `src/app/catalogos/grados/`, `divisiones/` y `departamentos/`.
+
+| Estado de la fila | Qué muestra |
+| --- | --- |
+| Normal | Datos y, a la derecha, `Editar` (`claseAccionFila()`) y `Eliminar` (`claseAccionFila(true)`), con `aria-label` que nombra el registro |
+| Editando | La fila se abre a todo el ancho sobre `bg-superficie-alt`: campos con las reglas del alta, `Guardar` (`claseBoton`) y `Cancelar` (`claseBotonSecundario`) |
+| Confirmando | La fila se abre sobre `bg-peligro-suave`: pregunta con el nombre del registro, `Eliminar` (`claseBotonPeligro`) y `Cancelar` |
+| Error | `Aviso tipo="error"` dentro de la fila; si no se puede borrar, explica por qué y el botón pasa a `Cerrar` |
+
+Edición y confirmación son subcomponentes que se montan de nuevo al abrirse, para no arrastrar errores anteriores. Tras guardar o eliminar, la acción redirige al listado con un aviso de éxito (`RedirectType.replace`). Nada de ventanas del navegador (`confirm()`).
+
 ## 8. Antes de entregar una pantalla
 
 - [ ] Usa `Marco` (o `PantallaAcceso` si no hay sesión) y piezas de `@/components/ui`.
@@ -174,3 +188,4 @@ Ejemplos reales: `src/app/catalogos/grados/` y `src/app/catalogos/departamentos/
 - [ ] Se ve bien en tema claro y en tema oscuro.
 - [ ] Vista de celular: columnas apiladas, sin desplazamiento horizontal.
 - [ ] Campos dentro de su `<label>`, con `aria-invalid` cuando tienen error.
+- [ ] Si es un listado: cada fila tiene *Editar* y *Eliminar* para los roles que registran, y eliminar no deja registros relacionados sin referencia.
