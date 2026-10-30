@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { Prisma } from "../../generated/prisma/client";
 import {
   buscarDuplicadoProfesor,
   filtroCandidatosDuplicado,
@@ -7,6 +8,18 @@ import {
   motivoProfesorNoEliminable,
   registrarProfesor,
 } from "./profesores";
+
+const prismaFalso = vi.hoisted(() => ({
+  profesor: { findMany: vi.fn(), create: vi.fn() },
+}));
+const sesionFalsa = vi.hoisted(() => ({
+  requireModulo: vi.fn(async () => ({ rol: "ADMINISTRADOR" })),
+}));
+
+vi.mock("@/lib/prisma", () => ({ prisma: prismaFalso }));
+vi.mock("@/lib/auth/session", () => sesionFalsa);
+vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+vi.mock("next/navigation", () => ({ redirect: vi.fn(), RedirectType: { replace: "replace" } }));
 
 const datosValidos = {
   codigo: "ABC123",
@@ -231,6 +244,21 @@ describe("mensajeUnicidadPrisma (RF-005)", () => {
       mensaje: "Algunos de los identificadores ingresados ya están registrados.",
     });
   });
+
+  it("R1: lee el índice del adaptador pg cuando no llega target", () => {
+    expect(
+      mensajeUnicidadPrisma({
+        driverAdapterError: {
+          cause: { constraint: { index: "Profesor_orcid_key" } },
+        },
+        table: "Profesor",
+      }),
+    ).toEqual({ campo: "orcid", mensaje: "Ese ORCID ya está registrado." });
+  });
+
+  it("acepta target cuando el motor lo envía", () => {
+    expect(mensajeUnicidadPrisma({ target: ["scopusId"] }).campo).toBe("scopusId");
+  });
 });
 
 describe("filtroCandidatosDuplicado (RF-005)", () => {
@@ -292,5 +320,93 @@ describe("motivoProfesorNoEliminable (#59)", () => {
     expect(motivoProfesorNoEliminable("Ana Pérez", { ...usoVacio, perfil: 1, autorias: 3 })).toBe(
       "No se puede eliminar a «Ana Pérez»: tiene un perfil de acceso y 3 autorías. Quita esas relaciones antes de eliminarlo.",
     );
+  });
+});
+
+const altaValida = {
+  codigo: "PRUEBA01",
+  nombres: "Ana María",
+  apellidos: "Pérez Ruiz",
+  correo: "ana.perez@academicos.udg.mx",
+  genero: "F",
+  tipoContratacion: "TIEMPO_COMPLETO",
+  estatusLaboral: "ACTIVO",
+  departamentoId: "",
+  gradoId: "",
+  cvu: "",
+  orcid: "",
+  scholarId: "",
+  scopusId: "",
+};
+
+function formulario(campos: Record<string, string>) {
+  const fd = new FormData();
+  for (const [clave, valor] of Object.entries(campos)) fd.set(clave, valor);
+  return fd;
+}
+
+function errorPrisma(code: string, meta?: Record<string, unknown>) {
+  return new Prisma.PrismaClientKnownRequestError("falla simulada", { code, clientVersion: "7.10.0", meta });
+}
+
+function metaAdaptador(indice: string) {
+  return {
+    driverAdapterError: { cause: { kind: "UniqueConstraintViolation", constraint: { index: indice } } },
+    table: "Profesor",
+  };
+}
+
+describe("crearProfesor", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    prismaFalso.profesor.findMany.mockResolvedValue([]);
+    prismaFalso.profesor.create.mockResolvedValue({ id: 1 });
+  });
+
+  it("exige el permiso del módulo antes de todo", async () => {
+    const { crearProfesor } = await import("../../app/profesores/actions");
+    await crearProfesor({}, formulario(altaValida));
+    expect(sesionFalsa.requireModulo).toHaveBeenCalledWith("profesores");
+  });
+
+  it("registra un profesor válido", async () => {
+    const { crearProfesor } = await import("../../app/profesores/actions");
+    const resultado = await crearProfesor({}, formulario(altaValida));
+    expect(resultado.registrado).toBe("Ana María Pérez Ruiz");
+    expect(prismaFalso.profesor.create).toHaveBeenCalledOnce();
+  });
+
+  it("un código repetido no llega a la base", async () => {
+    prismaFalso.profesor.findMany.mockResolvedValue([{ codigo: "PRUEBA01", correo: "x@udg.mx" }]);
+    const { crearProfesor } = await import("../../app/profesores/actions");
+    const resultado = await crearProfesor({}, formulario(altaValida));
+    expect(resultado.campo).toBe("codigo");
+    expect(prismaFalso.profesor.create).not.toHaveBeenCalled();
+  });
+
+  it("R1: un ORCID duplicado en carrera señala el ORCID", async () => {
+    prismaFalso.profesor.create.mockRejectedValue(errorPrisma("P2002", metaAdaptador("Profesor_orcid_key")));
+    const { crearProfesor } = await import("../../app/profesores/actions");
+    const resultado = await crearProfesor({}, formulario({ ...altaValida, orcid: "0000-0001-2345-678X" }));
+    expect(resultado).toMatchObject({ campo: "orcid", error: "Ese ORCID ya está registrado." });
+  });
+
+  it("P2002 con target señala el campo que manda el motor", async () => {
+    prismaFalso.profesor.create.mockRejectedValue(errorPrisma("P2002", { target: ["correo"] }));
+    const { crearProfesor } = await import("../../app/profesores/actions");
+    const resultado = await crearProfesor({}, formulario(altaValida));
+    expect(resultado).toMatchObject({ campo: "correo", error: "Ese correo institucional ya está registrado." });
+  });
+
+  it("A1: P2003 da un mensaje legible y no lanza", async () => {
+    prismaFalso.profesor.create.mockRejectedValue(errorPrisma("P2003"));
+    const { crearProfesor } = await import("../../app/profesores/actions");
+    const resultado = await crearProfesor({}, formulario({ ...altaValida, departamentoId: "99" })).catch((e) => ({
+      lanzo: e,
+    }));
+    expect(resultado).not.toHaveProperty("lanzo");
+    expect(resultado).toMatchObject({
+      error: "El departamento o el grado elegido ya no existe. Recarga la página.",
+    });
   });
 });

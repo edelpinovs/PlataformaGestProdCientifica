@@ -164,12 +164,27 @@ const MENSAJE_UNICIDAD: Record<DuplicadoProfesor["campo"], string> = {
   cvu: "Ese CVU ya está registrado.",
 };
 
+const CAMPOS_UNICOS = ["codigo", "correo", "orcid", "scholarId", "scopusId", "cvu"] as const;
+
+// Con @prisma/adapter-pg un P2002 no trae meta.target. El campo va en
+// driverAdapterError.cause.constraint.index, por ejemplo "Profesor_orcid_key".
+function camposDeUnicidad(meta: unknown): string[] {
+  if (Array.isArray(meta)) return meta.map(String);
+  if (!meta || typeof meta !== "object") return [];
+
+  const registro = meta as {
+    target?: unknown;
+    driverAdapterError?: { cause?: { constraint?: { index?: string } } };
+  };
+  const indice = registro.driverAdapterError?.cause?.constraint?.index;
+  const campo = typeof indice === "string" ? indice.match(/^Profesor_(.+)_key$/)?.[1] : undefined;
+  if (campo) return [campo];
+  return Array.isArray(registro.target) ? registro.target.map(String) : [];
+}
+
 // P2002: otro alta tomó el identificador entre la consulta y el INSERT.
-export function mensajeUnicidadPrisma(target: unknown): DuplicadoProfesor {
-  const campos = Array.isArray(target) ? target.map(String) : [];
-  const campo = (["codigo", "correo", "orcid", "scholarId", "scopusId", "cvu"] as const).find((c) =>
-    campos.includes(c),
-  );
+export function mensajeUnicidadPrisma(meta: unknown): DuplicadoProfesor {
+  const campo = CAMPOS_UNICOS.find((c) => camposDeUnicidad(meta).includes(c));
   if (!campo) return { campo: "codigo", mensaje: "Algunos de los identificadores ingresados ya están registrados." };
   return { campo, mensaje: MENSAJE_UNICIDAD[campo] };
 }

@@ -127,7 +127,7 @@ const SELECCION_UNICIDAD = {
 function errorPrisma(e: unknown, valores: Record<string, string>): EstadoProfesor | null {
   if (!(e instanceof Prisma.PrismaClientKnownRequestError)) return null;
   if (e.code === "P2002") {
-    const duplicado = mensajeUnicidadPrisma(e.meta?.target);
+    const duplicado = mensajeUnicidadPrisma(e.meta);
     return { error: duplicado.mensaje, campo: duplicado.campo, valores };
   }
   if (e.code === "P2003") return { error: CATALOGO_AUSENTE, valores };
