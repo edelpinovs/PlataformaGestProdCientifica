@@ -154,7 +154,7 @@ Cada cambio entra por **pull request**. Nadie sube directo a `main`.
    git commit -m "RF-008: impide renovar a un Candidato en el mismo nivel"
    git push -u origin feat/M3-RF-008-candidato
    ```
-5. **Abre el pull request** en GitHub. Escribe `Cierra #<número del issue>` en la descripción para que el issue se cierre solo al integrarlo.
+5. **Abre el pull request** en GitHub. Escribe `Closes #<número del issue>` en la descripción, una línea por issue, para que el issue se cierre solo al integrarlo. Va en inglés porque GitHub solo reconoce esas palabras clave (`Closes`, `Fixes`, `Resolves`): `Cierra #<n>` no cierra nada.
 6. **Revisión.** GitHub ejecuta las pruebas (CI) y Vercel publica una **vista previa** con tu cambio, cuyo enlace aparece en el PR. Otro integrante lo revisa y lo aprueba. Con el CI en verde y la aprobación, se integra a `main` y se publica en producción.
 
 Revisa también los PR de tus compañeros: cada PR necesita una aprobación.

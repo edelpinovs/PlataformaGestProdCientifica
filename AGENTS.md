@@ -66,7 +66,7 @@ Toda pantalla sigue la pauta de `docs/diseno/PAUTA_VISUAL.md` (léela antes de c
 - Rama por issue desde `main` actualizado: `feat/M<n>-RF-<xxx>-<tema>` (o `fix/…`, `docs/…`).
 - Commits con el requisito: `RF-001: registra grados científicos sin duplicar nombre ni nomenclatura`.
 - **Nunca** hagas push a `main`, `push --force`, merge de un PR, ni cierres o reasignes issues. Eso lo decide una persona.
-- El PR lleva `Cierra #<n>` y lo aprueba otro integrante antes de integrarse.
+- La descripción del PR lleva `Closes #<n>`, una línea por issue (`Closes #9`, `Closes #10`). GitHub solo reconoce palabras clave en inglés: con `Cierra #<n>` el issue no se cierra al integrar. El PR lo aprueba otro integrante antes de integrarse.
 - No incluyas en el commit archivos ajenos a la tarea (`.vscode/`, carpetas personales, archivos generados).
 
 ## Antes de decir "terminado"
