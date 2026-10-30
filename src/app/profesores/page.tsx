@@ -4,6 +4,7 @@ import { Marco } from "@/components/marco";
 import { Aviso, claseBoton, claseTabla, EstadoVacio, EtiquetaEstado, Panel } from "@/components/ui";
 import { requireModulo } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
+import { ETIQUETA_CONTRATACION, ETIQUETA_ESTATUS } from "@/modules/profesores/profesores";
 import { editarProfesor, eliminarProfesor } from "./actions";
 
 const ESTATUS_TIPO = {
@@ -14,31 +15,13 @@ const ESTATUS_TIPO = {
   TRASLADADO: "error",
 } as const;
 
-const ETIQUETA_ESTATUS = {
-  ACTIVO: "Activo",
-  LICENCIA: "Licencia",
-  BAJA_TEMPORAL: "Baja temporal",
-  BAJA_POSDOCTORAL: "Baja posdoctoral",
-  TRASLADADO: "Trasladado",
-} as const;
-
 const OPCIONES_GENERO = [
   { valor: "M", texto: "Masculino" },
   { valor: "F", texto: "Femenino" },
 ];
 
-const OPCIONES_CONTRATACION = [
-  { valor: "TIEMPO_COMPLETO", texto: "Tiempo completo" },
-  { valor: "ASIGNATURA", texto: "Asignatura" },
-];
-
-const OPCIONES_ESTATUS = [
-  { valor: "ACTIVO", texto: "Activo" },
-  { valor: "LICENCIA", texto: "Licencia" },
-  { valor: "BAJA_TEMPORAL", texto: "Baja temporal" },
-  { valor: "BAJA_POSDOCTORAL", texto: "Baja posdoctoral" },
-  { valor: "TRASLADADO", texto: "Trasladado" },
-];
+const OPCIONES_CONTRATACION = Object.entries(ETIQUETA_CONTRATACION).map(([valor, texto]) => ({ valor, texto }));
+const OPCIONES_ESTATUS = Object.entries(ETIQUETA_ESTATUS).map(([valor, texto]) => ({ valor, texto }));
 
 export default async function ProfesoresPage({ searchParams }: PageProps<"/profesores">) {
   const perfil = await requireModulo("profesores");
@@ -97,7 +80,7 @@ export default async function ProfesoresPage({ searchParams }: PageProps<"/profe
               {profesores.map((p) => {
                 const nombre = `${p.nombres} ${p.apellidos}`;
                 return (
-                  <FilaEditable key={`${p.id}-${p.codigo}-${p.nombres}-${p.apellidos}-${p.correo}-${p.genero}-${p.tipoContratacion}-${p.estatusLaboral}-${p.departamentoId}-${p.gradoId}-${p.cvu}-${p.orcid}-${p.scholarId}-${p.scopusId}`}
+                  <FilaEditable key={`${p.id}-${p.actualizadoEn.getTime()}`}
                     id={p.id} nombre={nombre} detalle={p.codigo}
                     editar={editarProfesor} eliminar={eliminarProfesor}
                     celdas={[
@@ -107,6 +90,9 @@ export default async function ProfesoresPage({ searchParams }: PageProps<"/profe
                           <span className="font-medium">
                             {p.grado ? `${p.grado.nomenclatura}. ` : ""}
                             {p.apellidos}, {p.nombres}
+                            <span className="mt-0.5 block text-xs font-normal text-texto-3">
+                              {ETIQUETA_CONTRATACION[p.tipoContratacion]}
+                            </span>
                           </span>
                         ),
                       },

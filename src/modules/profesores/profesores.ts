@@ -47,8 +47,32 @@ const textoOpcional = (max: number, mensaje: string) =>
     z.string().max(max, mensaje).optional(),
   );
 
+// RF-006: el administrador asigna contratación y estatus; no hay valor implícito.
+export const TIPOS_CONTRATACION = ["TIEMPO_COMPLETO", "ASIGNATURA"] as const;
+export const ESTATUS_LABORALES = ["ACTIVO", "LICENCIA", "BAJA_TEMPORAL", "BAJA_POSDOCTORAL", "TRASLADADO"] as const;
+
+export const ETIQUETA_CONTRATACION = {
+  TIEMPO_COMPLETO: "Tiempo completo",
+  ASIGNATURA: "Asignatura",
+} as const;
+
+export const ETIQUETA_ESTATUS = {
+  ACTIVO: "Activo",
+  LICENCIA: "Licencia",
+  BAJA_TEMPORAL: "Baja temporal",
+  BAJA_POSDOCTORAL: "Baja posdoctoral",
+  TRASLADADO: "Trasladado",
+} as const;
+
+export const asignacionLaboral = z.object({
+  tipoContratacion: z.enum(TIPOS_CONTRATACION, { error: "Selecciona el tipo de contratación." }),
+  estatusLaboral: z.enum(ESTATUS_LABORALES, { error: "Selecciona el estatus laboral." }),
+});
+
+export type AsignacionLaboral = z.infer<typeof asignacionLaboral>;
+
 // RF-004: campos obligatorios para registrar un profesor investigador.
-export const registrarProfesor = z.object({
+export const registrarProfesor = asignacionLaboral.extend({
   codigo: codigoProfesor,
   nombres: nombrePersona({ obligatorio: "El nombre es obligatorio.", etiqueta: "El nombre" }),
   apellidos: nombrePersona({ obligatorio: "Los apellidos son obligatorios.", etiqueta: "Los apellidos" }),
@@ -57,12 +81,6 @@ export const registrarProfesor = z.object({
     .transform((s) => limpiar(s).toLowerCase())
     .pipe(z.string().min(1, "El correo es obligatorio.").email("El correo no tiene un formato válido.")),
   genero: z.enum(["M", "F"], { error: "Selecciona un género." }),
-  tipoContratacion: z.enum(["TIEMPO_COMPLETO", "ASIGNATURA"], {
-    error: "Selecciona el tipo de contratación.",
-  }),
-  estatusLaboral: z
-    .enum(["ACTIVO", "LICENCIA", "BAJA_TEMPORAL", "BAJA_POSDOCTORAL", "TRASLADADO"])
-    .default("ACTIVO"),
   departamentoId: idOpcional,
   gradoId: idOpcional,
   cvu: textoOpcional(20, "El CVU admite hasta 20 caracteres."),
