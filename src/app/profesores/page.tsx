@@ -80,7 +80,7 @@ export default async function ProfesoresPage({ searchParams }: PageProps<"/profe
               {profesores.map((p) => {
                 const nombre = `${p.nombres} ${p.apellidos}`;
                 return (
-                  <FilaEditable key={`${p.id}-${p.codigo}-${p.nombres}-${p.apellidos}-${p.correo}-${p.genero}-${p.tipoContratacion}-${p.estatusLaboral}-${p.departamentoId}-${p.gradoId}-${p.cvu}-${p.orcid}-${p.scholarId}-${p.scopusId}`}
+                  <FilaEditable key={`${p.id}-${p.actualizadoEn.getTime()}`}
                     id={p.id} nombre={nombre} detalle={p.codigo}
                     editar={editarProfesor} eliminar={eliminarProfesor}
                     celdas={[

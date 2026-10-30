@@ -142,10 +142,13 @@ export function FormularioProfesor({ grados, departamentos }: Props) {
               id="estatusLaboral"
               name="estatusLaboral"
               required
-              defaultValue={v.estatusLaboral ?? "ACTIVO"}
+              defaultValue={v.estatusLaboral ?? ""}
               aria-invalid={err("estatusLaboral")}
               className={claseCampo(err("estatusLaboral"))}
             >
+              <option value="" disabled>
+                — Selecciona —
+              </option>
               {Object.entries(ETIQUETA_ESTATUS).map(([valor, texto]) => (
                 <option key={valor} value={valor}>{texto}</option>
               ))}
