@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { Aviso, claseBoton, claseBotonSecundario, claseCampo, claseEtiqueta } from "@/components/ui";
 import Link from "next/link";
+import { ETIQUETA_CONTRATACION, ETIQUETA_ESTATUS } from "@/modules/profesores/profesores";
 import { crearProfesor, type EstadoProfesor } from "../actions";
 
 type Props = {
@@ -129,24 +130,25 @@ export function FormularioProfesor({ grados, departamentos }: Props) {
               <option value="" disabled>
                 — Selecciona —
               </option>
-              <option value="TIEMPO_COMPLETO">Tiempo completo</option>
-              <option value="ASIGNATURA">Asignatura</option>
+              {Object.entries(ETIQUETA_CONTRATACION).map(([valor, texto]) => (
+                <option key={valor} value={valor}>{texto}</option>
+              ))}
             </select>
           </label>
 
           <label className={claseEtiqueta}>
-            Estatus laboral
+            Estatus laboral <span aria-hidden className="text-peligro">*</span>
             <select
               id="estatusLaboral"
               name="estatusLaboral"
+              required
               defaultValue={v.estatusLaboral ?? "ACTIVO"}
-              className={claseCampo()}
+              aria-invalid={err("estatusLaboral")}
+              className={claseCampo(err("estatusLaboral"))}
             >
-              <option value="ACTIVO">Activo</option>
-              <option value="LICENCIA">Licencia</option>
-              <option value="BAJA_TEMPORAL">Baja temporal</option>
-              <option value="BAJA_POSDOCTORAL">Baja posdoctoral</option>
-              <option value="TRASLADADO">Trasladado</option>
+              {Object.entries(ETIQUETA_ESTATUS).map(([valor, texto]) => (
+                <option key={valor} value={valor}>{texto}</option>
+              ))}
             </select>
           </label>
         </div>

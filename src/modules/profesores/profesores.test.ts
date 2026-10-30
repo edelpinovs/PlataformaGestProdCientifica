@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  asignacionLaboral,
   buscarDuplicadoProfesor,
+  ESTATUS_LABORALES,
   filtroCandidatosDuplicado,
   generarNombreNormalizado,
   mensajeUnicidadPrisma,
@@ -167,6 +169,41 @@ describe("registrarProfesor (RF-004)", () => {
   it("acepta un Scholar ID con letras y números y rechaza uno muy corto", () => {
     expect(registrarProfesor.safeParse({ ...datosValidos, scholarId: "abc123def" }).success).toBe(true);
     expect(registrarProfesor.safeParse({ ...datosValidos, scholarId: "ab" }).success).toBe(false);
+  });
+});
+
+describe("asignacionLaboral (RF-006)", () => {
+  it("acepta tiempo completo o asignatura con cada estatus", () => {
+    for (const tipoContratacion of ["TIEMPO_COMPLETO", "ASIGNATURA"] as const) {
+      for (const estatusLaboral of ESTATUS_LABORALES) {
+        expect(asignacionLaboral.safeParse({ tipoContratacion, estatusLaboral }).success).toBe(true);
+      }
+    }
+  });
+
+  it("exige tipo de contratación y estatus laboral", () => {
+    const resultado = asignacionLaboral.safeParse({ tipoContratacion: "", estatusLaboral: "" });
+    expect(resultado.success).toBe(false);
+    if (!resultado.success) {
+      const mensajes = resultado.error.issues.map((i) => i.message);
+      expect(mensajes).toContain("Selecciona el tipo de contratación.");
+      expect(mensajes).toContain("Selecciona el estatus laboral.");
+    }
+  });
+
+  it("rechaza un tipo o un estatus que no están en el catálogo", () => {
+    expect(asignacionLaboral.safeParse({ tipoContratacion: "HONORARIOS", estatusLaboral: "ACTIVO" }).success).toBe(false);
+    expect(asignacionLaboral.safeParse({ tipoContratacion: "ASIGNATURA", estatusLaboral: "JUBILADO" }).success).toBe(false);
+  });
+
+  it("el alta del profesor conserva la contratación y el estatus elegidos", () => {
+    const resultado = registrarProfesor.parse({
+      ...datosValidos,
+      tipoContratacion: "ASIGNATURA",
+      estatusLaboral: "LICENCIA",
+    });
+    expect(resultado.tipoContratacion).toBe("ASIGNATURA");
+    expect(resultado.estatusLaboral).toBe("LICENCIA");
   });
 });
 
