@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { ejecutarEscaneo } from "@/modules/produccion/escaneo";
 
 // Escaneo incremental diario (RF-020), lanzado por Vercel Cron (ver vercel.json).
 // Vercel envía "Authorization: Bearer <CRON_SECRET>"; cualquier otra llamada se rechaza.
@@ -7,6 +9,16 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
-  // TODO(Integrante 6): crear un Job de tipo "escaneo" y procesar el primer lote.
-  return NextResponse.json({ ok: true, pendiente: "Motor de escaneo en desarrollo" });
+  const job = await prisma.job.create({
+    data: {
+      tipo: "escaneo-diario",
+      estado: "PENDIENTE",
+    },
+  });
+
+  const anioActual = new Date().getFullYear();
+  const resumen = await ejecutarEscaneo({ jobId: job.id, anio: anioActual });
+
+  return NextResponse.json({ ok: true, resumen, jobId: job.id });
 }
+
