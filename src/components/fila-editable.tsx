@@ -29,6 +29,10 @@ export type CampoFila = {
   ancho?: "amplio" | "corto" | "medio";
   /** Si se pasa, el campo es una lista de opciones. */
   opciones?: { valor: string; texto: string }[];
+  /** Si es verdadero, el campo puede quedar vacío (identificadores y adscripción opcionales). */
+  opcional?: boolean;
+  /** Marca de agua del campo, p. ej. el formato de ORCID. */
+  placeholder?: string;
 };
 
 type Props = {
@@ -88,13 +92,14 @@ function Edicion({ id, celdas, campos, editar, cerrar }: Props & { cerrar: () =>
                 <label key={campo.nombre} className={`${claseEtiqueta} ${ANCHO[campo.ancho ?? "amplio"]}`}>
                   {campo.etiqueta}
                   {campo.opciones ? (
-                    <select name={campo.nombre} required defaultValue={valor} aria-invalid={conError}
-                      className={claseCampo(conError)} autoFocus={i === 0}>
+                    <select name={campo.nombre} required={!campo.opcional} defaultValue={valor}
+                      aria-invalid={conError} className={claseCampo(conError)} autoFocus={i === 0}>
                       {campo.opciones.map((o) => <option key={o.valor} value={o.valor}>{o.texto}</option>)}
                     </select>
                   ) : (
-                    <input name={campo.nombre} required maxLength={campo.maxLength} defaultValue={valor}
-                      aria-invalid={conError} className={claseCampo(conError)} autoFocus={i === 0} />
+                    <input name={campo.nombre} required={!campo.opcional} maxLength={campo.maxLength}
+                      placeholder={campo.placeholder} defaultValue={valor} aria-invalid={conError}
+                      className={claseCampo(conError)} autoFocus={i === 0} />
                   )}
                 </label>
               );
