@@ -85,3 +85,58 @@ export function rutaArchivo(programa: Programa, anio: number, nombre: string, fe
   const marca = fecha.toISOString().replace(/[-:]/g, "").replace(/\..+$/, "");
   return `${programa.toLowerCase()}/${anio}/${marca}-${nombreSeguro(nombre)}`;
 }
+
+// Bucket privado de Supabase Storage (migración bucket_resultados_convocatorias).
+export const BUCKET = "resultados-convocatorias";
+
+// Tipo con que se guarda el archivo: se decide por el formato validado, no por lo
+// que informe el navegador, para que Storage lo acepte siempre igual.
+export function tipoMime(formato: Formato): string {
+  return FORMATOS[formato][0];
+}
+
+// La ruta llega del navegador al registrar la carga, después de subir el archivo.
+// Solo se acepta una ruta con la forma que genera rutaArchivo para ese programa y año,
+// así nadie registra un archivo de otra carpeta ni de otra convocatoria.
+export function rutaValida(ruta: string, programa: Programa, anio: number): boolean {
+  const patron = new RegExp(`^${programa.toLowerCase()}/${anio}/\\d{8}T\\d{6}-[a-z0-9-]+\\.(pdf|xlsx)$`);
+  return patron.test(ruta);
+}
+
+export function registroCarga(anioActual: number) {
+  return z
+    .object({
+      programa: z.enum(PROGRAMAS, { error: "Elige si la convocatoria es SNII o PRODEP." }),
+      anio: z.coerce
+        .number({ error: "Escribe el año de la convocatoria." })
+        .int("El año debe ser un número entero.")
+        .min(PRIMER_ANIO, `El año debe ser ${PRIMER_ANIO} o posterior.`)
+        .max(anioActual + 1, `El año no puede ser posterior a ${anioActual + 1}.`),
+      ruta: z.string().trim(),
+    })
+    .refine((d) => rutaValida(d.ruta, d.programa, d.anio), {
+      path: ["ruta"],
+      message: "No se reconoce el archivo subido. Vuelve a cargarlo.",
+    });
+}
+
+// Nombre legible del archivo a partir de su ruta, sin la marca de tiempo.
+export function nombreDeRuta(ruta: string): string {
+  const archivo = ruta.split("/").pop() ?? ruta;
+  return archivo.replace(/^\d{8}T\d{6}-/, "");
+}
+
+// #59: una carga se puede eliminar mientras no se haya confirmado (RF-019) ni se esté leyendo (RF-017).
+// Una carga confirmada ya actualizó los reconocimientos de los profesores: es el resultado oficial.
+export function motivoNoEliminable(
+  carga: { estado: "PROCESANDO" | "EN_REVISION" | "CONFIRMADA" | "FALLIDA"; nombre: string },
+  tareaEnProceso: boolean,
+): string | null {
+  if (carga.estado === "CONFIRMADA") {
+    return `No se puede eliminar «${carga.nombre}»: sus resultados ya se confirmaron y forman parte del historial oficial.`;
+  }
+  if (tareaEnProceso) {
+    return `No se puede eliminar «${carga.nombre}» mientras se lee su contenido. Inténtalo en unos minutos.`;
+  }
+  return null;
+}

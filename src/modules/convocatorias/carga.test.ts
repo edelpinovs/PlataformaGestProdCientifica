@@ -1,5 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { cargaResultados, formatoDeArchivo, nombreSeguro, rutaArchivo, TAMANO_MAXIMO } from "./carga";
+import {
+  cargaResultados,
+  formatoDeArchivo,
+  motivoNoEliminable,
+  nombreDeRuta,
+  nombreSeguro,
+  registroCarga,
+  rutaArchivo,
+  rutaValida,
+  TAMANO_MAXIMO,
+  tipoMime,
+} from "./carga";
 
 const MIME_XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 const esquema = cargaResultados(2026);
@@ -102,5 +113,55 @@ describe("rutaArchivo (RF-016)", () => {
 
   it("usa un nombre genérico si no queda nada", () => {
     expect(nombreSeguro("###.pdf")).toBe("resultados.pdf");
+  });
+});
+
+describe("rutaValida y registroCarga (RF-016)", () => {
+  const fecha = new Date("2026-10-18T16:05:09.123Z");
+  const ruta = rutaArchivo("SNII", 2026, "Resultados SNII 2026.pdf", fecha);
+  const registro = registroCarga(2026);
+
+  it("acepta la ruta que generó rutaArchivo para el mismo programa y año", () => {
+    expect(rutaValida(ruta, "SNII", 2026)).toBe(true);
+    expect(registro.safeParse({ programa: "SNII", anio: "2026", ruta }).success).toBe(true);
+  });
+
+  it("rechaza una ruta de otro programa, de otro año o fuera de su carpeta", () => {
+    expect(rutaValida(ruta, "PRODEP", 2026)).toBe(false);
+    expect(rutaValida(ruta, "SNII", 2025)).toBe(false);
+    expect(rutaValida("snii/2026/../prodep/2026/20261018T160509-x.pdf", "SNII", 2026)).toBe(false);
+    expect(rutaValida("snii/2026/20261018T160509-x.docx", "SNII", 2026)).toBe(false);
+    expect(rutaValida("otra/snii/2026/20261018T160509-x.pdf", "SNII", 2026)).toBe(false);
+  });
+
+  it("explica que hay que volver a cargar si la ruta no se reconoce", () => {
+    const resultado = registro.safeParse({ programa: "PRODEP", anio: "2026", ruta });
+    expect(resultado.success).toBe(false);
+    expect(resultado.error?.issues[0].message).toBe("No se reconoce el archivo subido. Vuelve a cargarlo.");
+  });
+
+  it("muestra el nombre del archivo sin la marca de tiempo", () => {
+    expect(nombreDeRuta(ruta)).toBe("resultados-snii-2026.pdf");
+  });
+
+  it("guarda el tipo según el formato validado", () => {
+    expect(tipoMime("pdf")).toBe("application/pdf");
+    expect(tipoMime("xlsx")).toBe(MIME_XLSX);
+  });
+});
+
+describe("motivoNoEliminable (#59)", () => {
+  it("permite eliminar una carga que no se ha confirmado ni se está leyendo", () => {
+    for (const estado of ["PROCESANDO", "EN_REVISION", "FALLIDA"] as const) {
+      expect(motivoNoEliminable({ estado, nombre: "a.pdf" }, false), estado).toBeNull();
+    }
+  });
+
+  it("no elimina una carga confirmada: es el resultado oficial", () => {
+    expect(motivoNoEliminable({ estado: "CONFIRMADA", nombre: "a.pdf" }, false)).toContain("ya se confirmaron");
+  });
+
+  it("no elimina una carga mientras se lee su contenido", () => {
+    expect(motivoNoEliminable({ estado: "PROCESANDO", nombre: "a.pdf" }, true)).toContain("mientras se lee");
   });
 });
