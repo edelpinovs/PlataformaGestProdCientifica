@@ -61,16 +61,17 @@ export function sonDuplicadosPorTitulo(
     return { esDuplicado: false, similitud: 0, motivo: null };
   }
 
+  const similitud = normA === normB ? 1.0 : calcularSimilitudTrigramas(tituloA, tituloB);
+
   // Si ambos tienen año especificado, permitimos una variación máxima de 1 año (avance online vs impresión)
   if (anioA && anioB && Math.abs(anioA - anioB) > 1) {
-    return { esDuplicado: false, similitud: 0, motivo: null };
+    return { esDuplicado: false, similitud, motivo: null };
   }
 
   if (normA === normB) {
     return { esDuplicado: true, similitud: 1.0, motivo: "TITULO_EXACTO" };
   }
 
-  const similitud = calcularSimilitudTrigramas(tituloA, tituloB);
   if (similitud >= umbral) {
     return { esDuplicado: true, similitud, motivo: "TITULO_SIMILITUD" };
   }
@@ -91,12 +92,23 @@ export function compararConExistente(
   },
   umbralTitulo = UMBRAL_SIMILITUD_TITULO,
 ): ResultadoCoincidencia {
-  if (sonDuplicadosPorDoi(candidata.doi, existente.doi)) {
+  const doiCandidata = limpiarDoi(candidata.doi);
+  const doiExistente = limpiarDoi(existente.doi);
+
+  if (doiCandidata && doiExistente) {
+    if (doiCandidata === doiExistente) {
+      return {
+        esDuplicado: true,
+        motivo: "DOI_EXACTO",
+        similitud: 1.0,
+        publicacionExistenteId: existente.id,
+      };
+    }
+    // Si ambos tienen DOI y difieren, son publicaciones distintas
     return {
-      esDuplicado: true,
-      motivo: "DOI_EXACTO",
-      similitud: 1.0,
-      publicacionExistenteId: existente.id,
+      esDuplicado: false,
+      motivo: null,
+      similitud: 0,
     };
   }
 
@@ -264,14 +276,32 @@ export function deduplicarLote(
     }
 
     // 2. Si no hubo coincidencia por DOI, buscar por similitud de título
+    // Solo se permite fusionar por título si NO hay conflicto de DOIs
     if (!destino && tituloNorm) {
       // Primero verificar título normalizado exacto
       const candidatosPorTitulo = indicePorTituloNorm.get(tituloNorm);
       if (candidatosPorTitulo && candidatosPorTitulo.length > 0) {
-        destino = candidatosPorTitulo[0];
-      } else {
-        // Búsqueda por similitud de trigramas
+        for (const candidato of candidatosPorTitulo) {
+          // Si ambos tienen DOI y difieren, son obras distintas
+          if (doiLimpio && candidato.doi && doiLimpio !== candidato.doi) {
+            continue;
+          }
+          // Si ambos tienen año y difieren por más de 1 año, son obras distintas (ej. "Editorial" 2019 vs 2024)
+          if (candidata.anio && candidato.anio && Math.abs(candidata.anio - candidato.anio) > 1) {
+            continue;
+          }
+          destino = candidato;
+          break;
+        }
+      }
+
+      // Si no hubo coincidencia exacta de título compatible, buscar por similitud de trigramas
+      if (!destino) {
         for (const item of consolidadas) {
+          // Si ambos tienen DOI y difieren, son obras distintas
+          if (doiLimpio && item.doi && doiLimpio !== item.doi) {
+            continue;
+          }
           const resultado = sonDuplicadosPorTitulo(
             candidata.titulo,
             item.titulo,

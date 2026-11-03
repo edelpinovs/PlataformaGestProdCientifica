@@ -144,7 +144,7 @@ export async function consultarOrcid(
     for (const w of summaries) {
       const pub = mapearObraOrcid(g, w, profesor.id, nombreCompleto);
       if (pub) {
-        if (anio && pub.anio && pub.anio !== anio) {
+        if (anio && pub.anio !== anio) {
           continue;
         }
         publicaciones.push(pub);

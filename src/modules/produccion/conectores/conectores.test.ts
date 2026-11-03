@@ -1,9 +1,17 @@
-import { describe, expect, it } from "vitest";
-import { mapearEntradaScopus, mapearTipoScopus } from "./scopus";
-import { mapearObraOpenAlex, mapearTipoOpenAlex } from "./openalex";
-import { mapearObraOrcid, mapearTipoOrcid } from "./orcid";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { consultarIndiceH, consultarScopus, mapearEntradaScopus, mapearTipoScopus } from "./scopus";
+import { consultarOpenAlex, mapearObraOpenAlex, mapearTipoOpenAlex } from "./openalex";
+import { consultarOrcid, mapearObraOrcid, mapearTipoOrcid } from "./orcid";
+import { enriquecerLoteConCrossref, requiereEnriquecimientoAutores } from "./crossref";
+import type { PublicacionCandidata } from "../tipos";
+
+function respuestaJson(cuerpo: unknown) {
+  return new Response(JSON.stringify(cuerpo), { status: 200, headers: { "content-type": "application/json" } });
+}
 
 describe("conectores de fuentes externas (RF-020)", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
   describe("conector Scopus", () => {
     it("mapea tipos de documento de Scopus adecuadamente", () => {
       expect(mapearTipoScopus("Article")).toBe("ARTICULO");
@@ -48,6 +56,54 @@ describe("conectores de fuentes externas (RF-020)", () => {
     it("descarta entradas sin título", () => {
       expect(mapearEntradaScopus({}, 1)).toBeNull();
     });
+
+    it("3b. Scopus: un profesor con 150 obras devuelve las 150 paginadas", async () => {
+      const fetchFalso = vi.fn(async (url: string) => {
+        const inicio = Number(new URL(url).searchParams.get("start") ?? 0);
+        const n = Math.max(0, Math.min(100, 150 - inicio));
+        return respuestaJson({
+          "search-results": {
+            "opensearch:totalResults": "150",
+            entry: Array.from({ length: n }, (_, i) => ({ "dc:title": `Obra ${inicio + i}` })),
+          },
+        });
+      });
+      vi.stubGlobal("fetch", fetchFalso);
+      const r = await consultarScopus({ id: 1, scopusId: "57200000000" }, undefined, "clave-ficticia");
+      expect(r.publicaciones).toHaveLength(150);
+    });
+
+    it("consulta el índice H de un autor en Scopus", async () => {
+      const fetchFalso = vi.fn(async () =>
+        respuestaJson({
+          "author-retrieval-response": [
+            {
+              "@status": "found",
+              "h-index": "18",
+              "coredata": { "document-count": "45", "citation-count": "1150" },
+            },
+          ],
+        }),
+      );
+      vi.stubGlobal("fetch", fetchFalso);
+
+      const cache = new Map<string, number | null>();
+      const r = await consultarIndiceH("57200000000", "clave-ficticia", cache);
+
+      expect(r.indiceH).toBe(18);
+      expect(fetchFalso).toHaveBeenCalledTimes(1);
+
+      // Segunda llamada usa caché sin hacer fetch
+      const r2 = await consultarIndiceH("57200000000", "clave-ficticia", cache);
+      expect(r2.indiceH).toBe(18);
+      expect(fetchFalso).toHaveBeenCalledTimes(1);
+    });
+
+    it("devuelve error NO_API_KEY si no hay clave configurada", async () => {
+      const r = await consultarIndiceH("57200000000", "");
+      expect(r.error).toBe("NO_API_KEY");
+      expect(r.indiceH).toBeNull();
+    });
   });
 
   describe("conector OpenAlex", () => {
@@ -91,6 +147,21 @@ describe("conectores de fuentes externas (RF-020)", () => {
       expect(resultado?.anio).toBe(2022);
       expect(resultado?.citas).toBe(58);
       expect(resultado?.fuente).toBe("OPENALEX");
+    });
+
+    it("3a. OpenAlex: un profesor con 150 obras devuelve las 150 con cursor", async () => {
+      const obras = (desde: number, n: number) =>
+        Array.from({ length: n }, (_, i) => ({ title: `Obra ${desde + i}`, publication_year: 2024 }));
+      const fetchFalso = vi.fn(async (url: string) => {
+        const pagina = new URL(url).searchParams.get("cursor") === "pag2" ? 2 : 1;
+        return respuestaJson({
+          meta: { count: 150, next_cursor: pagina === 1 ? "pag2" : null },
+          results: pagina === 1 ? obras(0, 100) : obras(100, 50),
+        });
+      });
+      vi.stubGlobal("fetch", fetchFalso);
+      const r = await consultarOpenAlex({ id: 1, orcid: "0000-0001-2345-6789" });
+      expect(r.publicaciones).toHaveLength(150);
     });
   });
 
@@ -143,6 +214,88 @@ describe("conectores de fuentes externas (RF-020)", () => {
       expect(resultado?.anio).toBe(2024);
       expect(resultado?.autoresTexto).toBe("Cervantes, José Antonio");
       expect(resultado?.fuente).toBe("ORCID");
+    });
+
+    it("no incluye obras sin año cuando se pide un año concreto", async () => {
+      const resumen = (titulo: string, anio?: string) => ({
+        title: { title: { value: titulo } },
+        type: "journal-article",
+        "publication-date": anio ? { year: { value: anio } } : null,
+      });
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () =>
+          respuestaJson({
+            group: [
+              { "work-summary": [resumen("Obra de 2024", "2024")] },
+              { "work-summary": [resumen("Obra sin fecha")] },
+            ],
+          }),
+        ),
+      );
+      const r = await consultarOrcid({ id: 1, orcid: "0000-0001-2345-6789" }, 2024);
+      expect(r.publicaciones.map((p) => p.titulo)).toEqual(["Obra de 2024"]);
+    });
+  });
+
+  describe("conector Crossref · enriquecimiento de autores (RF-020)", () => {
+    it("detecta que una publicación de Scopus con un solo autor requiere enriquecimiento", () => {
+      const pub: PublicacionCandidata = {
+        tipo: "ARTICULO",
+        titulo: "Test",
+        doi: "10.1000/1",
+        autoresTexto: "Pérez, J.",
+        fuente: "SCOPUS",
+        profesorId: 1,
+      };
+      expect(requiereEnriquecimientoAutores(pub)).toBe(true);
+    });
+
+    it("no requiere enriquecimiento si ya tiene múltiples autores", () => {
+      const pub: PublicacionCandidata = {
+        tipo: "ARTICULO",
+        titulo: "Test",
+        doi: "10.1000/1",
+        autoresTexto: "Pérez, J.; Gómez, A.; López, C.",
+        fuente: "SCOPUS",
+        profesorId: 1,
+      };
+      expect(requiereEnriquecimientoAutores(pub)).toBe(false);
+    });
+
+    it("enriquece un lote mixto: solo completa las que tienen DOI y un autor", async () => {
+      const fetchFalso = vi.fn(async () =>
+        new Response(
+          JSON.stringify({
+            status: "ok",
+            message: {
+              author: [
+                { family: "Ávila-George", given: "Himer" },
+                { family: "Morales", given: "Roberto" },
+                { family: "Sorcia-Vázquez", given: "Felipe" },
+              ],
+            },
+          }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        ),
+      );
+      vi.stubGlobal("fetch", fetchFalso);
+
+      const lote: PublicacionCandidata[] = [
+        // Scopus vista estándar: solo primer autor → necesita enriquecimiento
+        { tipo: "ARTICULO", titulo: "Obra A", doi: "10.1016/j.eswa.2023.120000", autoresTexto: "Ávila-George, H.", fuente: "SCOPUS", profesorId: 1 },
+        // OpenAlex ya con múltiples autores → no necesita enriquecimiento
+        { tipo: "ARTICULO", titulo: "Obra B", doi: "10.1109/access.2022.1", autoresTexto: "Autor, A.; Autor, B.", fuente: "OPENALEX", profesorId: 1 },
+        // Sin DOI → no se puede enriquecer
+        { tipo: "ARTICULO", titulo: "Obra C", autoresTexto: "García, María.", fuente: "SCOPUS", profesorId: 1 },
+      ];
+
+      const enriquecidas = await enriquecerLoteConCrossref(lote);
+
+      expect(enriquecidas).toBe(1);
+      expect(lote[0].autoresTexto).toBe("Ávila-George, Himer; Morales, Roberto; Sorcia-Vázquez, Felipe");
+      expect(lote[1].autoresTexto).toBe("Autor, A.; Autor, B."); // sin cambio
+      expect(lote[2].autoresTexto).toBe("García, María.");       // sin cambio
     });
   });
 });

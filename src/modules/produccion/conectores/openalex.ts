@@ -123,30 +123,41 @@ export async function consultarOpenAlex(
   }
 
   const apiKey = apiKeyParam || process.env.OPENALEX_API_KEY;
-  const params: Record<string, string | number | undefined> = {
-    filter: filtros.join(","),
-    per_page: 100,
-  };
-  if (apiKey) {
-    params["api_key"] = apiKey;
-  }
-
-  const resp = await fetchJsonConReintentos<{ results: Record<string, unknown>[] }>(URL_OPENALEX_WORKS, {
-    params,
-  });
-
-  if (!resp.data) {
-    return { publicaciones: [], error: resp.error || `HTTP_${resp.status}` };
-  }
-
-  const results = resp.data.results || [];
   const publicaciones: PublicacionCandidata[] = [];
+  let cursor: string | null = "*";
 
-  for (const w of results) {
-    const pub = mapearObraOpenAlex(w, profesor.id);
-    if (pub) {
-      publicaciones.push(pub);
+  while (cursor) {
+    const params: Record<string, string | number | undefined> = {
+      filter: filtros.join(","),
+      per_page: 100,
+      cursor,
+    };
+    if (apiKey) {
+      params["api_key"] = apiKey;
     }
+
+    const resp = await fetchJsonConReintentos<{
+      meta?: { next_cursor?: string | null };
+      results?: Record<string, unknown>[];
+    }>(URL_OPENALEX_WORKS, {
+      params,
+    });
+
+    if (!resp.data) {
+      if (publicaciones.length > 0) break;
+      return { publicaciones: [], error: resp.error || `HTTP_${resp.status}` };
+    }
+
+    const results = resp.data.results || [];
+    for (const w of results) {
+      const pub = mapearObraOpenAlex(w, profesor.id);
+      if (pub) {
+        publicaciones.push(pub);
+      }
+    }
+
+    cursor = resp.data.meta?.next_cursor ?? null;
+    if (results.length === 0) break;
   }
 
   return { publicaciones };

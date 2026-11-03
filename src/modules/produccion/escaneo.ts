@@ -1,19 +1,70 @@
 // Orquestador del motor de escaneo de producción científica (RF-020, RF-021, RF-022, RNF-001).
-import { prisma } from "@/lib/prisma";
+// Diseñado como lógica de dominio pura que delega la persistencia al RepositorioProduccion.
+
 import { consultarOpenAlex } from "./conectores/openalex";
 import { consultarOrcid } from "./conectores/orcid";
 import { consultarScopus } from "./conectores/scopus";
-import {
-  deduplicarLote,
-  sonDuplicadosPorTitulo,
-} from "./deduplicacion";
-import type { PublicacionCandidata, PublicacionConsolidada } from "./tipos";
+import { enriquecerLoteConCrossref } from "./conectores/crossref";
+import { deduplicarLote } from "./deduplicacion";
+import type {
+  FuentePublicacion,
+  PublicacionCandidata,
+  PublicacionConsolidada,
+} from "./tipos";
+
+export type ProfesorParaEscaneo = {
+  id: number;
+  nombres: string;
+  apellidos: string;
+  scopusId?: string | null;
+  orcid?: string | null;
+  scholarId?: string | null;
+};
+
+export type PublicacionExistente = {
+  id: number;
+  titulo: string;
+  doi?: string | null;
+  fechaPublicacion?: Date | null;
+  revistaEditorial?: string | null;
+  isbnIssn?: string | null;
+};
+
+export type RepositorioProduccion = {
+  obtenerProfesores: (filtro: {
+    profesorId?: number;
+    limite?: number;
+    offset?: number;
+  }) => Promise<ProfesorParaEscaneo[]>;
+  buscarPorDoi: (doi: string) => Promise<PublicacionExistente | null>;
+  buscarSimilares: (titulo: string, tituloNormalizado: string) => Promise<PublicacionExistente[]>;
+  persistirOActualizar: (item: PublicacionConsolidada) => Promise<number>;
+  vincularAutoria: (publicacionId: number, profesorId: number) => Promise<boolean>;
+  actualizarJob?: (
+    jobId: number,
+    datos: {
+      estado?: "EN_PROCESO" | "COMPLETADO" | "FALLIDO";
+      total?: number;
+      avance?: number;
+      error?: string | null;
+      datos?: unknown;
+    },
+  ) => Promise<void>;
+  obtenerUltimoCorte?: (profesorId: number, fuente: FuentePublicacion) => Promise<Date | null>;
+  registrarCorte?: (profesorId: number, fuente: FuentePublicacion, fecha?: Date) => Promise<void>;
+};
 
 export type OpcionesEscaneo = {
   profesorId?: number;
   anio?: number;
   fuentes?: ("SCOPUS" | "OPENALEX" | "ORCID")[];
   jobId?: number;
+  /** Si es true, enriquece los autores con Crossref cuando Scopus solo entrega el primer autor (vista estándar). Activo por defecto. */
+  enriquecerAutores?: boolean;
+  /** Límite de profesores a procesar en una sola ejecución para cumplir con el timeout de Vercel (Hallazgo 2a) */
+  limiteProfesores?: number;
+  /** Desplazamiento inicial para procesamiento secuencial por lotes */
+  offsetProfesores?: number;
 };
 
 export type ResumenEscaneo = {
@@ -32,24 +83,8 @@ export type ResumenEscaneo = {
  */
 export async function ejecutarEscaneo(
   opciones?: OpcionesEscaneo,
+  repo?: RepositorioProduccion,
 ): Promise<ResumenEscaneo> {
-  const fuentesPermitidas = opciones?.fuentes ?? ["SCOPUS", "OPENALEX", "ORCID"];
-
-  // 1. Obtener los profesores a escanear (con sus identificadores)
-  const whereProfesor = opciones?.profesorId ? { id: opciones.profesorId } : { estatusLaboral: "ACTIVO" as const };
-  const profesores = await prisma.profesor.findMany({
-    where: whereProfesor,
-    select: {
-      id: true,
-      nombres: true,
-      apellidos: true,
-      scopusId: true,
-      orcid: true,
-      scholarId: true,
-    },
-    orderBy: { id: "asc" },
-  });
-
   const resumen: ResumenEscaneo = {
     profesoresProcesados: 0,
     publicacionesEncontradas: 0,
@@ -59,19 +94,29 @@ export async function ejecutarEscaneo(
     errores: [],
   };
 
+  if (!repo) {
+    return resumen;
+  }
+
+  const fuentesPermitidas = opciones?.fuentes ?? ["SCOPUS", "OPENALEX", "ORCID"];
+
+  // 1. Obtener los profesores a escanear (soporta lotes para cumplir con Vercel timeout - Hallazgo 2a)
+  const profesores = await repo.obtenerProfesores({
+    profesorId: opciones?.profesorId,
+    limite: opciones?.limiteProfesores,
+    offset: opciones?.offsetProfesores,
+  });
+
   if (profesores.length === 0) {
     return resumen;
   }
 
   // Actualizar Job si fue proporcionado
-  if (opciones?.jobId) {
-    await prisma.job.update({
-      where: { id: opciones.jobId },
-      data: {
-        estado: "EN_PROCESO",
-        total: profesores.length,
-        avance: 0,
-      },
+  if (opciones?.jobId && repo.actualizarJob) {
+    await repo.actualizarJob(opciones.jobId, {
+      estado: "EN_PROCESO",
+      total: profesores.length,
+      avance: 0,
     });
   }
 
@@ -79,89 +124,145 @@ export async function ejecutarEscaneo(
 
   // 2. Extraer publicaciones de fuentes externas por cada profesor
   for (const prof of profesores) {
-    // Escaneo desde Scopus
+    let huboErrorEnProfesor = false;
+
+    // Escaneo desde Scopus (incremental por CorteEscaneo - Hallazgo 3c)
     if (fuentesPermitidas.includes("SCOPUS") && (prof.scopusId || prof.orcid)) {
       try {
-        const res = await consultarScopus(prof, opciones?.anio);
+        let anioScopus = opciones?.anio;
+        if (!anioScopus) {
+          if (repo.obtenerUltimoCorte) {
+            const ultimoCorte = await repo.obtenerUltimoCorte(prof.id, "SCOPUS");
+            if (ultimoCorte) {
+              anioScopus = ultimoCorte.getUTCFullYear();
+            }
+          }
+          if (!anioScopus) {
+            anioScopus = new Date().getFullYear();
+          }
+        }
+
+        const res = await consultarScopus(prof, anioScopus);
         if (res.error && res.error !== "NO_API_KEY") {
           resumen.errores.push(`Scopus (Prof. ${prof.id}): ${res.error}`);
+          huboErrorEnProfesor = true;
+        } else {
+          todasCandidatas.push(...res.publicaciones);
+          if (repo.registrarCorte) {
+            await repo.registrarCorte(prof.id, "SCOPUS");
+          }
         }
-        todasCandidatas.push(...res.publicaciones);
       } catch (err: unknown) {
         resumen.errores.push(`Scopus (Prof. ${prof.id}): ${err instanceof Error ? err.message : String(err)}`);
+        huboErrorEnProfesor = true;
       }
     }
 
-    // Escaneo desde OpenAlex
+    // Escaneo desde OpenAlex (incremental por CorteEscaneo - Hallazgo 3c)
     if (fuentesPermitidas.includes("OPENALEX") && prof.orcid) {
       try {
-        const res = await consultarOpenAlex(prof, opciones?.anio);
+        let anioOA = opciones?.anio;
+        if (!anioOA) {
+          if (repo.obtenerUltimoCorte) {
+            const ultimoCorte = await repo.obtenerUltimoCorte(prof.id, "OPENALEX");
+            if (ultimoCorte) {
+              anioOA = ultimoCorte.getUTCFullYear();
+            }
+          }
+          if (!anioOA) {
+            anioOA = new Date().getFullYear();
+          }
+        }
+
+        const res = await consultarOpenAlex(prof, anioOA);
         if (res.error) {
           resumen.errores.push(`OpenAlex (Prof. ${prof.id}): ${res.error}`);
+          huboErrorEnProfesor = true;
+        } else {
+          todasCandidatas.push(...res.publicaciones);
+          if (repo.registrarCorte) {
+            await repo.registrarCorte(prof.id, "OPENALEX");
+          }
         }
-        todasCandidatas.push(...res.publicaciones);
       } catch (err: unknown) {
         resumen.errores.push(`OpenAlex (Prof. ${prof.id}): ${err instanceof Error ? err.message : String(err)}`);
+        huboErrorEnProfesor = true;
       }
     }
 
-    // Escaneo desde ORCID
+    // Escaneo desde ORCID (incremental por CorteEscaneo - Hallazgo 3c)
     if (fuentesPermitidas.includes("ORCID") && prof.orcid) {
       try {
-        const res = await consultarOrcid(prof, opciones?.anio);
+        let anioOrcid = opciones?.anio;
+        if (!anioOrcid) {
+          if (repo.obtenerUltimoCorte) {
+            const ultimoCorte = await repo.obtenerUltimoCorte(prof.id, "ORCID");
+            if (ultimoCorte) {
+              anioOrcid = ultimoCorte.getUTCFullYear();
+            }
+          }
+          if (!anioOrcid) {
+            anioOrcid = new Date().getFullYear();
+          }
+        }
+
+        const res = await consultarOrcid(prof, anioOrcid);
         if (res.error) {
           resumen.errores.push(`ORCID (Prof. ${prof.id}): ${res.error}`);
+          huboErrorEnProfesor = true;
+        } else {
+          todasCandidatas.push(...res.publicaciones);
+          if (repo.registrarCorte) {
+            await repo.registrarCorte(prof.id, "ORCID");
+          }
         }
-        todasCandidatas.push(...res.publicaciones);
       } catch (err: unknown) {
         resumen.errores.push(`ORCID (Prof. ${prof.id}): ${err instanceof Error ? err.message : String(err)}`);
+        huboErrorEnProfesor = true;
       }
     }
 
-    resumen.profesoresProcesados++;
+    if (!huboErrorEnProfesor || todasCandidatas.length > 0) {
+      resumen.profesoresProcesados++;
+    }
 
-    if (opciones?.jobId) {
-      await prisma.job.update({
-        where: { id: opciones.jobId },
-        data: { avance: resumen.profesoresProcesados },
+    if (opciones?.jobId && repo.actualizarJob) {
+      await repo.actualizarJob(opciones.jobId, {
+        avance: resumen.profesoresProcesados,
       });
     }
   }
 
   resumen.publicacionesEncontradas = todasCandidatas.length;
 
-  // 3. Deduplicar en memoria las publicaciones extraídas (RF-021, RF-022)
+  // 3. Enriquecer autores con Crossref para publicaciones con DOI y autores incompletos (RF-020)
+  //    Esto replica la lógica de autores_por_doi() en scripts/reporte_unificado.py
+  if (opciones?.enriquecerAutores !== false) {
+    try {
+      await enriquecerLoteConCrossref(todasCandidatas);
+    } catch (err: unknown) {
+      // Si Crossref falla no bloqueamos el escaneo: continuamos con los autores disponibles
+      console.warn("Aviso: enriquecimiento de autores con Crossref omitido:", err);
+    }
+  }
+
+  // 4. Deduplicar en memoria las publicaciones extraídas (RF-021, RF-022)
   const consolidadas = deduplicarLote(todasCandidatas);
 
-  // 4. Persistir o actualizar en la base de datos
+  // 5. Persistir o actualizar en la base de datos mediante el repositorio
   for (const consolidada of consolidadas) {
     if (consolidada.profesoresIds.length > 1) {
       resumen.coautoriasDetectadas++;
     }
 
     try {
-      const publicacionId = await persistirPublicacion(consolidada);
+      const publicacionId = await repo.persistirOActualizar(consolidada);
       resumen.publicacionesGuardadas++;
 
       // Registrar autoría para cada profesor vinculado (RF-022)
       for (const profId of consolidada.profesoresIds) {
-        const autoriaExistente = await prisma.autoria.findUnique({
-          where: {
-            publicacionId_profesorId: {
-              publicacionId,
-              profesorId: profId,
-            },
-          },
-        });
-
-        if (!autoriaExistente) {
-          await prisma.autoria.create({
-            data: {
-              publicacionId,
-              profesorId: profId,
-              estado: "PENDIENTE",
-            },
-          });
+        const creada = await repo.vincularAutoria(publicacionId, profId);
+        if (creada) {
           resumen.autoriasCreadas++;
         }
       }
@@ -170,83 +271,18 @@ export async function ejecutarEscaneo(
     }
   }
 
-  // 5. Finalizar Job si aplica
-  if (opciones?.jobId) {
-    await prisma.job.update({
-      where: { id: opciones.jobId },
-      data: {
-        estado: resumen.errores.length > 0 && resumen.publicacionesGuardadas === 0 ? "FALLIDO" : "COMPLETADO",
-        avance: resumen.profesoresProcesados,
-        datos: resumen as unknown as object,
-        error: resumen.errores.length > 0 ? resumen.errores.slice(0, 3).join("; ") : null,
-      },
+  // 6. Finalizar Job si aplica
+  if (opciones?.jobId && repo.actualizarJob) {
+    const estado =
+      resumen.errores.length > 0 && resumen.publicacionesGuardadas === 0 ? "FALLIDO" : "COMPLETADO";
+
+    await repo.actualizarJob(opciones.jobId, {
+      estado,
+      avance: resumen.profesoresProcesados,
+      datos: resumen as unknown as object,
+      error: resumen.errores.length > 0 ? resumen.errores.slice(0, 3).join("; ") : null,
     });
   }
 
   return resumen;
-}
-
-/**
- * Persiste o actualiza una publicación consolidada en la base de datos,
- * detectando duplicados existentes por DOI o similitud de título.
- */
-async function persistirPublicacion(item: PublicacionConsolidada): Promise<number> {
-  // A. Búsqueda por DOI exacto
-  if (item.doi) {
-    const porDoi = await prisma.publicacion.findUnique({
-      where: { doi: item.doi },
-      select: { id: true, revistaEditorial: true, isbnIssn: true, fechaPublicacion: true },
-    });
-
-    if (porDoi) {
-      // Complementar datos si estaban vacíos
-      await prisma.publicacion.update({
-        where: { id: porDoi.id },
-        data: {
-          revistaEditorial: porDoi.revistaEditorial || item.revistaEditorial,
-          isbnIssn: porDoi.isbnIssn || item.isbnIssn,
-          fechaPublicacion: porDoi.fechaPublicacion || item.fechaPublicacion,
-        },
-      });
-      return porDoi.id;
-    }
-  }
-
-  // B. Búsqueda por similitud o igualdad de título normalizado
-  const candidatosTitulo = await prisma.publicacion.findMany({
-    where: {
-      tituloNormalizado: item.tituloNormalizado,
-    },
-    select: { id: true, titulo: true, doi: true, fechaPublicacion: true },
-    take: 5,
-  });
-
-  for (const c of candidatosTitulo) {
-    const anioExistente = c.fechaPublicacion ? c.fechaPublicacion.getUTCFullYear() : null;
-    const esDup = sonDuplicadosPorTitulo(item.titulo, c.titulo, item.anio, anioExistente);
-    if (esDup.esDuplicado) {
-      return c.id;
-    }
-  }
-
-  // C. Si no existía, crear nuevo registro de Publicacion
-  const nueva = await prisma.publicacion.create({
-    data: {
-      tipo: item.tipo,
-      titulo: item.titulo,
-      tituloNormalizado: item.tituloNormalizado,
-      doi: item.doi,
-      autoresTexto: item.autoresTexto,
-      revistaEditorial: item.revistaEditorial,
-      isbnIssn: item.isbnIssn,
-      fechaPublicacion: item.fechaPublicacion,
-      volumen: item.volumen,
-      paginas: item.paginas,
-      evidenciaUrl: item.evidenciaUrl,
-      fuente: item.fuentePrincipal,
-    },
-    select: { id: true },
-  });
-
-  return nueva.id;
 }

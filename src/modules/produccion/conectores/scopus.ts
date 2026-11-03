@@ -4,6 +4,7 @@ import type { PublicacionCandidata, TipoPublicacion } from "../tipos";
 import { fetchJsonConReintentos } from "./http";
 
 const URL_BUSQUEDA_SCOPUS = "https://api.elsevier.com/content/search/scopus";
+const URL_AUTOR_SCOPUS = "https://api.elsevier.com/content/author/author_id";
 
 /**
  * Mapea el subtipo de documento de Scopus a TipoPublicacion del modelo del sistema.
@@ -138,32 +139,99 @@ export async function consultarScopus(
   }
 
   const query = consultas[0];
-  const resp = await fetchJsonConReintentos<Record<string, unknown>>(URL_BUSQUEDA_SCOPUS, {
-    params: {
-      query,
-      count: 100,
-      start: 0,
-    },
+  const publicaciones: PublicacionCandidata[] = [];
+  let start = 0;
+  const count = 100;
+  let totalResultados = Infinity;
+
+  while (start < totalResultados) {
+    const resp = await fetchJsonConReintentos<Record<string, unknown>>(URL_BUSQUEDA_SCOPUS, {
+      params: {
+        query,
+        count,
+        start,
+      },
+      headers: {
+        "X-ELS-APIKey": apiKey,
+      },
+    });
+
+    if (!resp.data) {
+      if (publicaciones.length > 0) break;
+      return { publicaciones: [], error: resp.error || `HTTP_${resp.status}` };
+    }
+
+    const searchResults = (resp.data["search-results"] as Record<string, unknown>) || {};
+    const totalRaw = searchResults["opensearch:totalResults"];
+    if (totalRaw !== undefined) {
+      totalResultados = parseInt(String(totalRaw), 10) || 0;
+    }
+
+    const entries = (searchResults["entry"] as Record<string, unknown>[]) || [];
+    if (entries.length === 0) break;
+
+    for (const e of entries) {
+      if (e["error"]) continue;
+      const pub = mapearEntradaScopus(e, profesor.id);
+      if (pub) {
+        publicaciones.push(pub);
+      }
+    }
+
+    start += entries.length;
+  }
+
+  return { publicaciones };
+}
+
+/**
+ * Consulta el índice H de un autor en Scopus a partir de su Scopus ID (RF-020).
+ * Replica la función indice_h() de scripts/reporte_unificado.py.
+ */
+export async function consultarIndiceH(
+  scopusId: string,
+  apiKeyParam?: string,
+  cache?: Map<string, number | null>,
+): Promise<{ indiceH: number | null; error?: string }> {
+  const scopusIdLimpio = scopusId.replace(/\.0$/, "").trim();
+  if (!scopusIdLimpio) {
+    return { indiceH: null };
+  }
+
+  if (cache?.has(scopusIdLimpio)) {
+    return { indiceH: cache.get(scopusIdLimpio) ?? null };
+  }
+
+  const apiKey = apiKeyParam || process.env.SCOPUS_API_KEY;
+  if (!apiKey) {
+    return { indiceH: null, error: "NO_API_KEY" };
+  }
+
+  const url = `${URL_AUTOR_SCOPUS}/${encodeURIComponent(scopusIdLimpio)}`;
+  const resp = await fetchJsonConReintentos<Record<string, unknown>>(url, {
     headers: {
       "X-ELS-APIKey": apiKey,
     },
   });
 
   if (!resp.data) {
-    return { publicaciones: [], error: resp.error || `HTTP_${resp.status}` };
+    cache?.set(scopusIdLimpio, null);
+    return { indiceH: null, error: resp.error || `HTTP_${resp.status}` };
   }
 
-  const searchResults = (resp.data["search-results"] as Record<string, unknown>) || {};
-  const entries = (searchResults["entry"] as Record<string, unknown>[]) || [];
+  const responseArray = resp.data["author-retrieval-response"] as Record<string, unknown>[] | undefined;
+  const first = Array.isArray(responseArray) && responseArray.length > 0 ? responseArray[0] : undefined;
+  const rawH = first?.["h-index"];
 
-  const publicaciones: PublicacionCandidata[] = [];
-  for (const e of entries) {
-    if (e["error"]) continue;
-    const pub = mapearEntradaScopus(e, profesor.id);
-    if (pub) {
-      publicaciones.push(pub);
+  let indiceH: number | null = null;
+  if (rawH !== undefined && rawH !== null) {
+    const parsed = parseInt(String(rawH), 10);
+    if (!isNaN(parsed) && parsed >= 0) {
+      indiceH = parsed;
     }
   }
 
-  return { publicaciones };
+  cache?.set(scopusIdLimpio, indiceH);
+  return { indiceH };
 }
+

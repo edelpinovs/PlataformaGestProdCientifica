@@ -222,5 +222,76 @@ describe("deduplicacion (RF-021, RF-022, RNF-004)", () => {
       const consolidadas = deduplicarLote([pub1, pub2]);
       expect(consolidadas).toHaveLength(2);
     });
+
+    it("1a. mismo título exacto pero años lejanos (2019 y 2024) son dos obras", () => {
+      const r = deduplicarLote([
+        {
+          tipo: "ARTICULO",
+          titulo: "Editorial",
+          autoresTexto: "Pérez, Ana",
+          fuente: "OPENALEX",
+          profesorId: 1,
+          anio: 2019,
+          doi: "10.1000/ed.2019",
+        },
+        {
+          tipo: "ARTICULO",
+          titulo: "Editorial",
+          autoresTexto: "Pérez, Ana",
+          fuente: "OPENALEX",
+          profesorId: 1,
+          anio: 2024,
+          doi: "10.1000/ed.2024",
+        },
+      ]);
+      expect(r).toHaveLength(2);
+    });
+
+    it("1b. títulos casi iguales del mismo año con DOI distinto son dos obras", () => {
+      const r = deduplicarLote([
+        {
+          tipo: "ARTICULO",
+          titulo: "Machine learning for crop yield prediction in Jalisco",
+          autoresTexto: "Pérez, Ana",
+          fuente: "OPENALEX",
+          profesorId: 1,
+          anio: 2024,
+          doi: "10.1000/a",
+        },
+        {
+          tipo: "ARTICULO",
+          titulo: "Machine learning for crop yield prediction in Jalisco.",
+          autoresTexto: "Pérez, Ana",
+          fuente: "OPENALEX",
+          profesorId: 1,
+          anio: 2024,
+          doi: "10.1000/b",
+        },
+      ]);
+      expect(r).toHaveLength(2);
+    });
+
+    it("control: misma obra en dos fuentes, una sin DOI, sí se fusiona", () => {
+      const r = deduplicarLote([
+        {
+          tipo: "ARTICULO",
+          titulo: "Machine learning for crop yield prediction in Jalisco",
+          autoresTexto: "Pérez, Ana",
+          fuente: "OPENALEX",
+          profesorId: 1,
+          anio: 2024,
+          doi: "10.1000/a",
+        },
+        {
+          tipo: "ARTICULO",
+          fuente: "ORCID",
+          titulo: "Machine Learning for Crop Yield Prediction in Jalisco",
+          autoresTexto: "Pérez, Ana",
+          profesorId: 1,
+          anio: 2024,
+        },
+      ]);
+      expect(r).toHaveLength(1);
+    });
   });
 });

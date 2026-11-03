@@ -83,7 +83,11 @@ export default async function ProduccionPage() {
       {/* Listado de publicaciones */}
       <Panel
         titulo={`Publicaciones escaneadas y unificadas (${totalPublicaciones})`}
-        descripcion="Resultados consolidados en la base de datos tras el proceso de deduplicación (RF-021, RF-022)."
+        descripcion={
+          totalPublicaciones > 50
+            ? `Mostrando las 50 más recientes de ${totalPublicaciones} registradas en la base de datos tras la deduplicación (RF-021, RF-022).`
+            : "Resultados consolidados en la base de datos tras el proceso de deduplicación (RF-021, RF-022)."
+        }
       >
         {publicaciones.length === 0 ? (
           <EstadoVacio>
