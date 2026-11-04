@@ -9,6 +9,7 @@
 | Fecha de la prueba | 2026-10-19 |
 | Probó | Edel Pino (con Claude Code) |
 | Entorno | Local (Windows 10, Node 24.15.0), copia aislada de la rama (`git worktree`). Sin base de datos, sin `next dev` y sin llamadas reales a Scopus, OpenAlex ni ORCID. |
+| Segunda revisión | 2026-11-03, sobre `c2aa5b7` (sección 9) |
 | Resultado | **Cambios solicitados.** La suite del PR pasa completa (91 de 91), pero 9 de las 11 pruebas de revisión fallan (sección 4). |
 
 ## 1. Alcance del cambio
@@ -369,3 +370,91 @@ describe("Notas 2 y 6 · Server Action iniciarEscaneoAction", () => {
 ```
 
 </details>
+
+## 9. Segunda revisión (2026-11-03, commit `c2aa5b7`)
+
+Irelys subió `c2aa5b7` ("correcciones de revisión PR #63, enriquecimiento Crossref, cuartiles Scopus y reporte unificado") después de la revisión de la sección 7. Se probó en una copia aislada de la rama (`git worktree`), con las mismas limitaciones de la sección 6: sin base de datos, sin `next dev` y sin llamadas reales a las API.
+
+**Resultado: siguen los cambios solicitados.** Quedan resueltos casi todos los hallazgos; falta uno bloqueante (2a) y hay que decidir qué hacer con el cambio de alcance.
+
+### 9.1 Verificaciones automáticas
+
+| Verificación | Resultado |
+|---|---|
+| `npm test` | Correcto: 14 archivos, 147 pruebas (antes 91) |
+| `npm run lint` | Correcto: sin errores |
+| `npm run typecheck` | Correcto (tras `prisma generate` en la copia aislada) |
+| CI de GitHub (`verificar`) | Correcto |
+| Vista previa de Vercel | Correcto |
+| `npm run build` | No se corrió |
+
+### 9.2 Pruebas de revisión: 11 de 11 pasan
+
+El PR incorporó las pruebas de la sección 8 como `src/modules/produccion/revision-pr63.test.ts` y repitió 1a, 1b, 3a, 3b y la de ORCID en `deduplicacion.test.ts` y `conectores.test.ts`. Para que corra el alias `@/`, el PR agregó 6 líneas a `vitest.config.mts`.
+
+| # | Prueba | Antes | Ahora |
+|---|---|---|---|
+| 1a | Mismo título exacto de 2019 y 2024, con DOI distinto, son dos obras | ✗ | ✓ |
+| 1b | Títulos casi iguales del mismo año con DOI distinto son dos obras | ✗ | ✓ |
+| C1 | *Control:* la misma obra en dos fuentes, una sin DOI, se fusiona | ✓ | ✓ |
+| 3a | OpenAlex: un profesor con 150 obras devuelve las 150 | ✗ | ✓ |
+| 3b | Scopus: un profesor con 150 obras devuelve las 150 | ✗ | ✓ |
+| M1 | ORCID con filtro de año no incluye obras sin año | ✗ | ✓ |
+| C2 | *Control:* un escaneo correcto responde con éxito | ✓ | ✓ |
+| 2b | Si el escaneo lanza una excepción, el `Job` queda `FALLIDO` | ✗ | ✓ |
+| 6a | No muestra a la persona el mensaje técnico de la excepción | ✗ | ✓ |
+| 6b | Si todas las fuentes fallan, no responde con éxito | ✗ | ✓ |
+| 6c | Rechaza un año fuera de rango en vez de escanear todos los años | ✗ | ✓ |
+
+### 9.3 Pruebas nuevas del PR (sin relación con los hallazgos)
+
+| Archivo | Pruebas | Cubre |
+|---|---|---|
+| `conectores/crossref.test.ts` | 13 | Conector de Crossref: formato de autores, caché, DOI inválido, error 404, enriquecimiento de lotes |
+| `cuartiles.test.ts` | 19 | Normalización de cuartiles y ISSN, mapa de cuartiles, carga desde Excel, enriquecimiento |
+| `reportes/unificado.test.ts` | 2 | Conversión a reporte y generación del libro Excel |
+| `conectores/conectores.test.ts` | +8 | Paginación de Scopus y OpenAlex, índice H y falta de clave de Scopus, filtro de año de ORCID, enriquecimiento con Crossref |
+| `deduplicacion.test.ts` | +3 | Casos 1a, 1b y control |
+
+Los 147 pasan. Siguen sin prueba automática `escaneo.ts`, `repositorio.ts` y la ruta del cron: dependen de la base.
+
+### 9.4 Estado de los hallazgos
+
+| # | Hallazgo | Estado | Cómo se comprobó |
+|---|---|---|---|
+| 1a, 1b | `deduplicarLote` une obras distintas | Resuelto | Pruebas |
+| 3a, 3b | Solo la primera página | Resuelto | Pruebas (OpenAlex con `cursor`, Scopus con `start`) |
+| 2b | `Job` queda `EN_PROCESO` | Resuelto | Prueba en la acción; el cron ahora tiene `catch` que lo marca `FALLIDO` (leído, sin prueba) |
+| 6a, 6b, 6c, M1 | Acción sin Zod, mensaje técnico, éxito falso, año fuera de rango, ORCID | Resuelto | Pruebas |
+| 3c | Escaneo no incremental | Resuelto | Solo lectura: `escaneo.ts` consulta `obtenerUltimoCorte` y registra `registrarCorte` por profesor y fuente. Usa el **año** del último corte, no la fecha |
+| 4 | Similitud ≥ 0.90 contra lo guardado | Resuelto, sin probar en la base | Solo lectura: `buscarSimilares` usa `%` y `similarity()`. La extensión `pg_trgm` y el índice GIN ya vienen en la migración inicial. Si la consulta falla, cae sin avisar a coincidencia exacta (`catch {}`) |
+| 5 | `prisma` dentro de `src/modules/` | Resuelto | `escaneo.ts` recibe un repositorio; el acceso a Prisma pasó a `src/app/produccion/repositorio.ts` |
+| 7 | Justificación de #59 | Resuelto | Está en `src/modules/produccion/README.md`. Falta que quede también en el issue |
+| 8 | `.env.example` | Resuelto | El archivo cambió en el PR |
+| **2a** | Escaneo de todos los profesores en una petición | **Abierto (bloqueante)** | Solo lectura, ver abajo |
+
+### 9.5 Hallazgos nuevos
+
+| # | Hallazgo | Gravedad |
+|---|---|---|
+| 12 | **El lote del cron no rota.** `ejecutarEscaneo` acepta `offsetProfesores`, pero la ruta del cron solo pasa `limiteProfesores: 25` y `obtenerProfesores` ordena por `id`. Cada día se escanean los mismos 25 primeros profesores activos; del 26 en adelante nunca. | Bloqueante |
+| 13 | **La acción manual con "todos" no tiene lote ni `maxDuration`.** Sigue siendo una sola petición para todos los profesores. | Bloqueante junto con el 12 |
+| 14 | **Cambio de alcance.** El commit agrega Crossref, cuartiles Scopus (RF-026) y `src/modules/reportes/unificado.ts` (RF-022/RF-026), además de `vitest.config.mts` y `package-lock.json`. `reportes` es de otro módulo y `unificado.ts` trae 388 líneas; AGENTS.md pide acordarlo antes. Si usa una librería de Excel nueva, también requiere acuerdo del equipo. | Regla del equipo |
+| 15 | El `catch` de `buscarSimilares` oculta cualquier fallo de la consulta con `pg_trgm`; la deduplicación degrada a título exacto sin registrar nada. | Menor |
+
+Los hallazgos 9, 10 y 11 de la sección 5 no se volvieron a revisar.
+
+### 9.6 Lo que no se probó
+
+- La pantalla `/produccion` en el navegador (tema claro, oscuro y celular).
+- Un escaneo real contra Scopus, OpenAlex, ORCID o Crossref.
+- La consulta con `similarity()` contra la base de desarrollo, y el comportamiento del cron en Vercel.
+- `npm run build`.
+
+### 9.7 Dictamen
+
+**Cambios solicitados, con avance claro.** Antes de integrar:
+
+1. Hacer que el lote del cron avance (por ejemplo, ordenando por el corte más antiguo o guardando el `offset`), y limitar o repartir el escaneo manual de "todos" (hallazgos 2a, 12 y 13).
+2. Acordar en el chat del equipo el cambio de alcance (hallazgo 14), o separar Crossref, cuartiles y reporte unificado en otro PR.
+3. Dejar escrita en el issue la justificación de #59.

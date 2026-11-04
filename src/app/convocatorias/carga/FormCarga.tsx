@@ -11,7 +11,9 @@ import {
   Icono,
   Panel,
 } from "@/components/ui";
-import { subirResultados, type EstadoCarga } from "./actions";
+import { createClient } from "@/lib/supabase/client";
+import { BUCKET } from "@/modules/convocatorias/carga";
+import { prepararCarga, registrarCarga, type EstadoCarga } from "./actions";
 
 const ICONO_SUBIR = "M4 16v1a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-1m-4-8-4-4m0 0L8 8m4-4v12";
 const ICONO_ARCHIVO = "M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.5L19 7.5V19a2 2 0 0 1-2 2z";
@@ -19,11 +21,42 @@ const ICONO_CHECK = "M5 13l4 4L19 7";
 
 export default function FormCarga() {
   const anioActual = new Date().getFullYear();
-  const [estado, accion, enviando] = useActionState<EstadoCarga, FormData>(subirResultados, {});
-
   const [programa, setPrograma] = useState<"SNII" | "PRODEP">("SNII");
   const [archivo, setArchivo] = useState<File | null>(null);
   const [arrastrando, setArrastrando] = useState(false);
+
+  // El archivo no pasa por la Server Action (Vercel acepta 4.5 MB por petición):
+  // el servidor valida y firma, el navegador sube a Storage y el servidor registra.
+  async function cargar(_previo: EstadoCarga, formData: FormData): Promise<EstadoCarga> {
+    if (!archivo) return { errors: ["Elige el archivo de resultados."] };
+
+    const preparacion = await prepararCarga({
+      programa: String(formData.get("programa") ?? ""),
+      anio: String(formData.get("anio") ?? ""),
+      nombreArchivo: archivo.name,
+      tipo: archivo.type,
+      tamano: archivo.size,
+    });
+    if ("errors" in preparacion) return preparacion;
+
+    // Con un File, Storage usa el tipo que trae el archivo e ignora contentType; si el navegador
+    // no lo informó, el bucket lo rechazaría. Se envía con el tipo que validó el servidor.
+    const cuerpo = new Blob([archivo], { type: preparacion.tipo });
+    const { error } = await createClient()
+      .storage.from(BUCKET)
+      .uploadToSignedUrl(preparacion.ruta, preparacion.token, cuerpo, { contentType: preparacion.tipo });
+    if (error) return { errors: ["No se pudo subir el archivo. Revisa tu conexión e inténtalo de nuevo."] };
+
+    const resultado = await registrarCarga({
+      programa: preparacion.programa,
+      anio: preparacion.anio,
+      ruta: preparacion.ruta,
+    });
+    if (resultado.registrada) setArchivo(null);
+    return resultado;
+  }
+
+  const [estado, accion, enviando] = useActionState<EstadoCarga, FormData>(cargar, {});
 
   function formatearTamano(bytes: number) {
     if (bytes < 1024 * 1024) {
@@ -186,8 +219,8 @@ export default function FormCarga() {
 
           {archivo && archivo.size > 10 * 1024 * 1024 && (
             <p className="mt-2 text-xs text-texto-3">
-              Documento extenso ({formatearTamano(archivo.size)}). Se guardará en Storage y
-              se encolará para procesamiento asíncrono.
+              Documento extenso ({formatearTamano(archivo.size)}). La subida puede tardar unos
+              minutos; no cierres esta página.
             </p>
           )}
         </div>
@@ -197,11 +230,11 @@ export default function FormCarga() {
             Cancelar
           </Link>
           <button type="submit" disabled={enviando || !archivo} className={claseBoton}>
-            {enviando ? "Guardando en Storage…" : "Cargar archivo oficial"}
+            {enviando ? "Subiendo archivo…" : "Cargar archivo oficial"}
           </button>
         </div>
 
-        {estado?.errors && (
+        {estado.errors && (
           <div className="grid gap-2">
             {estado.errors.map((e, i) => (
               <Aviso key={i} tipo="error">
@@ -211,19 +244,14 @@ export default function FormCarga() {
           </div>
         )}
 
-        {estado?.ok && (
+        {estado.registrada && (
           <div className="flex flex-col gap-3">
             <Aviso tipo="exito">
               <span className="flex items-center gap-2">
                 <Icono d={ICONO_CHECK} />
-                <span>
-                  Archivo cargado correctamente y registrado para procesamiento.
-                </span>
+                <span>Se cargó «{estado.registrada}». Queda en espera para leer su contenido.</span>
               </span>
             </Aviso>
-            <div className="rounded-xl bg-superficie-alt p-3 text-xs text-texto-3 font-mono">
-              Ruta en Storage: {estado.ruta}
-            </div>
             <div className="flex justify-end">
               <Link href="/convocatorias" className={claseBoton}>
                 Volver al listado
