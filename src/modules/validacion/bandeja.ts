@@ -27,6 +27,28 @@ export const ETIQUETA_FUENTE: Record<FuentePublicacion, string> = {
   MANUAL: "Captura manual",
 };
 
+// RF-024 / Permisos (RNF-005): El docente solo puede gestionar sus propias autorías.
+// Administrador y coordinador tienen permiso de gestión global.
+export type PerfilGestion = {
+  rol: string;
+  profesorId?: number | null;
+};
+
+export function puedeGestionarAutoria(
+  perfil: PerfilGestion,
+  profesorIds: number | number[],
+): boolean {
+  if (perfil.rol === "ADMINISTRADOR" || perfil.rol === "COORDINADOR") {
+    return true;
+  }
+  if (perfil.rol === "DOCENTE") {
+    if (!perfil.profesorId) return false;
+    const ids = Array.isArray(profesorIds) ? profesorIds : [profesorIds];
+    return ids.includes(perfil.profesorId);
+  }
+  return false;
+}
+
 // RF-024 / RF-025: Validación de transiciones de estado de autoría (CU-013).
 export function validarTransicionAutoria(
   estadoActual: EstadoAutoria,
@@ -114,7 +136,6 @@ export const edicionMetadatosBandejaEsquema = z.object({
     .pipe(
       z
         .string()
-        .min(1, "El título es obligatorio.")
         .min(3, "El título debe tener al menos 3 caracteres.")
         .max(500, "El título admite como máximo 500 caracteres."),
     ),
@@ -124,8 +145,7 @@ export const edicionMetadatosBandejaEsquema = z.object({
     .pipe(
       z
         .string()
-        .min(1, "Los autores son obligatorios.")
-        .min(3, "Indica al menos un autor con al menos 3 caracteres.")
+        .min(3, "Los autores son obligatorios y deben tener al menos 3 caracteres.")
         .max(500, "Los autores admiten como máximo 500 caracteres."),
     ),
   revistaEditorial: z

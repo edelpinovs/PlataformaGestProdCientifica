@@ -4,6 +4,7 @@ import {
   edicionMetadatosBandejaEsquema,
   ETIQUETA_ESTADO_AUTORIA,
   ETIQUETA_FUENTE,
+  puedeGestionarAutoria,
   validarTransicionAutoria,
   type AutoriaParaConteo,
 } from "./bandeja";
@@ -119,6 +120,38 @@ describe("RF-024 y RF-025: Bandeja de validación y conteo oficial", () => {
       if (res.success) {
         expect(res.data.doi).toBe("10.1000/182");
       }
+    });
+  });
+
+  describe("permisos de gestión de autorías (puedeGestionarAutoria)", () => {
+    it("permite a administradores gestionar cualquier autoría", () => {
+      expect(puedeGestionarAutoria({ rol: "ADMINISTRADOR" }, 10)).toBe(true);
+      expect(puedeGestionarAutoria({ rol: "ADMINISTRADOR", profesorId: null }, [1, 2])).toBe(true);
+    });
+
+    it("permite a coordinadores gestionar cualquier autoría", () => {
+      expect(puedeGestionarAutoria({ rol: "COORDINADOR" }, 25)).toBe(true);
+      expect(puedeGestionarAutoria({ rol: "COORDINADOR", profesorId: 10 }, [10, 20])).toBe(true);
+    });
+
+    it("permite a un docente gestionar su propia autoría", () => {
+      expect(puedeGestionarAutoria({ rol: "DOCENTE", profesorId: 42 }, 42)).toBe(true);
+      expect(puedeGestionarAutoria({ rol: "DOCENTE", profesorId: 42 }, [10, 42, 99])).toBe(true);
+    });
+
+    it("impide a un docente gestionar autorías de otros profesores", () => {
+      expect(puedeGestionarAutoria({ rol: "DOCENTE", profesorId: 42 }, 99)).toBe(false);
+      expect(puedeGestionarAutoria({ rol: "DOCENTE", profesorId: 42 }, [1, 2, 3])).toBe(false);
+    });
+
+    it("impide a un docente sin profesorId asociado gestionar cualquier autoría", () => {
+      expect(puedeGestionarAutoria({ rol: "DOCENTE", profesorId: null }, 10)).toBe(false);
+      expect(puedeGestionarAutoria({ rol: "DOCENTE", profesorId: undefined }, 10)).toBe(false);
+      expect(puedeGestionarAutoria({ rol: "DOCENTE" }, [10])).toBe(false);
+    });
+
+    it("rechaza roles no autorizados", () => {
+      expect(puedeGestionarAutoria({ rol: "INVITADO" }, 10)).toBe(false);
     });
   });
 });

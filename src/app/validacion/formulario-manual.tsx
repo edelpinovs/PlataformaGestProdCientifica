@@ -35,7 +35,11 @@ export function FormularioManual({ profesores, profesorPreseleccionadoId, esDoce
     <form ref={formularioRef} action={accion} className="flex flex-col gap-4">
       {estado.error && <Aviso tipo="error">{estado.error}</Aviso>}
       {estado.registrado && (
-        <Aviso tipo="exito">Se registró correctamente «{estado.registrado}».</Aviso>
+        <Aviso tipo="exito">
+          {estado.estadoAutoria === "PENDIENTE"
+            ? `Se registró «${estado.registrado}» y se envió a la bandeja del profesor para su confirmación.`
+            : `Se registró «${estado.registrado}» y se incorporó al conteo oficial.`}
+        </Aviso>
       )}
 
       {/* Selección de profesor si no es docente único */}

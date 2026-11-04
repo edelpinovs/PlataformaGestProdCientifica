@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  determinarEstadoInicialAutoria,
+  esFechaCalendarioValida,
+  esFechaFutura,
   ETIQUETAS_TIPO,
   motivoNoEliminablePublicacion,
   normalizar,
@@ -57,6 +60,25 @@ describe("RF-023: Captura manual de publicaciones", () => {
       expect(normalizarDoi("doi: 10.1000/182 ")).toBe("10.1000/182");
       expect(normalizarDoi("")).toBeNull();
       expect(normalizarDoi(null)).toBeNull();
+    });
+
+    it("valida la existencia real de fechas en el calendario gregoriano", () => {
+      expect(esFechaCalendarioValida("2026-05-15")).toBe(true);
+      expect(esFechaCalendarioValida("2024-02-29")).toBe(true); // Año bisiesto
+      expect(esFechaCalendarioValida("2023-02-29")).toBe(false); // No bisiesto
+      expect(esFechaCalendarioValida("2026-02-30")).toBe(false);
+      expect(esFechaCalendarioValida("2026-04-31")).toBe(false);
+      expect(esFechaCalendarioValida("2026-13-45")).toBe(false);
+      expect(esFechaCalendarioValida("1899-12-31")).toBe(false); // Previo a 1900
+      expect(esFechaCalendarioValida("formato-invalido")).toBe(false);
+    });
+
+    it("detecta fechas futuras con respecto a una fecha de referencia", () => {
+      const hoyReferencia = new Date("2026-11-04T12:00:00Z");
+      expect(esFechaFutura("2026-11-03", hoyReferencia)).toBe(false);
+      expect(esFechaFutura("2026-11-04", hoyReferencia)).toBe(false);
+      expect(esFechaFutura("2026-11-05", hoyReferencia)).toBe(true);
+      expect(esFechaFutura("2099-01-01", hoyReferencia)).toBe(true);
     });
   });
 
@@ -132,6 +154,37 @@ describe("RF-023: Captura manual de publicaciones", () => {
       expect(buenaFecha.success).toBe(true);
     });
 
+    it("rechaza fechas con formato válido pero inexistentes en el calendario", () => {
+      const fechaInexistenteMes = publicacionManualEsquema.safeParse({
+        ...datosValidos,
+        fechaPublicacion: "2026-13-45",
+      });
+      expect(fechaInexistenteMes.success).toBe(false);
+      if (!fechaInexistenteMes.success) {
+        expect(fechaInexistenteMes.error.issues[0].message).toContain("no existe en el calendario");
+      }
+
+      const fechaFebreroInvalida = publicacionManualEsquema.safeParse({
+        ...datosValidos,
+        fechaPublicacion: "2026-02-30",
+      });
+      expect(fechaFebreroInvalida.success).toBe(false);
+      if (!fechaFebreroInvalida.success) {
+        expect(fechaFebreroInvalida.error.issues[0].message).toContain("no existe en el calendario");
+      }
+    });
+
+    it("rechaza fechas de publicación en el futuro", () => {
+      const fechaFutura = publicacionManualEsquema.safeParse({
+        ...datosValidos,
+        fechaPublicacion: "2099-01-01",
+      });
+      expect(fechaFutura.success).toBe(false);
+      if (!fechaFutura.success) {
+        expect(fechaFutura.error.issues[0].message).toContain("posterior a la fecha actual");
+      }
+    });
+
     it("valida formato de DOI si se proporciona", () => {
       const invalido = publicacionManualEsquema.safeParse({
         ...datosValidos,
@@ -143,12 +196,21 @@ describe("RF-023: Captura manual de publicaciones", () => {
       }
     });
 
-    it("valida que la URL de evidencia sea válida si se envía", () => {
+    it("valida que la URL de evidencia sea http/https y rechaza esquemas peligrosos", () => {
       const malaUrl = publicacionManualEsquema.safeParse({
         ...datosValidos,
         evidenciaUrl: "no-es-url",
       });
       expect(malaUrl.success).toBe(false);
+
+      const xssUrl = publicacionManualEsquema.safeParse({
+        ...datosValidos,
+        evidenciaUrl: "javascript:alert(1)",
+      });
+      expect(xssUrl.success).toBe(false);
+      if (!xssUrl.success) {
+        expect(xssUrl.error.issues[0].message).toContain("http:// o https://");
+      }
 
       const buenaUrl = publicacionManualEsquema.safeParse({
         ...datosValidos,
@@ -246,6 +308,21 @@ describe("RF-023: Captura manual de publicaciones", () => {
     it("permite eliminar una publicación manual con un solo autor", () => {
       const motivo = motivoNoEliminablePublicacion("Artículo Propio", 1, true);
       expect(motivo).toBeNull();
+    });
+  });
+
+  describe("decisión de diseño: estado inicial de autoría manual (RF-023 / CU-012)", () => {
+    it("nace VALIDADA si el propio docente registra su obra", () => {
+      const ahora = new Date("2026-11-04T10:00:00Z");
+      const res = determinarEstadoInicialAutoria(true, ahora);
+      expect(res.estado).toBe("VALIDADA");
+      expect(res.revisadaEn).toBe(ahora);
+    });
+
+    it("nace PENDIENTE si un administrador o coordinador captura a nombre del docente", () => {
+      const res = determinarEstadoInicialAutoria(false);
+      expect(res.estado).toBe("PENDIENTE");
+      expect(res.revisadaEn).toBeNull();
     });
   });
 });

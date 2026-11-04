@@ -9,11 +9,14 @@ import { prisma } from "@/lib/prisma";
 import { idDeFormulario } from "@/modules/catalogos/comun";
 import {
   edicionMetadatosBandejaEsquema,
+  puedeGestionarAutoria,
   validarTransicionAutoria,
 } from "@/modules/validacion/bandeja";
 import {
+  determinarEstadoInicialAutoria,
   motivoNoEliminablePublicacion,
   normalizar,
+  normalizarDoi,
   publicacionManualEsquema,
   revisarPublicacionManual,
 } from "@/modules/validacion/manual";
@@ -22,6 +25,7 @@ export type EstadoManual = {
   error?: string;
   campo?: string;
   registrado?: string;
+  estadoAutoria?: "VALIDADA" | "PENDIENTE";
   valores?: Record<string, string>;
 };
 
@@ -37,12 +41,12 @@ export async function registrarPublicacionManual(
   let profesorIdFinal: number | undefined;
 
   if (perfil.rol === "DOCENTE") {
-    if (!perfil.profesorId) {
+    if (!puedeGestionarAutoria(perfil, perfil.profesorId ?? 0)) {
       return {
         error: "Tu cuenta de usuario no está asociada a ningún perfil docente en el sistema.",
       };
     }
-    profesorIdFinal = perfil.profesorId;
+    profesorIdFinal = perfil.profesorId!;
   } else {
     const rawId = formData.get("profesorId");
     profesorIdFinal = rawId ? Number(rawId) : (perfil.profesorId ?? undefined);
@@ -72,29 +76,64 @@ export async function registrarPublicacionManual(
     return { error: issue.message, campo: String(issue.path[0]), valores };
   }
 
-  const [profesores, publicacionesExistentes] = await Promise.all([
-    prisma.profesor.findMany({ select: { id: true, nombres: true, apellidos: true } }),
-    prisma.publicacion.findMany({
-      select: {
-        id: true,
-        doi: true,
-        tituloNormalizado: true,
-        autorias: { select: { profesorId: true } },
-      },
-    }),
-  ]);
+  // Consulta puntual del profesor seleccionado
+  const profesor = await prisma.profesor.findUnique({
+    where: { id: datos.data.profesorId },
+    select: { id: true, nombres: true, apellidos: true },
+  });
 
-  const problema = revisarPublicacionManual(datos.data, { profesores, publicacionesExistentes });
+  if (!profesor) {
+    return {
+      error: "El profesor seleccionado no existe en el directorio.",
+      campo: "profesorId",
+      valores,
+    };
+  }
+
+  // Consulta puntual solo por DOI o por título normalizado del profesor (evita cargar toda la tabla)
+  const tituloNorm = normalizar(datos.data.titulo);
+  const doiNorm = datos.data.doi ? normalizarDoi(datos.data.doi) : null;
+
+  const condicionesOr: Prisma.PublicacionWhereInput[] = [
+    {
+      tituloNormalizado: tituloNorm,
+      autorias: { some: { profesorId: datos.data.profesorId } },
+    },
+  ];
+  if (doiNorm) {
+    condicionesOr.push({ doi: doiNorm });
+  }
+
+  const publicacionesExistentes = await prisma.publicacion.findMany({
+    where: { OR: condicionesOr },
+    select: {
+      id: true,
+      doi: true,
+      tituloNormalizado: true,
+      autorias: { select: { profesorId: true } },
+    },
+  });
+
+  const problema = revisarPublicacionManual(datos.data, {
+    profesores: [profesor],
+    publicacionesExistentes,
+  });
   if (problema) {
     return { error: problema.mensaje, campo: problema.campo, valores };
   }
+
+  // RF-023 / Decisión de diseño:
+  // Si el docente registra su obra, nace VALIDADA. Si un admin o coordinador captura
+  // a nombre de un docente, nace PENDIENTE para que el profesor confirme en su bandeja (RF-024).
+  const esDocenteAutor = perfil.rol === "DOCENTE" && perfil.profesorId === datos.data.profesorId;
+  const { estado: estadoInicial, revisadaEn } = determinarEstadoInicialAutoria(esDocenteAutor);
 
   try {
     await prisma.publicacion.create({
       data: {
         tipo: datos.data.tipo,
         titulo: datos.data.titulo,
-        tituloNormalizado: normalizar(datos.data.titulo),
+        tituloNormalizado: tituloNorm,
         doi: datos.data.doi ?? null,
         autoresTexto: datos.data.autoresTexto,
         revistaEditorial: datos.data.revistaEditorial ?? null,
@@ -107,8 +146,8 @@ export async function registrarPublicacionManual(
         autorias: {
           create: {
             profesorId: datos.data.profesorId,
-            estado: "VALIDADA",
-            revisadaEn: new Date(),
+            estado: estadoInicial,
+            revisadaEn,
           },
         },
       },
@@ -121,7 +160,7 @@ export async function registrarPublicacionManual(
   }
 
   revalidatePath("/validacion");
-  return { registrado: datos.data.titulo };
+  return { registrado: datos.data.titulo, estadoAutoria: estadoInicial };
 }
 
 // Edición de una publicación manual (regla #59 de AGENTS.md)
@@ -141,8 +180,9 @@ export async function editarPublicacionManual(_: EstadoFila, formData: FormData)
     return { error: "Solo se pueden editar metadatos de publicaciones de origen manual desde esta vista." };
   }
 
-  // Si es docente, comprobar que sea su propia autoría
-  if (perfil.rol === "DOCENTE" && (!perfil.profesorId || !publicacionActual.autorias.some((a) => a.profesorId === perfil.profesorId))) {
+  // Verificación centralizada de permisos
+  const autoriasIds = publicacionActual.autorias.map((a) => a.profesorId);
+  if (!puedeGestionarAutoria(perfil, autoriasIds)) {
     return { error: "No tienes permiso para editar esta publicación." };
   }
 
@@ -173,19 +213,44 @@ export async function editarPublicacionManual(_: EstadoFila, formData: FormData)
     return { error: issue.message, campo: String(issue.path[0]), valores };
   }
 
-  const [profesores, publicacionesExistentes] = await Promise.all([
-    prisma.profesor.findMany({ select: { id: true, nombres: true, apellidos: true } }),
-    prisma.publicacion.findMany({
-      select: {
-        id: true,
-        doi: true,
-        tituloNormalizado: true,
-        autorias: { select: { profesorId: true } },
-      },
-    }),
-  ]);
+  const profesor = await prisma.profesor.findUnique({
+    where: { id: profesorIdAsignado },
+    select: { id: true, nombres: true, apellidos: true },
+  });
+  if (!profesor) return { error: "El profesor asignado ya no existe en el sistema." };
 
-  const problema = revisarPublicacionManual(datos.data, { profesores, publicacionesExistentes }, id);
+  // Consulta puntual de posibles conflictos excluyendo el registro propio
+  const tituloNorm = normalizar(datos.data.titulo);
+  const doiNorm = datos.data.doi ? normalizarDoi(datos.data.doi) : null;
+
+  const condicionesOr: Prisma.PublicacionWhereInput[] = [
+    {
+      tituloNormalizado: tituloNorm,
+      autorias: { some: { profesorId: profesorIdAsignado } },
+    },
+  ];
+  if (doiNorm) {
+    condicionesOr.push({ doi: doiNorm });
+  }
+
+  const publicacionesExistentes = await prisma.publicacion.findMany({
+    where: {
+      OR: condicionesOr,
+      NOT: { id },
+    },
+    select: {
+      id: true,
+      doi: true,
+      tituloNormalizado: true,
+      autorias: { select: { profesorId: true } },
+    },
+  });
+
+  const problema = revisarPublicacionManual(
+    datos.data,
+    { profesores: [profesor], publicacionesExistentes },
+    id,
+  );
   if (problema) {
     return { error: problema.mensaje, campo: problema.campo, valores };
   }
@@ -196,7 +261,7 @@ export async function editarPublicacionManual(_: EstadoFila, formData: FormData)
       data: {
         tipo: datos.data.tipo,
         titulo: datos.data.titulo,
-        tituloNormalizado: normalizar(datos.data.titulo),
+        tituloNormalizado: tituloNorm,
         doi: datos.data.doi ?? null,
         autoresTexto: datos.data.autoresTexto,
         revistaEditorial: datos.data.revistaEditorial ?? null,
@@ -212,7 +277,7 @@ export async function editarPublicacionManual(_: EstadoFila, formData: FormData)
   }
 
   revalidatePath("/validacion");
-  redirect(`/validacion?editado=${encodeURIComponent(datos.data.titulo)}`, RedirectType.replace);
+  redirect("/validacion?accion=editado", RedirectType.replace);
 }
 
 // Eliminación de una publicación manual (regla #59 de AGENTS.md)
@@ -229,7 +294,8 @@ export async function eliminarPublicacionManual(_: EstadoFila, formData: FormDat
 
   if (!publicacion) return { error: NO_EXISTE };
 
-  if (perfil.rol === "DOCENTE" && (!perfil.profesorId || !publicacion.autorias.some((a) => a.profesorId === perfil.profesorId))) {
+  const autoriasIds = publicacion.autorias.map((a) => a.profesorId);
+  if (!puedeGestionarAutoria(perfil, autoriasIds)) {
     return { error: "No tienes permiso para eliminar esta publicación." };
   }
 
@@ -250,7 +316,7 @@ export async function eliminarPublicacionManual(_: EstadoFila, formData: FormDat
   }
 
   revalidatePath("/validacion");
-  redirect(`/validacion?eliminado=${encodeURIComponent(publicacion.titulo)}`, RedirectType.replace);
+  redirect("/validacion?accion=eliminado", RedirectType.replace);
 }
 
 // RF-024 · RF-025 · CU-013: Confirmar autoría de una publicación detectada
@@ -260,26 +326,24 @@ export async function confirmarAutoria(formData: FormData): Promise<void> {
   const profesorId = Number(formData.get("profesorId"));
 
   if (!publicacionId || !profesorId) {
-    redirect("/validacion?error=Datos+de+autoría+inválidos.");
+    redirect("/validacion?error=datos-invalidos", RedirectType.replace);
   }
 
-  // Seguridad: si es docente, solo puede confirmar su propia autoría
-  if (perfil.rol === "DOCENTE" && perfil.profesorId !== profesorId) {
-    redirect("/validacion?error=No+tienes+permiso+para+validar+esta+obra.");
+  if (!puedeGestionarAutoria(perfil, profesorId)) {
+    redirect("/validacion?error=sin-permiso", RedirectType.replace);
   }
 
   const autoria = await prisma.autoria.findUnique({
     where: { publicacionId_profesorId: { publicacionId, profesorId } },
-    include: { publicacion: { select: { titulo: true } } },
   });
 
   if (!autoria) {
-    redirect("/validacion?error=La+autoría+ya+no+existe+en+la+bandeja.");
+    redirect("/validacion?error=no-existe", RedirectType.replace);
   }
 
   const transicion = validarTransicionAutoria(autoria.estado, "VALIDADA");
   if (!transicion.valida) {
-    redirect(`/validacion?error=${encodeURIComponent(transicion.motivo ?? "Transición inválida.")}`);
+    redirect("/validacion?error=transicion-invalida", RedirectType.replace);
   }
 
   // RF-025: cambia a VALIDADA con fecha de revisión (incorpora al conteo oficial)
@@ -292,7 +356,7 @@ export async function confirmarAutoria(formData: FormData): Promise<void> {
   });
 
   revalidatePath("/validacion");
-  redirect(`/validacion?confirmada=${encodeURIComponent(autoria.publicacion.titulo)}`, RedirectType.replace);
+  redirect("/validacion?accion=confirmada", RedirectType.replace);
 }
 
 // RF-024 · CU-013: Rechazar publicación por homónimo
@@ -302,25 +366,24 @@ export async function rechazarHomonimo(formData: FormData): Promise<void> {
   const profesorId = Number(formData.get("profesorId"));
 
   if (!publicacionId || !profesorId) {
-    redirect("/validacion?error=Datos+de+autoría+inválidos.");
+    redirect("/validacion?error=datos-invalidos", RedirectType.replace);
   }
 
-  if (perfil.rol === "DOCENTE" && perfil.profesorId !== profesorId) {
-    redirect("/validacion?error=No+tienes+permiso+para+descartar+esta+obra.");
+  if (!puedeGestionarAutoria(perfil, profesorId)) {
+    redirect("/validacion?error=sin-permiso", RedirectType.replace);
   }
 
   const autoria = await prisma.autoria.findUnique({
     where: { publicacionId_profesorId: { publicacionId, profesorId } },
-    include: { publicacion: { select: { titulo: true } } },
   });
 
   if (!autoria) {
-    redirect("/validacion?error=La+autoría+ya+no+existe+en+la+bandeja.");
+    redirect("/validacion?error=no-existe", RedirectType.replace);
   }
 
   const transicion = validarTransicionAutoria(autoria.estado, "RECHAZADA");
   if (!transicion.valida) {
-    redirect(`/validacion?error=${encodeURIComponent(transicion.motivo ?? "Transición inválida.")}`);
+    redirect("/validacion?error=transicion-invalida", RedirectType.replace);
   }
 
   // Pasa a RECHAZADA (queda como registro de exclusión para futuros escaneos)
@@ -333,7 +396,7 @@ export async function rechazarHomonimo(formData: FormData): Promise<void> {
   });
 
   revalidatePath("/validacion");
-  redirect(`/validacion?rechazada=${encodeURIComponent(autoria.publicacion.titulo)}`, RedirectType.replace);
+  redirect("/validacion?accion=rechazada", RedirectType.replace);
 }
 
 // RF-024 · CU-013: Editar metadatos de una publicación de la bandeja
@@ -364,8 +427,60 @@ export async function editarMetadatosBandeja(_: EstadoFila, formData: FormData):
   });
   if (!publicacion) return { error: NO_EXISTE };
 
-  if (perfil.rol === "DOCENTE" && (!perfil.profesorId || !publicacion.autorias.some((a) => a.profesorId === perfil.profesorId))) {
+  const autoriasIds = publicacion.autorias.map((a) => a.profesorId);
+  if (!puedeGestionarAutoria(perfil, autoriasIds)) {
     return { error: "No tienes permiso para editar esta publicación." };
+  }
+
+  const primerProfesorId = autoriasIds[0];
+  if (!primerProfesorId) return { error: "La publicación no tiene autorías asociadas." };
+
+  // Comprueba duplicados puntual por DOI o título de cualquiera de los autores asociados
+  const tituloNorm = normalizar(datos.data.titulo);
+  const doiNorm = datos.data.doi ? normalizarDoi(datos.data.doi) : null;
+
+  const condicionesOr: Prisma.PublicacionWhereInput[] = [
+    {
+      tituloNormalizado: tituloNorm,
+      autorias: { some: { profesorId: { in: autoriasIds } } },
+    },
+  ];
+  if (doiNorm) {
+    condicionesOr.push({ doi: doiNorm });
+  }
+
+  const publicacionesExistentes = await prisma.publicacion.findMany({
+    where: {
+      OR: condicionesOr,
+      NOT: { id },
+    },
+    select: {
+      id: true,
+      doi: true,
+      tituloNormalizado: true,
+      autorias: { select: { profesorId: true } },
+    },
+  });
+
+  const problema = revisarPublicacionManual(
+    {
+      tipo: datos.data.tipo,
+      titulo: datos.data.titulo,
+      autoresTexto: datos.data.autoresTexto,
+      revistaEditorial: datos.data.revistaEditorial,
+      isbnIssn: datos.data.isbnIssn,
+      doi: datos.data.doi,
+      profesorId: primerProfesorId,
+    },
+    {
+      profesores: [{ id: primerProfesorId, nombres: "", apellidos: "" }],
+      publicacionesExistentes,
+    },
+    id,
+  );
+
+  if (problema) {
+    return { error: problema.mensaje, campo: problema.campo, valores };
   }
 
   try {
@@ -374,7 +489,7 @@ export async function editarMetadatosBandeja(_: EstadoFila, formData: FormData):
       data: {
         tipo: datos.data.tipo,
         titulo: datos.data.titulo,
-        tituloNormalizado: normalizar(datos.data.titulo),
+        tituloNormalizado: tituloNorm,
         autoresTexto: datos.data.autoresTexto,
         revistaEditorial: datos.data.revistaEditorial ?? null,
         isbnIssn: datos.data.isbnIssn ?? null,
@@ -390,5 +505,5 @@ export async function editarMetadatosBandeja(_: EstadoFila, formData: FormData):
   }
 
   revalidatePath("/validacion");
-  redirect(`/validacion?editado=${encodeURIComponent(datos.data.titulo)}`, RedirectType.replace);
+  return {};
 }

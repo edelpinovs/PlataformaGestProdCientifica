@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import type { EstadoFila } from "@/components/fila-editable";
 import {
+  Aviso,
   claseAccionFila,
   claseBoton,
   claseBotonPeligro,
@@ -46,16 +47,12 @@ export function FilaBandeja({ publicacion }: { publicacion: PublicacionBandeja }
   if (editando) {
     return (
       <tr className={claseTabla.fila}>
-        <td colSpan={5} className="p-4">
+        <td colSpan={4} className="p-4">
           <form action={accionEditar} className="flex flex-col gap-4 rounded-xl bg-superficie-alt p-4">
             <input type="hidden" name="id" value={publicacion.id} />
             <h3 className="text-sm font-semibold">Editar metadatos de la publicación</h3>
 
-            {estadoEdicion.error && (
-              <p role="alert" className="rounded-xl bg-peligro-suave px-3 py-2 text-xs text-peligro">
-                {estadoEdicion.error}
-              </p>
-            )}
+            {estadoEdicion.error && <Aviso tipo="error">{estadoEdicion.error}</Aviso>}
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <label className={claseEtiqueta}>
@@ -63,6 +60,7 @@ export function FilaBandeja({ publicacion }: { publicacion: PublicacionBandeja }
                 <select
                   name="tipo"
                   defaultValue={publicacion.tipo}
+                  aria-invalid={estadoEdicion.campo === "tipo"}
                   className={claseCampo(estadoEdicion.campo === "tipo")}
                 >
                   {TIPOS_PUBLICACION.map((t) => (
@@ -80,6 +78,7 @@ export function FilaBandeja({ publicacion }: { publicacion: PublicacionBandeja }
                   type="text"
                   defaultValue={publicacion.doi ?? ""}
                   placeholder="ej. 10.1000/182"
+                  aria-invalid={estadoEdicion.campo === "doi"}
                   className={claseCampo(estadoEdicion.campo === "doi")}
                 />
               </label>
@@ -92,6 +91,7 @@ export function FilaBandeja({ publicacion }: { publicacion: PublicacionBandeja }
                 type="text"
                 required
                 defaultValue={publicacion.titulo}
+                aria-invalid={estadoEdicion.campo === "titulo"}
                 className={claseCampo(estadoEdicion.campo === "titulo")}
               />
             </label>
@@ -103,6 +103,7 @@ export function FilaBandeja({ publicacion }: { publicacion: PublicacionBandeja }
                 type="text"
                 required
                 defaultValue={publicacion.autoresTexto}
+                aria-invalid={estadoEdicion.campo === "autoresTexto"}
                 className={claseCampo(estadoEdicion.campo === "autoresTexto")}
               />
             </label>
@@ -114,6 +115,7 @@ export function FilaBandeja({ publicacion }: { publicacion: PublicacionBandeja }
                   name="revistaEditorial"
                   type="text"
                   defaultValue={publicacion.revistaEditorial ?? ""}
+                  aria-invalid={estadoEdicion.campo === "revistaEditorial"}
                   className={claseCampo(estadoEdicion.campo === "revistaEditorial")}
                 />
               </label>
@@ -124,6 +126,7 @@ export function FilaBandeja({ publicacion }: { publicacion: PublicacionBandeja }
                   name="isbnIssn"
                   type="text"
                   defaultValue={publicacion.isbnIssn ?? ""}
+                  aria-invalid={estadoEdicion.campo === "isbnIssn"}
                   className={claseCampo(estadoEdicion.campo === "isbnIssn")}
                 />
               </label>
@@ -154,7 +157,7 @@ export function FilaBandeja({ publicacion }: { publicacion: PublicacionBandeja }
   if (confirmandoRechazo) {
     return (
       <tr className={claseTabla.fila}>
-        <td colSpan={5} className="p-4">
+        <td colSpan={4} className="p-4">
           <div className="flex flex-col gap-3 rounded-xl bg-peligro-suave p-4 text-sm text-peligro">
             <p className="font-semibold">
               ¿Confirmas que deseas rechazar esta obra por homónimo?
@@ -186,7 +189,7 @@ export function FilaBandeja({ publicacion }: { publicacion: PublicacionBandeja }
 
   return (
     <tr className={claseTabla.fila}>
-      <td className={claseTabla.celda}>
+      <td className={`${claseTabla.celda} hidden sm:table-cell`}>
         <div className="flex flex-col gap-1 items-start">
           <EtiquetaEstado tipo="aviso">
             {ETIQUETA_FUENTE[publicacion.fuente] ?? publicacion.fuente}
@@ -197,15 +200,34 @@ export function FilaBandeja({ publicacion }: { publicacion: PublicacionBandeja }
 
       <td className={claseTabla.celda}>
         <div className="flex flex-col gap-0.5">
+          {/* En celular, muestra fuente y tipo encima */}
+          <div className="flex items-center gap-1.5 sm:hidden mb-1">
+            <EtiquetaEstado tipo="aviso">
+              {ETIQUETA_FUENTE[publicacion.fuente] ?? publicacion.fuente}
+            </EtiquetaEstado>
+            <span className="text-xs text-texto-3">
+              {ETIQUETAS_TIPO[publicacion.tipo] ?? publicacion.tipo}
+            </span>
+          </div>
+
           <span className="font-medium text-texto">{publicacion.titulo}</span>
           <span className="text-xs text-texto-3">{publicacion.autoresTexto}</span>
           {publicacion.revistaEditorial && (
             <span className="text-xs text-texto-2">{publicacion.revistaEditorial}</span>
           )}
+
+          {/* En celular, muestra el profesor asignado y año/DOI */}
+          <div className="flex flex-wrap items-center gap-2 pt-1 sm:hidden text-xs text-texto-3">
+            <span className="font-medium text-texto-2">{publicacion.profesorNombre}</span>
+            {publicacion.doi && <span className="font-mono">{publicacion.doi}</span>}
+            {publicacion.fechaPublicacion && (
+              <span>{new Date(publicacion.fechaPublicacion).getFullYear()}</span>
+            )}
+          </div>
         </div>
       </td>
 
-      <td className={claseTabla.celda}>
+      <td className={`${claseTabla.celda} hidden sm:table-cell`}>
         <div className="flex flex-col gap-0.5 text-xs">
           <span className="font-medium">{publicacion.profesorNombre}</span>
           {publicacion.doi && <span className="font-mono text-texto-3">{publicacion.doi}</span>}
@@ -217,7 +239,7 @@ export function FilaBandeja({ publicacion }: { publicacion: PublicacionBandeja }
         </div>
       </td>
 
-      <td className={`${claseTabla.celda} text-right pr-0`}>
+      <td className={`${claseTabla.celda} text-right pr-0 whitespace-nowrap`}>
         <div className="flex items-center justify-end gap-1 flex-wrap">
           {/* RF-024 / RF-025: Acción 1: Confirmar autoría */}
           <form action={confirmarAutoria}>

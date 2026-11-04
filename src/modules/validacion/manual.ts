@@ -47,9 +47,48 @@ export function normalizarDoi(doi?: string | null): string | null {
   return sinPrefijo.toLowerCase() || null;
 }
 
+// Comprueba si una cadena YYYY-MM-DD corresponde a una fecha real del calendario gregoriano.
+export function esFechaCalendarioValida(fechaStr: string): boolean {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(fechaStr);
+  if (!match) return false;
+  const anio = parseInt(match[1], 10);
+  const mes = parseInt(match[2], 10);
+  const dia = parseInt(match[3], 10);
+
+  if (anio < 1900) return false;
+  if (mes < 1 || mes > 12) return false;
+
+  const esBisiesto = anio % 4 === 0 && (anio % 100 !== 0 || anio % 400 === 0);
+  const diasPorMes = [31, esBisiesto ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+
+  if (dia < 1 || dia > diasPorMes[mes - 1]) return false;
+  return true;
+}
+
+// Comprueba si una fecha YYYY-MM-DD es posterior a la fecha actual (local).
+export function esFechaFutura(fechaStr: string, ahora: Date = new Date()): boolean {
+  const anio = ahora.getFullYear();
+  const mes = String(ahora.getMonth() + 1).padStart(2, "0");
+  const dia = String(ahora.getDate()).padStart(2, "0");
+  const hoyStr = `${anio}-${mes}-${dia}`;
+  return fechaStr > hoyStr;
+}
+
+// RF-023: Define el estado inicial de la autoría al registrar manualmente.
+// Si un docente registra su propia obra, entra VALIDADA al conteo oficial.
+// Si un administrador o coordinador captura a nombre de un docente, entra como PENDIENTE
+// para que el docente revise y confirme la autoría en su bandeja (RF-024).
+export function determinarEstadoInicialAutoria(
+  esDocenteAutor: boolean,
+  ahora: Date = new Date(),
+): { estado: "PENDIENTE" | "VALIDADA"; revisadaEn: Date | null } {
+  if (esDocenteAutor) {
+    return { estado: "VALIDADA", revisadaEn: ahora };
+  }
+  return { estado: "PENDIENTE", revisadaEn: null };
+}
+
 const sinTipo = "Elige un tipo de publicación.";
-const sinTitulo = "El título es obligatorio.";
-const sinAutores = "Los autores son obligatorios.";
 const sinProfesor = "Elige el profesor al que pertenece la autoría.";
 
 export const publicacionManualEsquema = z.object({
@@ -60,7 +99,6 @@ export const publicacionManualEsquema = z.object({
     .pipe(
       z
         .string()
-        .min(1, sinTitulo)
         .min(3, "El título debe tener al menos 3 caracteres.")
         .max(500, "El título admite como máximo 500 caracteres."),
     ),
@@ -70,8 +108,7 @@ export const publicacionManualEsquema = z.object({
     .pipe(
       z
         .string()
-        .min(1, sinAutores)
-        .min(3, "Indica al menos un autor con al menos 3 caracteres.")
+        .min(3, "Los autores son obligatorios y deben tener al menos 3 caracteres.")
         .max(500, "La lista de autores admite como máximo 500 caracteres."),
     ),
   fechaPublicacion: z
@@ -82,6 +119,14 @@ export const publicacionManualEsquema = z.object({
       z
         .string()
         .regex(/^\d{4}-\d{2}-\d{2}$/, "La fecha debe tener el formato AAAA-MM-DD.")
+        .refine(
+          (val) => esFechaCalendarioValida(val),
+          "La fecha de publicación no existe en el calendario.",
+        )
+        .refine(
+          (val) => !esFechaFutura(val),
+          "La fecha de publicación no puede ser posterior a la fecha actual.",
+        )
         .optional(),
     ),
   revistaEditorial: z
@@ -126,6 +171,10 @@ export const publicacionManualEsquema = z.object({
       z
         .string()
         .url("La URL de evidencia debe ser un enlace válido (ej. https://...).")
+        .refine(
+          (val) => /^https?:\/\//i.test(val),
+          "La URL de evidencia debe iniciar con http:// o https://.",
+        )
         .max(500, "La URL de evidencia admite como máximo 500 caracteres.")
         .optional(),
     ),
