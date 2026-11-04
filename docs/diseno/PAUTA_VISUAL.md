@@ -13,6 +13,7 @@ Esta pauta vale para personas y agentes de IA. Las reglas obligatorias para agen
 | `src/components/marco.tsx` | `Marco`: menú lateral, encabezado y zona de contenido de toda página con sesión |
 | `src/components/pantalla-acceso.tsx` | `PantallaAcceso`: tarjeta centrada para iniciar sesión, confirmar enlace y definir contraseña |
 | `src/components/ui.tsx` | Piezas: `Panel`, `EstadoVacio`, `Aviso`, `EtiquetaEstado`, `Icono` y las clases de botón, campo, etiqueta y tabla |
+| `src/components/fila-editable.tsx` | `FilaEditable`: fila de listado con *Editar* y *Eliminar* (sección 7) |
 | `src/components/selector-tema.tsx` | Botón *Tema oscuro* / *Tema claro* del menú |
 | `src/components/pauta-visual.test.ts` | Prueba que impide colores sueltos y páginas sin `Marco` |
 
@@ -169,7 +170,7 @@ Ejemplos reales: `src/app/catalogos/grados/` y `src/app/catalogos/departamentos/
 
 ### Filas con Editar y Eliminar
 
-Todo listado ofrece *Editar* y *Eliminar* en cada fila a los roles que pueden registrar (regla de `AGENTS.md`, issue #59). La fila sigue el modelo de `src/app/catalogos/grados/fila.tsx`:
+Todo listado ofrece *Editar* y *Eliminar* en cada fila a los roles que pueden registrar (regla de `AGENTS.md`, issue #59). La fila es el componente `<FilaEditable>` de `src/components/fila-editable.tsx`: la página le pasa las celdas, los campos editables (texto o lista de opciones) y las Server Actions `editar` y `eliminar`, que reciben `id` y los campos en el `FormData` y devuelven `EstadoFila`. Ejemplos: `src/app/catalogos/grados/`, `divisiones/` y `departamentos/`.
 
 | Estado de la fila | Qué muestra |
 | --- | --- |

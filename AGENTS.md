@@ -42,7 +42,7 @@ El repositorio es **público**.
 - **Permisos (RNF-005):** cada página y **cada Server Action** empieza con `requireModulo("<módulo>")` o `requireRol([...])` de `src/lib/auth/session.ts`. Ocultar un botón no es seguridad.
 - Valida en el servidor con Zod aunque el formulario ya valide en el navegador. Devuelve errores legibles para la persona, no excepciones.
 - Unicidad: compruébala en el servicio y además respáldala con `@unique` en la base; captura el error `P2002` de Prisma.
-- **Listados con Editar y Eliminar (#59):** todo listado de registros ofrece *Editar* y *Eliminar* en cada fila a los roles que pueden dar de alta ese registro, con la misma protección (`requireModulo`/`requireRol`) en la página y en cada Server Action. Editar aplica las reglas del alta y el registro no choca consigo mismo (pasa su `id` a la búsqueda de duplicados). Eliminar pide confirmación en la fila y no borra un registro en uso: explica por qué. Patrón de referencia: `src/app/catalogos/grados/` (PR #58). Si un listado no debe editarse ni borrarse (bitácora, historial, resultado oficial), justifícalo en su issue.
+- **Listados con Editar y Eliminar (#59):** todo listado de registros ofrece *Editar* y *Eliminar* en cada fila a los roles que pueden dar de alta ese registro, con la misma protección (`requireModulo`/`requireRol`) en la página y en cada Server Action. Editar aplica las reglas del alta y el registro no choca consigo mismo (pasa su `id` a la búsqueda de duplicados). Eliminar pide confirmación en la fila y no borra un registro en uso: explica por qué. Usa `<FilaEditable>` de `@/components/fila-editable` (celdas, campos y las dos Server Actions); ejemplos en `src/app/catalogos/grados/`, `divisiones/` y `departamentos/`. Si un listado no debe editarse ni borrarse (bitácora, historial, resultado oficial), justifícalo en su issue.
 - **Borrados y relaciones:** antes de borrar, revisa en `prisma/schema.prisma` quién apunta al registro. Relación **opcional sin `onDelete`**: Prisma hace `SetNull` y la base no lo impide, así que la condición va dentro del borrado (`deleteMany({ where: { id, <relación>: { none: {} } } })`). Relación **obligatoria**: la base responde `P2003`; revisa antes para dar un mensaje claro y captura `P2003`.
 - Acceso a datos solo con `prisma` de `@/lib/prisma`. Sin dependencias nuevas sin acordarlo en el equipo.
 - Interfaz con Tailwind, usable en celular (columnas que se apilan, sin desplazamiento horizontal) y siguiendo la sección *Diseño visual*.
@@ -66,7 +66,7 @@ Toda pantalla sigue la pauta de `docs/diseno/PAUTA_VISUAL.md` (léela antes de c
 - Rama por issue desde `main` actualizado: `feat/M<n>-RF-<xxx>-<tema>` (o `fix/…`, `docs/…`).
 - Commits con el requisito: `RF-001: registra grados científicos sin duplicar nombre ni nomenclatura`.
 - **Nunca** hagas push a `main`, `push --force`, merge de un PR, ni cierres o reasignes issues. Eso lo decide una persona.
-- El PR lleva `Cierra #<n>` y lo aprueba otro integrante antes de integrarse.
+- La descripción del PR lleva `Closes #<n>`, una línea por issue (`Closes #9`, `Closes #10`). GitHub solo reconoce palabras clave en inglés: con `Cierra #<n>` el issue no se cierra al integrar. El PR lo aprueba otro integrante antes de integrarse.
 - No incluyas en el commit archivos ajenos a la tarea (`.vscode/`, carpetas personales, archivos generados).
 
 ## Antes de decir "terminado"
