@@ -10,8 +10,15 @@ El esquema de Prisma también exige año de registro y de vencimiento; van en el
 
 Editar y eliminar siguen la regla #59 (`src/app/cuerpos-academicos/fila.tsx`). No se borra un CA con integrantes o LGAC (Prisma haría `Cascade`).
 
+## RF-013 · CU-008
+
+Asignar profesores de Tiempo Completo como integrantes. El conjunto no puede quedar sin al menos un Perfil Deseable PRODEP activo.
+
+`tieneProdepActivo` vive aquí mientras I3 (@Ared11) entrega `tiene_prodep_activo()`: dictamen APROBADO y vigencia que cubre hoy (misma regla que el panel de inicio). El listado solo ofrece profesores de tiempo completo con estatus laboral activo, agrupados con o sin PRODEP vigente.
+
+Pantalla: `/cuerpos-academicos/[id]`. Editar cambia el profesor del vínculo; eliminar no deja al CA sin PRODEP si quedan integrantes.
+
 ## Pendiente
 
-- RF-013 integrantes de tiempo completo con PRODEP activo
 - RF-014 líder único, que sea integrante
 - RF-015 LGAC asociadas al CA
