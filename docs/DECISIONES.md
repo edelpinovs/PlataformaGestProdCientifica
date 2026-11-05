@@ -32,6 +32,7 @@ Estados: `vigente`, `reemplazada`, `pendiente` (se propuso y falta acordar).
 | D-108 | 2026-11-05 | Cuerpos académicos | Solo profesores de tiempo completo **con estatus laboral activo** pueden ser integrantes; el servidor lo exige, no solo la lista | Un envío manipulado podía asignar a una persona dada de baja | PR #80 | vigente |
 | D-109 | 2026-11-05 | Cuerpos académicos | El primer integrante debe tener PRODEP vigente; después la regla solo bloquea un cambio que quite el último PRODEP vigente | Si el PRODEP vence, el CA no debe quedar atascado | PR #80 | vigente |
 | D-110 | 2026-11-05 | Cuerpos académicos | Quitar a un integrante y limpiar el líder van en la misma transacción, y el mensaje avisa si era líder | Evitar un líder que ya no es integrante | PR #80 | vigente |
+| D-111 | 2026-11-05 | Cuerpos académicos | El líder se guarda con la condición de que siga siendo integrante dentro de la misma escritura (`filtroLiderIntegrante`), no solo con una revisión previa | Entre leer y escribir otra persona puede quitar al integrante | PR #88 | vigente |
 
 ## Pendientes de acordar
 
