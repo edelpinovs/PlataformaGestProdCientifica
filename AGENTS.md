@@ -25,6 +25,7 @@ Todo el equipo usa **una sola base de desarrollo** en Supabase. Un error ahí lo
 - **Prohibido:** `prisma migrate dev`, `prisma migrate reset`, `prisma db push`, SQL `DROP`/`TRUNCATE`/`DELETE` sin `WHERE`, o cualquier comando que proponga borrar o reiniciar la base.
 - Para cambiar el modelo: editar `prisma/schema.prisma`, `npm run db:nueva-migracion -- <nombre>`, revisar el SQL generado y aplicarlo con `npm run db:migrar`. La migración va en el mismo PR que el cambio al esquema.
 - Solo datos ficticios. Nunca datos reales de profesores, ni en la base, ni en pruebas, ni en semillas.
+- Para ver pantallas con contenido hay datos de demostración marcados: `npm run db:demo` (cargar), `npm run db:demo:contar` y `npm run db:demo:limpiar`. Detalle en `docs/DATOS_DEMO.md`. No agregues datos de prueba a mano en la base compartida.
 - No edites `src/generated/`: se regenera con `prisma generate`.
 
 ## Secretos
@@ -69,6 +70,16 @@ Toda pantalla sigue la pauta de `docs/diseno/PAUTA_VISUAL.md` (léela antes de c
 - **Nunca** hagas push a `main`, `push --force`, merge de un PR, ni cierres o reasignes issues. Eso lo decide una persona.
 - La descripción del PR lleva `Closes #<n>`, una línea por issue (`Closes #9`, `Closes #10`). GitHub solo reconoce palabras clave en inglés: con `Cierra #<n>` el issue no se cierra al integrar. El PR lo aprueba otro integrante antes de integrarse.
 - No incluyas en el commit archivos ajenos a la tarea (`.vscode/`, carpetas personales, archivos generados).
+
+## Bitácora del equipo
+
+Dos archivos llevan lo que el equipo va decidiendo y el estado de cada revisión: `docs/DECISIONES.md` (acuerdos y pendientes de acordar) y `docs/SEGUIMIENTO.md` (una fila por PR revisado y los pendientes del grupo).
+
+- Cuando una revisión se cierra, agrega o actualiza su fila en `docs/SEGUIMIENTO.md` (dictamen, puntos abiertos, enlace al registro de `docs/pruebas/`) en el mismo PR de documentación.
+- Cuando el equipo acuerda algo (en el chat, en un PR o en una sesión de trabajo), agrégalo a `docs/DECISIONES.md` con su fecha, el porqué y el origen. Lo que solo se propuso va como `pendiente`.
+- Una decisión no se edita: si cambia, agrega otra fila con `reemplaza a D-0xx` y marca la anterior como `reemplazada`.
+- Cuando se integra un PR o se cierra un punto, actualiza su estado.
+- Una línea por entrada, en español, con enlace al PR o al issue. Solo nombres de usuario de GitHub y roles (I1 a I8): el repositorio es público, nunca datos personales.
 
 ## Antes de decir "terminado"
 
