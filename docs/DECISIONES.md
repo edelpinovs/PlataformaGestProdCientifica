@@ -46,3 +46,5 @@ Estados: `vigente`, `reemplazada`, `pendiente` (se propuso y falta acordar).
 | D-205 | 2026-11-05 | PRODEP | Hay tres copias de la regla de PRODEP activo (`tieneProdepActivo`, `src/lib/inicio.ts` y la futura `tiene_prodep_activo()` de I3); unificarlas en el módulo de reconocimientos | PR #80 | pendiente |
 | D-206 | 2026-11-05 | Datos de demostración | Un script `prisma/seed-demo.ts` con ≈ 40 profesores y datos relacionados, solo `upsert`, con marcador `@demo.invalid` y opción de limpieza; coordinar con quien amplía `seed.ts` | Propuesta de revisión | reemplazada por D-008 |
 | D-207 | 2026-10-16 | Login SIIAU | No activar el login con SIIAU hasta resolver las decisiones de `docs/diseno/LOGIN_SIIAU.md` | PR #51 | pendiente |
+| D-208 | 2026-11-05 | Cuerpos académicos | Quitar a un integrante puede dejar una LGAC sin integrantes aunque el alta exige al menos uno: ¿se avisa, o se impide quitar al último integrante de una línea? | PR #89 | pendiente |
+| D-209 | 2026-11-05 | Cuerpos académicos | Respaldar en la base el nombre único de la LGAC por cuerpo académico con `@@unique([cuerpoId, nombre])` (cambia el esquema; requiere migración) | PR #89 | pendiente |

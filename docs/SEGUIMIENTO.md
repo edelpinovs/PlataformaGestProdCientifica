@@ -26,7 +26,7 @@ Dictámenes: **Aprobado**, **Aprobado con comentarios**, **Solicitar cambios**, 
 | #80 | marisleidysvazquez8293-arch | RF-013 integrantes del CA | Solicitar cambios, luego **Aprobado con comentarios** (seguimiento) | 3 menores: editar sin cambio a un integrante no activo (D-203); CA que crece sin PRODEP (D-204); `?editado=`/`?eliminado=` por la URL, `hoyUtc()` y `overflow-x-auto` | [PR-080](pruebas/PR-080-integrantes-ca.md) | 2026-11-05 | Integrado |
 | #85 | Ared11 | RF-007 observaciones del #79 | Solicitar cambios | Lockfile ajeno; `Closes #` vacío; traslape por resultado y no por nivel (D-104) | [PR-085](pruebas/PR-085-snii-observaciones.md) | 2026-11-05 | **Abierto** |
 | #88 | marisleidysvazquez8293-arch | RF-014 líder único del CA | Solicitar cambios, luego **Aprobado con comentarios** (seguimiento) | Descripción del PR sin marcar; mensaje de `cuerpoId` inválido; ver en el navegador el listado en celular y el formulario del líder | [PR-088](pruebas/PR-088-lider-ca.md) | 2026-11-05 | **Abierto** |
-| #89 | marisleidysvazquez8293-arch | RF-015 LGAC del CA | Sin revisar | — | — | — | **Abierto** |
+| #89 | marisleidysvazquez8293-arch | RF-015 LGAC del CA | Solicitar cambios | Conflictos con `main` (tras el #88); nombre de LGAC sin `@@unique` (D-209); integrantes repetidos; `overflow-x-auto`; descripción del PR | [PR-089](pruebas/PR-089-lgac-ca.md) | 2026-11-05 | **Abierto** |
 
 Los PR de documentación, reglas e infraestructura de I1 (#1 a #48, #54, #56, #60, #64, #67, #68, #70, #71, #73, #75, #76, #78, #81 a #84, #86, #87 y #90) no se listan aquí.
 
@@ -41,6 +41,7 @@ Cosas que no pertenecen a un solo PR.
 | Datos de demostración | Cargados en la base compartida; avisar al equipo y revisar el PR de `scripts/demo.ts` (D-008) | I1 | en curso |
 | Reconocimientos | Aplicar en el #85 los cambios pedidos y volver a correr la revisión | Ared11 | en curso |
 | Cuerpos académicos | Cerrar los menores del #88 (descripción del PR y mensaje de `cuerpoId`) | marisleidysvazquez8293-arch | en curso |
+| Cuerpos académicos | Resolver los conflictos del #89 con `main` sin perder lo del #88 y atender los hallazgos de su revisión | marisleidysvazquez8293-arch | en curso |
 | Autenticación | Evaluar subir la vigencia del código de un solo uso (OTP) de Supabase a 24 horas | I1 | opcional |
 | Tablero | Que todo el equipo vea el GitHub Project | I1 | pendiente |
 | Acceso | Confirmar el acceso de colaborador de un integrante que aún no lo tiene | I1 | pendiente |
