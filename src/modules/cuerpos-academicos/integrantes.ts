@@ -56,14 +56,25 @@ export function agruparCandidatos<T extends { prodepActivo: boolean }>(candidato
   };
 }
 
-function sinProdepEn(integrantes: IntegranteResumen[]) {
-  return integrantes.length > 0 && !integrantes.some((i) => i.prodepActivo);
+function hayProdep(integrantes: IntegranteResumen[]) {
+  return integrantes.some((i) => i.prodepActivo);
+}
+
+// Solo bloquea si el CA tenía PRODEP vigente y el cambio lo dejaría sin él.
+// Si el PRODEP ya venció, se puede quitar o cambiar integrantes (si no, el CA queda atascado).
+function pierdeProdepVigente(antes: IntegranteResumen[], despues: IntegranteResumen[]) {
+  return hayProdep(antes) && !hayProdep(despues);
 }
 
 const MENSAJE_PRODEP =
   "Al menos un integrante debe tener Perfil Deseable PRODEP activo.";
 
-// RF-013 · CU-008: solo Tiempo Completo; no se duplica; el conjunto queda con PRODEP activo.
+function comoIntegrante(profesor: ProfesorParaCa): IntegranteResumen {
+  return { profesorId: profesor.id, nombre: nombreProfesor(profesor), prodepActivo: profesor.prodepActivo };
+}
+
+// RF-013 · CU-008: solo Tiempo Completo; no se duplica.
+// El primer integrante sí debe traer PRODEP. Después, solo se rechaza un cambio que quite el último PRODEP vigente.
 export function revisarAltaIntegrante(
   profesor: ProfesorParaCa | undefined,
   integrantes: IntegranteResumen[],
@@ -83,33 +94,52 @@ export function revisarAltaIntegrante(
       mensaje: `${nombreProfesor(profesor)} ya es integrante de este cuerpo académico.`,
     };
   }
-  const resultantes: IntegranteResumen[] = [
-    ...integrantes,
-    { profesorId: profesor.id, nombre: nombreProfesor(profesor), prodepActivo: profesor.prodepActivo },
-  ];
-  if (sinProdepEn(resultantes)) {
+  const resultantes = [...integrantes, comoIntegrante(profesor)];
+  if (integrantes.length === 0 && !profesor.prodepActivo) {
+    return { campo: "profesorId", mensaje: MENSAJE_PRODEP };
+  }
+  if (pierdeProdepVigente(integrantes, resultantes)) {
     return { campo: "profesorId", mensaje: MENSAJE_PRODEP };
   }
   return null;
 }
 
-// Quitar al último integrante deja el CA vacío (válido). Quitar al único con PRODEP, no.
+// Quitar al último integrante deja el CA vacío. Quitar al único con PRODEP vigente, no.
 export function revisarBajaIntegrante(profesorId: number, integrantes: IntegranteResumen[]): string | null {
   const actual = integrantes.find((i) => i.profesorId === profesorId);
   if (!actual) return "Esa persona ya no es integrante. Recarga la página.";
   const restantes = integrantes.filter((i) => i.profesorId !== profesorId);
-  if (sinProdepEn(restantes)) {
+  if (hayProdep(integrantes) && restantes.length > 0 && !hayProdep(restantes)) {
     return `No se puede quitar a ${actual.nombre}: el cuerpo académico se quedaría sin un integrante con PRODEP activo.`;
   }
   return null;
 }
 
-// Al editar el vínculo, el profesor no choca consigo mismo y el conjunto sigue con PRODEP.
+// Al editar, el profesor no choca consigo mismo. Solo se bloquea si el cambio quita el último PRODEP vigente.
 export function revisarCambioIntegrante(
   profesorIdActual: number,
   profesorNuevo: ProfesorParaCa | undefined,
   integrantes: IntegranteResumen[],
 ): ProblemaIntegrante | null {
   const sinActual = integrantes.filter((i) => i.profesorId !== profesorIdActual);
-  return revisarAltaIntegrante(profesorNuevo, sinActual);
+  if (!profesorNuevo) {
+    return { campo: "profesorId", mensaje: "Ese profesor ya no está en el directorio. Recarga la página." };
+  }
+  if (profesorNuevo.tipoContratacion !== "TIEMPO_COMPLETO") {
+    return {
+      campo: "profesorId",
+      mensaje: `${nombreProfesor(profesorNuevo)} no es de tiempo completo. Elige a otra persona.`,
+    };
+  }
+  if (sinActual.some((i) => i.profesorId === profesorNuevo.id)) {
+    return {
+      campo: "profesorId",
+      mensaje: `${nombreProfesor(profesorNuevo)} ya es integrante de este cuerpo académico.`,
+    };
+  }
+  const resultantes = [...sinActual, comoIntegrante(profesorNuevo)];
+  if (pierdeProdepVigente(integrantes, resultantes)) {
+    return { campo: "profesorId", mensaje: MENSAJE_PRODEP };
+  }
+  return null;
 }

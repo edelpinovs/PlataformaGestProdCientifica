@@ -37,6 +37,19 @@ const asignatura = {
   prodepActivo: true,
 };
 
+const sinProdep3 = {
+  ...sinProdep,
+  id: 3,
+  nombres: "Eva",
+  apellidos: "Soto",
+  codigo: "TC03",
+};
+
+const atascado = [
+  { profesorId: 1, nombre: "López Ana (TC01)", prodepActivo: false },
+  { profesorId: 2, nombre: "Pérez Luis (TC02)", prodepActivo: false },
+];
+
 const integrantesConProdep = [
   { profesorId: 1, nombre: "López Ana (TC01)", prodepActivo: true },
 ];
@@ -113,6 +126,10 @@ describe("revisarAltaIntegrante (RF-013)", () => {
     });
   });
 
+  it("permite agregar a alguien sin PRODEP si el CA ya no tenía PRODEP vigente", () => {
+    expect(revisarAltaIntegrante(sinProdep3, atascado)).toBeNull();
+  });
+
   it("rechaza a quien ya es integrante", () => {
     expect(revisarAltaIntegrante(conProdep, integrantesConProdep)).toEqual({
       campo: "profesorId",
@@ -156,6 +173,15 @@ describe("revisarBajaIntegrante (RF-013)", () => {
       "Esa persona ya no es integrante. Recarga la página.",
     );
   });
+
+  it("permite quitar a cualquiera si el PRODEP ya no está vigente", () => {
+    expect(revisarBajaIntegrante(1, atascado)).toBeNull();
+    expect(revisarBajaIntegrante(2, atascado)).toBeNull();
+  });
+
+  it("permite quitar al único integrante aunque no tenga PRODEP", () => {
+    expect(revisarBajaIntegrante(1, [{ profesorId: 1, nombre: "López Ana (TC01)", prodepActivo: false }])).toBeNull();
+  });
 });
 
 describe("agruparCandidatos (RF-013)", () => {
@@ -188,10 +214,15 @@ describe("revisarCambioIntegrante (#59)", () => {
     expect(revisarCambioIntegrante(2, conProdep, dos)?.mensaje).toMatch(/ya es integrante/);
   });
 
-  it("no puede dejar al CA sin PRODEP activo", () => {
+  it("no puede dejar al CA sin PRODEP activo si aún lo tenía", () => {
     expect(revisarCambioIntegrante(1, sinProdep, integrantesConProdep)).toEqual({
       campo: "profesorId",
       mensaje: "Al menos un integrante debe tener Perfil Deseable PRODEP activo.",
     });
+  });
+
+  it("permite editar o cambiar cuando el PRODEP ya había vencido", () => {
+    expect(revisarCambioIntegrante(1, { ...conProdep, prodepActivo: false }, atascado)).toBeNull();
+    expect(revisarCambioIntegrante(1, sinProdep3, atascado)).toBeNull();
   });
 });
