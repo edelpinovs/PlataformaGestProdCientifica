@@ -156,3 +156,9 @@ export function revisarCambioIntegrante(
   }
   return null;
 }
+
+export function notaSiDejaDeSerLider(eraLider: boolean) {
+  return eraLider
+    ? " Ya no es líder de este cuerpo académico. Designar un líder único corresponde a RF-014."
+    : "";
+}

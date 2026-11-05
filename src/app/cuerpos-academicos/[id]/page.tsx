@@ -4,7 +4,7 @@ import { Aviso, claseTabla, EstadoVacio, Panel } from "@/components/ui";
 import { requireModulo } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { ETIQUETA_NIVEL } from "@/modules/cuerpos-academicos/cuerpo";
-import { nombreProfesor, tieneProdepActivo } from "@/modules/cuerpos-academicos/integrantes";
+import { nombreProfesor, notaSiDejaDeSerLider, tieneProdepActivo } from "@/modules/cuerpos-academicos/integrantes";
 import { FilaIntegrante } from "./fila";
 import { FormularioIntegrante } from "./formulario";
 
@@ -13,7 +13,7 @@ export default async function DetalleCuerpoPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ editado?: string; eliminado?: string }>;
+  searchParams: Promise<{ editado?: string; eliminado?: string; lider?: string }>;
 }) {
   const perfil = await requireModulo("cuerpos-academicos");
   const { id: bruto } = await params;
@@ -21,7 +21,7 @@ export default async function DetalleCuerpoPage({
   if (!Number.isInteger(id) || id <= 0) notFound();
 
   const hoy = new Date();
-  const [{ editado, eliminado }, cuerpo, profesoresTc] = await Promise.all([
+  const [{ editado, eliminado, lider }, cuerpo, profesoresTc] = await Promise.all([
     searchParams,
     prisma.cuerpoAcademico.findUnique({
       where: { id },
@@ -72,9 +72,10 @@ export default async function DetalleCuerpoPage({
     prodepActivo: tieneProdepActivo(i.profesor.reconocimientosProdep, hoy),
   }));
 
+  const avisoLider = notaSiDejaDeSerLider(lider === "1");
   const resultado =
-    typeof editado === "string" ? `Se guardaron los cambios de ${editado}.`
-    : typeof eliminado === "string" ? `Se quitó a ${eliminado}.`
+    typeof editado === "string" ? `Se guardaron los cambios de ${editado}.${avisoLider}`
+    : typeof eliminado === "string" ? `Se quitó a ${eliminado}.${avisoLider}`
     : null;
 
   return (

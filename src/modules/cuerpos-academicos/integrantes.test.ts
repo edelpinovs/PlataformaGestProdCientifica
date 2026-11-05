@@ -5,6 +5,7 @@ import {
   revisarAltaIntegrante,
   revisarBajaIntegrante,
   revisarCambioIntegrante,
+  notaSiDejaDeSerLider,
   tieneProdepActivo,
 } from "./integrantes";
 
@@ -249,5 +250,15 @@ describe("revisarCambioIntegrante (#59)", () => {
     expect(revisarCambioIntegrante(1, dadoDeBaja, integrantesConProdep)?.mensaje).toMatch(
       /no está en estatus laboral activo/,
     );
+  });
+});
+
+describe("notaSiDejaDeSerLider (RF-014)", () => {
+  it("avisa cuando la persona dejaba de ser líder", () => {
+    expect(notaSiDejaDeSerLider(true)).toMatch(/Ya no es líder/);
+  });
+
+  it("no agrega texto si no era líder", () => {
+    expect(notaSiDejaDeSerLider(false)).toBe("");
   });
 });

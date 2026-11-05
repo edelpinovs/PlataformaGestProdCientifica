@@ -16,7 +16,7 @@ Asignar profesores de Tiempo Completo con estatus laboral activo como integrante
 
 `tieneProdepActivo` vive aquí mientras I3 (@Ared11) entrega `tiene_prodep_activo()`: dictamen APROBADO y vigencia que cubre hoy (misma regla que el panel de inicio). El listado solo ofrece profesores de tiempo completo con estatus laboral activo, agrupados con o sin PRODEP vigente.
 
-Pantalla: `/cuerpos-academicos/[id]`. Editar cambia el profesor del vínculo. Quitar al integrante y limpiar `liderId` van en la misma transacción.
+Pantalla: `/cuerpos-academicos/[id]`. Editar cambia el profesor del vínculo. Quitar al integrante y limpiar `liderId` van en la misma transacción; si esa persona era líder, el mensaje lo dice (designar líder único es RF-014).
 
 ## Pendiente
 

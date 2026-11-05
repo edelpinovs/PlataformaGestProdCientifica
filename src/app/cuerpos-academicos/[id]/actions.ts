@@ -148,9 +148,10 @@ export async function cambiarIntegrante(
     return { error: datos.error.issues[0].message, campo: "profesorId", valores };
   }
 
-  const [profesorNuevo, integrantes] = await Promise.all([
+  const [profesorNuevo, integrantes, cuerpo] = await Promise.all([
     prisma.profesor.findUnique({ where: { id: datos.data.profesorId }, select: selectProfesor }),
     integrantesDe(cuerpoId),
+    prisma.cuerpoAcademico.findUnique({ where: { id: cuerpoId }, select: { liderId: true } }),
   ]);
   const problema = revisarCambioIntegrante(
     profesorIdActual,
@@ -159,8 +160,11 @@ export async function cambiarIntegrante(
   );
   if (problema) return { error: problema.mensaje, campo: problema.campo, valores };
 
+  const dejaDeSerLider = cuerpo?.liderId === profesorIdActual && datos.data.profesorId !== profesorIdActual;
+  const destinoEditado = `${ruta(cuerpoId)}?editado=${encodeURIComponent(nombreProfesor(profesorNuevo!))}${dejaDeSerLider ? "&lider=1" : ""}`;
+
   if (datos.data.profesorId === profesorIdActual) {
-    redirect(`${ruta(cuerpoId)}?editado=${encodeURIComponent(nombreProfesor(profesorNuevo!))}`, RedirectType.replace);
+    redirect(destinoEditado, RedirectType.replace);
   }
 
   try {
@@ -187,7 +191,7 @@ export async function cambiarIntegrante(
 
   revalidatePath(ruta(cuerpoId));
   revalidatePath("/cuerpos-academicos");
-  redirect(`${ruta(cuerpoId)}?editado=${encodeURIComponent(nombreProfesor(profesorNuevo!))}`, RedirectType.replace);
+  redirect(destinoEditado, RedirectType.replace);
 }
 
 // #59: quita al integrante si el CA no se queda sin PRODEP activo.
@@ -206,6 +210,11 @@ export async function quitarIntegrante(
   if (motivo) return { error: motivo };
 
   const nombre = integrantes.find((i) => i.profesorId === profesorId)?.nombre ?? "integrante";
+  const cuerpo = await prisma.cuerpoAcademico.findUnique({
+    where: { id: cuerpoId },
+    select: { liderId: true },
+  });
+  const eraLider = cuerpo?.liderId === profesorId;
 
   try {
     await prisma.$transaction(async (tx) => {
@@ -225,5 +234,8 @@ export async function quitarIntegrante(
 
   revalidatePath(ruta(cuerpoId));
   revalidatePath("/cuerpos-academicos");
-  redirect(`${ruta(cuerpoId)}?eliminado=${encodeURIComponent(nombre)}`, RedirectType.replace);
+  redirect(
+    `${ruta(cuerpoId)}?eliminado=${encodeURIComponent(nombre)}${eraLider ? "&lider=1" : ""}`,
+    RedirectType.replace,
+  );
 }
