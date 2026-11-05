@@ -14,7 +14,7 @@ Editar y eliminar siguen la regla #59 (`src/app/cuerpos-academicos/fila.tsx`). N
 
 Asignar profesores de Tiempo Completo con estatus laboral activo como integrantes. El primer integrante debe tener Perfil Deseable PRODEP vigente. Si el PRODEP de alguien ya venció, se puede quitar o cambiar integrantes: la regla solo bloquea un cambio que empeore la situación (había PRODEP vigente y ya no lo habría).
 
-`tieneProdepActivo` vive aquí mientras I3 (@Ared11) entrega `tiene_prodep_activo()`: dictamen APROBADO y vigencia que cubre hoy (misma regla que el panel de inicio). El listado solo ofrece profesores de tiempo completo con estatus laboral activo, agrupados con o sin PRODEP vigente.
+`tieneProdepActivo` vive aquí mientras I3 (@Ared11) entrega `tiene_prodep_activo()` (issues #12–#16). Hay tres copias de la misma regla: esta función, la consulta Prisma de `src/lib/inicio.ts` y, cuando I3 la entregue, `tiene_prodep_activo()`. Unificarlas en el módulo de reconocimientos. El listado solo ofrece profesores de tiempo completo con estatus laboral activo, agrupados con o sin PRODEP vigente.
 
 Pantalla: `/cuerpos-academicos/[id]`. Editar cambia el profesor del vínculo. Quitar al integrante y limpiar `liderId` van en la misma transacción; si esa persona era líder, el mensaje lo dice (designar líder único es RF-014).
 

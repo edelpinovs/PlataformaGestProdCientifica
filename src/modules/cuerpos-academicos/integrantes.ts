@@ -37,8 +37,9 @@ function diaUtc(fecha: Date) {
   return new Date(Date.UTC(fecha.getUTCFullYear(), fecha.getUTCMonth(), fecha.getUTCDate()));
 }
 
-// I3 entregará `tiene_prodep_activo()`. Mientras, el CA usa la misma regla que el inicio:
-// dictamen APROBADO y vigencia que cubre el día de hoy.
+// I3 (@Ared11, issues #12–#16) entregará `tiene_prodep_activo()`. Mientras, esta copia
+// coincide con la consulta Prisma de `src/lib/inicio.ts` (APROBADO y vigencia que cubre hoy).
+// Cuando I3 la entregue habrá tres copias: unificarlas en reconocimientos.
 export function tieneProdepActivo(reconocimientos: ReconocimientoProdepResumen[], hoy: Date): boolean {
   const dia = diaUtc(hoy);
   return reconocimientos.some(
