@@ -1,6 +1,6 @@
 # Primera entrega de consulta de publicaciones
 
-Propuesta de I6 para un issue nuevo. No representa un acuerdo del equipo ni una funcionalidad implementada. El PR #63 sigue dedicado al motor RF-020 a RF-022; esta consulta debe tener su propio issue y rama.
+Alcance de I6 aprobado en sesión para el [issue #97](https://github.com/edelpinovs/PlataformaGestProdCientifica/issues/97), desarrollado en `feat/M6-RF-PC-01-consulta-publicaciones`. La revisión independiente sigue pendiente. El PR #63 conserva el motor RF-020 a RF-022 como dependencia; esta consulta se entrega en otro PR. Los roles nuevos y el servicio compartido de D-211 siguen pendientes de acuerdo del equipo.
 
 ## Problema
 
