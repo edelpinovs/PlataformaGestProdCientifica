@@ -458,3 +458,36 @@ Los hallazgos 9, 10 y 11 de la sección 5 no se volvieron a revisar.
 1. Hacer que el lote del cron avance (por ejemplo, ordenando por el corte más antiguo o guardando el `offset`), y limitar o repartir el escaneo manual de "todos" (hallazgos 2a, 12 y 13).
 2. Acordar en el chat del equipo el cambio de alcance (hallazgo 14), o separar Crossref, cuartiles y reporte unificado en otro PR.
 3. Dejar escrita en el issue la justificación de #59.
+
+## 10. Seguimiento de correcciones del autor (2026-11-05)
+
+Este apartado registra el trabajo de I6 y sus verificaciones; **no sustituye la revisión independiente ni cambia el dictamen de la sección 9**.
+
+| Entrega | Corrección | Evidencia |
+|---|---|---|
+| `0eb6d05` | El corte solo avanza después de guardar obras y autorías; recupera los años transcurridos y conserva el corte ante fallos | `escaneo.test.ts` |
+| `ef85296` | Cola persistida por profesor; cron que continúa después del profesor 25, acción manual en segundo plano y reservas recuperables | `lotes.test.ts`, `trabajos.test.ts`, `cron.test.ts`, `revision-pr63.test.ts` |
+| `320f4b3` | Recuperación de conflictos `P2002` por DOI y autoría; conserva validaciones y rechazos; un fallo de similitud impide crear sin comprobar duplicados | `repositorio.test.ts`, `integracion.test.ts` |
+| Entrega de cliente HTTP | Cola por origen, separación de 250 ms, respeto de `Retry-After` y timeout que incluye la descarga del JSON | 14 pruebas en `conectores/http.test.ts`, con HTTP y reloj simulados |
+
+### 10.1 Verificaciones locales de la entrega de cliente HTTP
+
+| Verificación | Resultado |
+|---|---|
+| `npm test` | Correcto: 30 archivos, 409 pruebas |
+| `npm run lint` | Correcto |
+| `npm run typecheck` | Correcto |
+| `npm run build` | Correcto; requiere acceso a Google Fonts |
+| Infraestructura de similitud | Transacción de solo lectura sobre la conexión configurada: `pg_trgm` e índice GIN presentes; `similarity()` devuelve 1 sobre variantes de un título ficticio |
+| CI de la entrega anterior `320f4b3` | Correcto; `verificar` y `Vercel Preview Comments` completados con éxito |
+
+La comprobación de infraestructura no consultó profesores ni modificó datos. Las pruebas de integración usan el conector, el motor, el repositorio y las acciones de Validación reales, con HTTP, Prisma y sesión simulados.
+
+### 10.2 Pendientes y límites
+
+- Solicitar una nueva revisión independiente de las correcciones; no se han integrado a `main`.
+- Revisar `/produccion` en claro, oscuro y celular. El navegador automatizado no pudo iniciar en la sesión anterior; no se declara verificación visual.
+- Probar APIs reales y medir tiempos y recuperación del cron en Vercel. Un profesor con muchas páginas todavía puede exceder la duración de una ejecución; la reserva permite recuperarla.
+- El control de tasa es por proceso: no coordina la cuota entre varias instancias de Vercel.
+- Acordar el alcance de Crossref, cuartiles y reporte unificado (D-208), y dejar la justificación de #59 también en el issue. La justificación del README no equivale a un acuerdo del equipo.
+- Acordar las consultas RF-PC y el conteo institucional de obras únicas con Validación y Reportes (D-209). No se modificaron esos módulos en estas correcciones.
