@@ -35,6 +35,7 @@ Estados: `vigente`, `reemplazada`, `pendiente` (se propuso y falta acordar).
 | D-110 | 2026-11-05 | Cuerpos académicos | Quitar a un integrante y limpiar el líder van en la misma transacción, y el mensaje avisa si era líder | Evitar un líder que ya no es integrante | PR #80 | vigente |
 | D-111 | 2026-11-05 | Cuerpos académicos | El líder se guarda con la condición de que siga siendo integrante dentro de la misma escritura (`filtroLiderIntegrante`), no solo con una revisión previa | Entre leer y escribir otra persona puede quitar al integrante | PR #88 | vigente |
 | D-112 | 2026-11-05 | Consulta de producción | La primera entrega de búsqueda, filtros y paginación mantiene los permisos actuales y se limita a Producción; roles nuevos e indicadores compartidos siguen pendientes de D-211 | Permitir una entrega acotada sin cambiar otros módulos ni el esquema | Sesión de I6; [issue #97](https://github.com/edelpinovs/PlataformaGestProdCientifica/issues/97) y [PR #98](https://github.com/edelpinovs/PlataformaGestProdCientifica/pull/98) | vigente para esta entrega |
+| D-113 | 2026-11-05 | Convocatorias | El archivo oficial de una carga confirmada se protege en la base: la política de borrado de Storage exige que la ruta no pertenezca a una carga `CONFIRMADA` (`es_archivo_confirmado`), no solo la Server Action | Un Administrador o Coordinador podía llamar a Storage directamente y borrar el PDF oficial | PR #100; revisión del PR #77 | vigente al integrar el #100 |
 
 ## Pendientes de acordar
 

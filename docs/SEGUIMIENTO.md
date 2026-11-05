@@ -28,6 +28,7 @@ Dictámenes: **Aprobado**, **Aprobado con comentarios**, **Solicitar cambios**, 
 | #88 | marisleidysvazquez8293-arch | RF-014 líder único del CA | Solicitar cambios, luego **Aprobado con comentarios** (seguimiento) | Descripción del PR sin marcar; mensaje de `cuerpoId` inválido; ver en el navegador el listado en celular y el formulario del líder | [PR-088](pruebas/PR-088-lider-ca.md) | 2026-11-05 | **Abierto** |
 | #89 | marisleidysvazquez8293-arch | RF-015 LGAC del CA | Solicitar cambios, luego **Aprobable con comentarios** (conflictos y dos arreglos aplicados por I1 en `43c39d2` y `edfacf8`) | Nombre de LGAC sin `@@unique` (D-209); descripción del PR; ver en el navegador listado y detalle en celular y tema oscuro | [PR-089](pruebas/PR-089-lgac-ca.md) | 2026-11-05 | **Abierto** |
 | #98 | irybyron | RF-PC-01 búsqueda, filtros y paginación de publicaciones | **Aprobable con comentarios** (conflicto con `main` en SEGUIMIENTO resuelto por I1 en `ea934c9`) | Base en la rama del #63 (`Closes #97` no cierra hasta llegar a `main`); borrador; revisión visual en claro, oscuro y celular; etiquetas de celdas en celular | [PR-098](pruebas/PR-098-consulta-publicaciones.md) | 2026-11-05 | **Abierto, borrador** |
+| #100 | Grillo-de-Alambre | RF-016 Storage no borra el archivo de una carga confirmada | **Aprobable con comentarios** | Falta el borrado real contra Storage con una carga confirmada; la migración ya se aplicó a la base compartida antes de aprobar; función ejecutable por cualquier usuario autenticado | [PR-100](pruebas/PR-100-proteger-archivos-confirmados.md) | 2026-11-05 | **Abierto** |
 
 Los PR de documentación, reglas e infraestructura de I1 (#1 a #48, #54, #56, #60, #64, #67, #68, #70, #71, #73, #75, #76, #78, #81 a #84, #86, #87 y #90) no se listan aquí.
 
@@ -44,6 +45,7 @@ Cosas que no pertenecen a un solo PR.
 | Cuerpos académicos | Cerrar los menores del #88 (descripción del PR y mensaje de `cuerpoId`) | marisleidysvazquez8293-arch | en curso |
 | Cuerpos académicos | Completar la descripción del #89 y acordar el `@@unique` de la LGAC (D-209); los conflictos y los arreglos de código ya los aplicó I1 | marisleidysvazquez8293-arch | en curso |
 | Producción | Acordar el alcance del #63 (D-210), corregir su descripción (`Closes #n`) y hacer la revisión visual; después integrarlo y cambiar la base del #98 a `main` | irybyron | pendiente |
+| Convocatorias | Probar el borrado real contra Storage con una carga confirmada demo antes de aprobar el #100 | Grillo-de-Alambre | pendiente |
 | Autenticación | Evaluar subir la vigencia del código de un solo uso (OTP) de Supabase a 24 horas | I1 | opcional |
 | Tablero | Que todo el equipo vea el GitHub Project | I1 | pendiente |
 | Acceso | Confirmar el acceso de colaborador de un integrante que aún no lo tiene | I1 | pendiente |
