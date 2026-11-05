@@ -207,13 +207,21 @@ export async function quitarIntegrante(
 
   const nombre = integrantes.find((i) => i.profesorId === profesorId)?.nombre ?? "integrante";
 
-  const { count } = await prisma.integranteCa.deleteMany({ where: { cuerpoId, profesorId } });
-  if (count === 0) return { error: "Esa persona ya no es integrante. Recarga la página." };
-
-  await prisma.cuerpoAcademico.updateMany({
-    where: { id: cuerpoId, liderId: profesorId },
-    data: { liderId: null },
-  });
+  try {
+    await prisma.$transaction(async (tx) => {
+      const { count } = await tx.integranteCa.deleteMany({ where: { cuerpoId, profesorId } });
+      if (count === 0) throw new Error("NO_INTEGRANTE");
+      await tx.cuerpoAcademico.updateMany({
+        where: { id: cuerpoId, liderId: profesorId },
+        data: { liderId: null },
+      });
+    });
+  } catch (e) {
+    if (e instanceof Error && e.message === "NO_INTEGRANTE") {
+      return { error: "Esa persona ya no es integrante. Recarga la página." };
+    }
+    throw e;
+  }
 
   revalidatePath(ruta(cuerpoId));
   revalidatePath("/cuerpos-academicos");
