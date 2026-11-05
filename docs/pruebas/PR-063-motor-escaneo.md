@@ -519,3 +519,28 @@ La petición inicial del conector solicitaba `count=100`. Scopus respondió HTTP
 El resultado comprueba acceso y transformación de respuestas de Scopus Search desde el entorno local con esa clave. No comprueba el índice H, otros permisos de la clave, las variables de Vercel ni el escaneo integral con persistencia. No se utilizó Prisma ni se insertaron publicaciones o autorías; el script temporal fue retirado.
 
 Las pruebas de regresión simulan un servicio que rechaza `count > 25` y devuelve 150 registros en seis páginas. Comprueban la recuperación completa y el avance `0, 25, 50, 75, 100, 125`. El dictamen independiente de la sección 9 permanece vigente hasta una nueva revisión.
+
+## 13. Motor con fuentes reales y repositorio temporal en memoria (2026-11-05)
+
+Prueba del autor con `ejecutarEscaneo`, los tres conectores y las reglas de deduplicación actuales. Se seleccionaron ORCID y Scopus ID de la misma fila del archivo de entrada, sin publicar esos valores. Tras consultar el historial se eligió 2025, el año más reciente con resultados entre los recuperados y no posterior a 2026.
+
+El repositorio temporal almacenó las obras y las claves de autoría únicamente en memoria. No importó Prisma, no creó profesores ni modificó Supabase. La clave de Scopus se transmitió por entrada estándar y se mantuvo solo en el proceso; el script temporal se retiró después de la prueba.
+
+| Medida | Primer escaneo de 2025 | Segundo escaneo de 2025 |
+|---|---|---|
+| Contextos de profesor procesados | 1 | 1 |
+| Resultados recibidos de las fuentes antes de deduplicar | 3 | 3 |
+| Obras consolidadas procesadas | 2 | 2 |
+| Autorías nuevas en memoria | 2 | 0 |
+| Errores del motor | 0 | 0 |
+| Obras únicas totales en el repositorio temporal | 2 | 2 |
+
+La repetición no aumentó las obras ni las autorías del repositorio temporal. El contador `publicacionesGuardadas` del motor incluye registros reutilizados, por lo que no debe interpretarse como cantidad de publicaciones nuevas.
+
+Esta prueba comprueba consulta real, transformación, deduplicación y repetición con un repositorio en memoria. Se desactivó el enriquecimiento opcional de Crossref para aislar las tres fuentes. No prueba persistencia Prisma, validación docente, actualización de cortes, trabajos de segundo plano ni el despliegue de Vercel. La persistencia y la integración con Validación tienen pruebas simuladas en la sección 10; su recorrido real sigue pendiente.
+
+## 14. Evidencia visual compartida durante la sesión (2026-11-05)
+
+I6 proporcionó capturas de `/produccion` con sesión de administrador, en escritorio y temas claro y oscuro. Se observaron el selector de profesores de prueba, 30 publicaciones de demostración, 18 autorías pendientes y vínculos de coautoría en el listado. No se observaron superposiciones en las zonas visibles. No se incorporan las imágenes al repositorio porque muestran datos de la sesión.
+
+Las capturas confirman la lectura y presentación de datos de demostración desde la vista previa; no demuestran extracción real desde las APIs. No permiten certificar contraste AA, toda la página ni el commit desplegado. La revisión de celular se pospuso a petición de I6 y permanece pendiente. El navegador automatizado continuó sin poder iniciar.
