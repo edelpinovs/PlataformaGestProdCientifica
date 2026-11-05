@@ -29,10 +29,10 @@ export type CuerpoFila = {
   anioVencimiento: number;
   departamento: { nombre: string; nomenclatura: string };
   lider: { nombres: string; apellidos: string; codigo: string } | null;
-  _count: { integrantes: number };
+  _count: { integrantes: number; lgacs: number };
 };
 
-const COLUMNAS = 8;
+const COLUMNAS = 9;
 
 export function FilaCuerpo({ cuerpo, departamentos }: { cuerpo: CuerpoFila; departamentos: Departamento[] }) {
   const [modo, setModo] = useState<"ver" | "editar" | "eliminar">("ver");
@@ -43,6 +43,7 @@ export function FilaCuerpo({ cuerpo, departamentos }: { cuerpo: CuerpoFila; depa
 
   const integrantes = cuerpo._count.integrantes === 0 ? "Asignar integrantes" : `${cuerpo._count.integrantes} integrantes`;
   const lider = cuerpo.lider ? nombreProfesor(cuerpo.lider) : "Sin líder";
+  const lgacs = cuerpo._count.lgacs === 0 ? "Sin LGAC" : `${cuerpo._count.lgacs} LGAC`;
 
   return (
     <tr className={claseTabla.fila}>
@@ -53,6 +54,7 @@ export function FilaCuerpo({ cuerpo, departamentos }: { cuerpo: CuerpoFila; depa
           <span>{ETIQUETA_NIVEL[cuerpo.nivel]} · {cuerpo.anioRegistro}–{cuerpo.anioVencimiento}</span>
           <span>{cuerpo.departamento.nombre} ({cuerpo.departamento.nomenclatura})</span>
           <span>{integrantes} · {lider}</span>
+          <span>{lgacs}</span>
         </div>
       </td>
       <td className={`${claseTabla.celda} hidden sm:table-cell`}>{ETIQUETA_NIVEL[cuerpo.nivel]}</td>
@@ -74,6 +76,11 @@ export function FilaCuerpo({ cuerpo, departamentos }: { cuerpo: CuerpoFila; depa
         ) : (
           <Link href={`/cuerpos-academicos/${cuerpo.id}`} className="font-medium text-marca">Designar</Link>
         )}
+      </td>
+      <td className={`${claseTabla.celda} hidden sm:table-cell`}>
+        <Link href={`/cuerpos-academicos/${cuerpo.id}`} className="font-medium text-marca">
+          {cuerpo._count.lgacs === 0 ? "Registrar" : `${cuerpo._count.lgacs}`}
+        </Link>
       </td>
       <td className={`${claseTabla.celda} pr-0 text-right whitespace-nowrap`}>
         <button type="button" onClick={() => setModo("editar")} className={claseAccionFila()}

@@ -22,6 +22,8 @@ import {
   mensajeTrasDesignar,
   revisarDesignacionLider,
 } from "@/modules/cuerpos-academicos/lider";
+import { altaLgac, idsDeProfesores, revisarLgac } from "@/modules/cuerpos-academicos/lgac";
+import { idDeFormulario } from "@/modules/catalogos/comun";
 
 export type EstadoIntegrante = {
   error?: string;
@@ -41,6 +43,21 @@ export type EstadoLider = {
   campo?: "profesorId";
   designado?: string;
   valores?: { profesorId: string };
+};
+
+export type ValoresLgac = { nombre: string; descripcion: string; profesorIds: string[] };
+
+export type EstadoLgac = {
+  error?: string;
+  campo?: "nombre" | "descripcion" | "profesorIds";
+  registrada?: string;
+  valores?: ValoresLgac;
+};
+
+export type EstadoFilaLgac = {
+  error?: string;
+  campo?: "nombre" | "descripcion" | "profesorIds";
+  valores?: ValoresLgac;
 };
 
 function hoyUtc() {
@@ -192,6 +209,7 @@ export async function cambiarIntegrante(
         where: { id: cuerpoId, liderId: profesorIdActual },
         data: { liderId: null },
       });
+      await desvincularDeLgacs(tx, cuerpoId, profesorIdActual);
     });
   } catch (e) {
     if (e instanceof Error && e.message === "NO_INTEGRANTE") {
@@ -238,6 +256,7 @@ export async function quitarIntegrante(
         where: { id: cuerpoId, liderId: profesorId },
         data: { liderId: null },
       });
+      await desvincularDeLgacs(tx, cuerpoId, profesorId);
     });
   } catch (e) {
     if (e instanceof Error && e.message === "NO_INTEGRANTE") {
@@ -293,4 +312,143 @@ export async function guardarLider(
   revalidatePath("/cuerpos-academicos");
   const nombre = integrantes.find((i) => i.profesorId === profesorId)?.nombre ?? "integrante";
   return { designado: mensajeTrasDesignar(nombre, cuerpo.liderId === profesorId) };
+}
+
+const NO_LGAC = "Esa LGAC ya no existe. Recarga la página.";
+
+function valoresLgacDe(formData: FormData): ValoresLgac {
+  return {
+    nombre: String(formData.get("nombre") ?? ""),
+    descripcion: String(formData.get("descripcion") ?? ""),
+    profesorIds: idsDeProfesores(formData),
+  };
+}
+
+async function desvincularDeLgacs(
+  tx: { lgac: typeof prisma.lgac },
+  cuerpoId: number,
+  profesorId: number,
+) {
+  const lineas = await tx.lgac.findMany({
+    where: { cuerpoId, profesores: { some: { id: profesorId } } },
+    select: { id: true },
+  });
+  for (const linea of lineas) {
+    await tx.lgac.update({
+      where: { id: linea.id },
+      data: { profesores: { disconnect: { id: profesorId } } },
+    });
+  }
+}
+
+async function lineasDelCa(cuerpoId: number) {
+  return prisma.lgac.findMany({ where: { cuerpoId }, select: { id: true, nombre: true } });
+}
+
+// RF-015 · CU-009: registra una LGAC del CA con integrantes vinculados.
+export async function registrarLgac(_: EstadoLgac, formData: FormData): Promise<EstadoLgac> {
+  await requireModulo("cuerpos-academicos");
+
+  const valores = valoresLgacDe(formData);
+  const datos = altaLgac.safeParse({
+    cuerpoId: String(formData.get("cuerpoId") ?? ""),
+    ...valores,
+  });
+  if (!datos.success) {
+    const issue = datos.error.issues[0];
+    return { error: issue.message, campo: issue.path[0] as EstadoLgac["campo"], valores };
+  }
+
+  const { cuerpoId } = datos.data;
+  const cuerpo = await prisma.cuerpoAcademico.findUnique({ where: { id: cuerpoId }, select: { id: true } });
+  if (!cuerpo) return { error: NO_CUERPO, valores };
+
+  const [integrantes, existentes] = await Promise.all([integrantesDe(cuerpoId), lineasDelCa(cuerpoId)]);
+  const problema = revisarLgac(datos.data, integrantes, existentes);
+  if (problema) return { error: problema.mensaje, campo: problema.campo, valores };
+
+  try {
+    await prisma.lgac.create({
+      data: {
+        cuerpoId,
+        nombre: datos.data.nombre,
+        descripcion: datos.data.descripcion,
+        profesores: { connect: datos.data.profesorIds.map((id) => ({ id })) },
+      },
+    });
+  } catch (e) {
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2003") {
+      return { error: "El profesor o el cuerpo académico ya no existen. Recarga la página.", valores };
+    }
+    throw e;
+  }
+
+  revalidatePath(ruta(cuerpoId));
+  revalidatePath("/cuerpos-academicos");
+  return { registrada: datos.data.nombre };
+}
+
+// #59: edita nombre, descripción e integrantes de la línea.
+export async function editarLgac(_: EstadoFilaLgac, formData: FormData): Promise<EstadoFilaLgac> {
+  await requireModulo("cuerpos-academicos");
+
+  const id = idDeFormulario(formData);
+  const cuerpoId = leerProfesorId(formData, "cuerpoId");
+  if (!id || !cuerpoId) return { error: NO_LGAC };
+
+  const valores = valoresLgacDe(formData);
+  const datos = altaLgac.safeParse({ cuerpoId: String(cuerpoId), ...valores });
+  if (!datos.success) {
+    const issue = datos.error.issues[0];
+    return { error: issue.message, campo: issue.path[0] as EstadoFilaLgac["campo"], valores };
+  }
+
+  const [actual, integrantes, existentes] = await Promise.all([
+    prisma.lgac.findFirst({ where: { id, cuerpoId }, select: { id: true } }),
+    integrantesDe(cuerpoId),
+    lineasDelCa(cuerpoId),
+  ]);
+  if (!actual) return { error: NO_LGAC, valores };
+
+  const problema = revisarLgac(datos.data, integrantes, existentes, id);
+  if (problema) return { error: problema.mensaje, campo: problema.campo, valores };
+
+  try {
+    await prisma.lgac.update({
+      where: { id },
+      data: {
+        nombre: datos.data.nombre,
+        descripcion: datos.data.descripcion,
+        profesores: { set: datos.data.profesorIds.map((pid) => ({ id: pid })) },
+      },
+    });
+  } catch (e) {
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2003") {
+      return { error: "El profesor o el cuerpo académico ya no existen. Recarga la página.", valores };
+    }
+    throw e;
+  }
+
+  revalidatePath(ruta(cuerpoId));
+  revalidatePath("/cuerpos-academicos");
+  redirect(`${ruta(cuerpoId)}?lgac=${encodeURIComponent(datos.data.nombre)}`, RedirectType.replace);
+}
+
+// #59: elimina la LGAC del CA.
+export async function eliminarLgac(_: EstadoFilaLgac, formData: FormData): Promise<EstadoFilaLgac> {
+  await requireModulo("cuerpos-academicos");
+
+  const id = idDeFormulario(formData);
+  const cuerpoId = leerProfesorId(formData, "cuerpoId");
+  if (!id || !cuerpoId) return { error: NO_LGAC };
+
+  const actual = await prisma.lgac.findFirst({ where: { id, cuerpoId }, select: { nombre: true } });
+  if (!actual) return { error: NO_LGAC };
+
+  const { count } = await prisma.lgac.deleteMany({ where: { id, cuerpoId } });
+  if (count === 0) return { error: NO_LGAC };
+
+  revalidatePath(ruta(cuerpoId));
+  revalidatePath("/cuerpos-academicos");
+  redirect(`${ruta(cuerpoId)}?lgacEliminada=${encodeURIComponent(actual.nombre)}`, RedirectType.replace);
 }
