@@ -168,3 +168,38 @@ describe("revisión PR #89", () => {
 ```
 
 </details>
+
+## 9. Resolución de los conflictos con `main` (commit `43c39d2`, 5 de noviembre)
+
+Para avanzar, I1 resolvió los conflictos del hallazgo 1 y subió un commit de fusión a la rama del PR, sin reescribir su historial (la autora no tenía que hacer nada). Se avisó en un comentario del PR.
+
+### 9.1 Qué se hizo
+
+| Archivo | Resolución |
+|---|---|
+| `src/app/cuerpos-academicos/[id]/actions.ts` | Conflicto de imports: se conservan los del #88 (`filtroLiderIntegrante`, `errorSiNoGuardoLider`) junto con los de LGAC. El resto del archivo se fusionó solo |
+| `src/app/cuerpos-academicos/page.tsx` | Se queda el listado apilado del #88 (sin `overflow-x-auto`, columnas `hidden sm:table-cell`) y se agrega el encabezado «LGAC» con la misma clase |
+| `src/app/cuerpos-academicos/fila.tsx` | Se fusionó solo pero quedaba mal: la celda de LGAC se oculta en celular (`hidden sm:table-cell`) y su dato pasa a la línea apilada del nombre («Sin LGAC» o «N LGAC») |
+
+### 9.2 Chequeos sobre el resultado
+
+| Chequeo | Resultado |
+|---|---|
+| Marcas de conflicto restantes | Ninguna |
+| `npm test` | 283 pruebas pasan (18 archivos) |
+| `npm run lint` | sin errores |
+| `npm run typecheck` | `next typegen` y `tsc --noEmit` sin errores |
+| Estado del PR en GitHub | Fusionable (`MERGEABLE`); el CI se vuelve a ejecutar con el commit nuevo |
+
+### 9.3 Estado de los hallazgos
+
+| Hallazgo | Estado |
+|---|---|
+| 1. Conflictos con `main` | Resuelto en `43c39d2` |
+| 4. `overflow-x-auto` | Resuelto solo en el listado de CA; sigue abierto en la tabla de LGAC del detalle |
+| 2, 3, 5 a 10 | Sin cambios; corresponden a la autora |
+
+### 9.4 Lo que no se probó
+
+- La pantalla en el navegador (tema claro, oscuro y celular del listado y del detalle).
+- Las Server Actions contra la base real.
