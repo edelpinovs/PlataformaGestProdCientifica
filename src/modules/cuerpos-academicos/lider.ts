@@ -37,3 +37,14 @@ export function mensajeTrasDesignar(nombre: string, yaEraLider: boolean) {
     ? `${nombre} ya es el líder de este cuerpo académico.`
     : `Se designó a ${nombre} como líder.`;
 }
+
+// La escritura en la base exige que siga siendo integrante (si otra persona lo quitó entre tanto, count = 0).
+export function filtroLiderIntegrante(cuerpoId: number, profesorId: number) {
+  return { id: cuerpoId, integrantes: { some: { profesorId } } };
+}
+
+export function errorSiNoGuardoLider(cuerpoExiste: boolean) {
+  return cuerpoExiste
+    ? "Esa persona ya no es integrante. Recarga la página."
+    : "Ese cuerpo académico ya no existe. Recarga la página.";
+}

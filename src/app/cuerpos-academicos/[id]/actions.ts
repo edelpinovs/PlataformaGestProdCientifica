@@ -15,7 +15,13 @@ import {
   type IntegranteResumen,
   type ProfesorParaCa,
 } from "@/modules/cuerpos-academicos/integrantes";
-import { designarLider, mensajeTrasDesignar, revisarDesignacionLider } from "@/modules/cuerpos-academicos/lider";
+import {
+  designarLider,
+  errorSiNoGuardoLider,
+  filtroLiderIntegrante,
+  mensajeTrasDesignar,
+  revisarDesignacionLider,
+} from "@/modules/cuerpos-academicos/lider";
 
 export type EstadoIntegrante = {
   error?: string;
@@ -275,10 +281,13 @@ export async function guardarLider(
   if (problema) return { error: problema.mensaje, campo: "profesorId", valores };
 
   const { count } = await prisma.cuerpoAcademico.updateMany({
-    where: { id: cuerpoId },
+    where: filtroLiderIntegrante(cuerpoId, profesorId),
     data: { liderId: profesorId },
   });
-  if (count === 0) return { error: NO_CUERPO, valores };
+  if (count === 0) {
+    const sigue = await prisma.cuerpoAcademico.findUnique({ where: { id: cuerpoId }, select: { id: true } });
+    return { error: errorSiNoGuardoLider(Boolean(sigue)), campo: "profesorId", valores };
+  }
 
   revalidatePath(ruta(cuerpoId));
   revalidatePath("/cuerpos-academicos");
