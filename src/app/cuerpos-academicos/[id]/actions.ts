@@ -15,6 +15,7 @@ import {
   type IntegranteResumen,
   type ProfesorParaCa,
 } from "@/modules/cuerpos-academicos/integrantes";
+import { designarLider, mensajeTrasDesignar, revisarDesignacionLider } from "@/modules/cuerpos-academicos/lider";
 
 export type EstadoIntegrante = {
   error?: string;
@@ -26,6 +27,13 @@ export type EstadoIntegrante = {
 export type EstadoFilaIntegrante = {
   error?: string;
   campo?: "profesorId";
+  valores?: { profesorId: string };
+};
+
+export type EstadoLider = {
+  error?: string;
+  campo?: "profesorId";
+  designado?: string;
   valores?: { profesorId: string };
 };
 
@@ -238,4 +246,42 @@ export async function quitarIntegrante(
     `${ruta(cuerpoId)}?eliminado=${encodeURIComponent(nombre)}${eraLider ? "&lider=1" : ""}`,
     RedirectType.replace,
   );
+}
+
+// RF-014 · CU-008: un único líder, que sea integrante.
+export async function guardarLider(
+  _: EstadoLider,
+  formData: FormData,
+): Promise<EstadoLider> {
+  await requireModulo("cuerpos-academicos");
+
+  const valores = { profesorId: String(formData.get("profesorId") ?? "") };
+  const datos = designarLider.safeParse({
+    cuerpoId: String(formData.get("cuerpoId") ?? ""),
+    profesorId: valores.profesorId,
+  });
+  if (!datos.success) {
+    return { error: datos.error.issues[0].message, campo: "profesorId", valores };
+  }
+
+  const { cuerpoId, profesorId } = datos.data;
+  const [cuerpo, integrantes] = await Promise.all([
+    prisma.cuerpoAcademico.findUnique({ where: { id: cuerpoId }, select: { id: true, liderId: true } }),
+    integrantesDe(cuerpoId),
+  ]);
+  if (!cuerpo) return { error: NO_CUERPO, valores };
+
+  const problema = revisarDesignacionLider(profesorId, integrantes);
+  if (problema) return { error: problema.mensaje, campo: "profesorId", valores };
+
+  const { count } = await prisma.cuerpoAcademico.updateMany({
+    where: { id: cuerpoId },
+    data: { liderId: profesorId },
+  });
+  if (count === 0) return { error: NO_CUERPO, valores };
+
+  revalidatePath(ruta(cuerpoId));
+  revalidatePath("/cuerpos-academicos");
+  const nombre = integrantes.find((i) => i.profesorId === profesorId)?.nombre ?? "integrante";
+  return { designado: mensajeTrasDesignar(nombre, cuerpo.liderId === profesorId) };
 }

@@ -11,6 +11,7 @@ import {
   claseTabla,
 } from "@/components/ui";
 import { ETIQUETA_NIVEL, type NivelConsolidacion } from "@/modules/cuerpos-academicos/cuerpo";
+import { nombreProfesor } from "@/modules/cuerpos-academicos/integrantes";
 import { editarCuerpo, eliminarCuerpo, type EstadoFila, type ValoresCuerpo } from "./actions";
 import { CamposCuerpo } from "./formulario";
 
@@ -27,10 +28,11 @@ export type CuerpoFila = {
   anioRegistro: number;
   anioVencimiento: number;
   departamento: { nombre: string; nomenclatura: string };
+  lider: { nombres: string; apellidos: string; codigo: string } | null;
   _count: { integrantes: number };
 };
 
-const COLUMNAS = 7;
+const COLUMNAS = 8;
 
 export function FilaCuerpo({ cuerpo, departamentos }: { cuerpo: CuerpoFila; departamentos: Departamento[] }) {
   const [modo, setModo] = useState<"ver" | "editar" | "eliminar">("ver");
@@ -57,6 +59,13 @@ export function FilaCuerpo({ cuerpo, departamentos }: { cuerpo: CuerpoFila; depa
         <Link href={`/cuerpos-academicos/${cuerpo.id}`} className="font-medium text-marca">
           {cuerpo._count.integrantes === 0 ? "Asignar" : `${cuerpo._count.integrantes}`}
         </Link>
+      </td>
+      <td className={claseTabla.celda}>
+        {cuerpo.lider ? (
+          nombreProfesor(cuerpo.lider)
+        ) : (
+          <Link href={`/cuerpos-academicos/${cuerpo.id}`} className="font-medium text-marca">Designar</Link>
+        )}
       </td>
       <td className={`${claseTabla.celda} pr-0 text-right whitespace-nowrap`}>
         <button type="button" onClick={() => setModo("editar")} className={claseAccionFila()}
