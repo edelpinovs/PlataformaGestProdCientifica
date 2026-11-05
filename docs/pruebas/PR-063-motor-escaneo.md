@@ -491,3 +491,16 @@ La comprobación de infraestructura no consultó profesores ni modificó datos. 
 - El control de tasa es por proceso: no coordina la cuota entre varias instancias de Vercel.
 - Acordar el alcance de Crossref, cuartiles y reporte unificado (D-208), y dejar la justificación de #59 también en el issue. La justificación del README no equivale a un acuerdo del equipo.
 - Acordar las consultas RF-PC y el conteo institucional de obras únicas con Validación y Reportes (D-209). No se modificaron esos módulos en estas correcciones.
+
+## 11. Consulta real de fuentes en modo de solo lectura (2026-11-05)
+
+Comprobación del autor desde el entorno local con los conectores actuales de ORCID y OpenAlex. Se tomó un ORCID público del archivo de entrada facilitado por I6, sin incluir el identificador ni los datos de la persona en el repositorio. No se utilizó Prisma, no se ejecutó el flujo de persistencia y no se guardaron publicaciones ni autorías.
+
+| Fuente | HTTP con filtro 2026 | Publicaciones de 2026 | HTTP sin filtro de año | Publicaciones históricas |
+|---|---|---|---|---|
+| ORCID | 200 | 0 | 200 | 11 |
+| OpenAlex | 200 | 0 | 200 | 17 |
+
+Los resultados corresponden al mismo identificador en ambas consultas. Las cantidades históricas no se suman como obras únicas: pueden existir publicaciones compartidas entre fuentes. El cero de 2026 significa que esos conectores no devolvieron obras de ese año para este identificador; no es un fallo de conexión.
+
+Esta prueba confirma conexión y transformación de respuestas reales desde el entorno local. Quedan pendientes Scopus, la ejecución integral del escaneo con persistencia autorizada y la comprobación de APIs y cron desde Vercel. El script temporal de diagnóstico se retiró; no se incorporó información personal ni claves al repositorio.
