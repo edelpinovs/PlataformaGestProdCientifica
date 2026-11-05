@@ -15,7 +15,7 @@ Dictámenes: **Aprobado**, **Aprobado con comentarios**, **Solicitar cambios**, 
 | #57 | edelpinovs | Pauta visual, marco y tema oscuro | Aprobado con comentarios | Acordar cambios en `AGENTS.md` y `src/components/` (D-002) | [PR-057](pruebas/PR-057-pauta-visual.md) | 2026-10-17 | Integrado |
 | #58 | edelpinovs | RF-001 editar y eliminar grados | Aprobado | — | [PR-058](pruebas/PR-058-editar-eliminar-grados.md) | 2026-10-17 | Integrado |
 | #61 | edelpinovs | Editar y eliminar en divisiones y departamentos | Solicitar cambios (primera revisión) | Casos sin probar; corregido antes de integrar | [PR-061](pruebas/PR-061-editar-eliminar-catalogos.md) | 2026-10-22 | Integrado |
-| #63 | irybyron | RF-020 a RF-022 motor de escaneo | Solicitar cambios (segunda revisión: con avance claro) | El lote del cron no avanza; escaneo de «todos» sin límite; cambio de alcance a acordar; justificar #59 | [PR-063](pruebas/PR-063-motor-escaneo.md) | 2026-11-03 | **Abierto** |
+| #63 | irybyron | RF-020 a RF-022 motor de escaneo | Solicitar cambios (segunda revisión); tercera revisión: **Aprobable con comentarios** | Acordar el alcance (D-210: Crossref, cuartiles, `reportes/unificado.ts`); `Closes #25`, `#26`, `#27` en inglés y descripción actualizada; justificación de #59 en el issue; revisión visual y prueba del cron en Vercel | [PR-063](pruebas/PR-063-motor-escaneo.md), [tercera revisión](pruebas/PR-063-tercera-revision.md) | 2026-11-05 | **Abierto** |
 | #65 | marisleidysvazquez8293-arch | RF-012 cuerpos académicos | Aprobado | — | [PR-065](pruebas/PR-065-cuerpos-academicos.md) | 2026-10-22 | Integrado |
 | #66 | dpfuentes92 | RF-004 registro de profesores | Solicitar cambios | Sustituido por el #69, que lo incluye | [PR-066](pruebas/PR-066-registro-profesores.md) | 2026-10-29 | Cerrado |
 | #69 | dpfuentes92 | RF-005 unicidad de identificadores | Aprobado con comentarios | R1 (campo marcado en carrera); pruebas a `profesores.test.ts`; `Closes`; `vitest.config.mts` | [PR-069](pruebas/PR-069-unicidad-identificadores.md) | 2026-10-30 | Integrado |
@@ -43,7 +43,7 @@ Cosas que no pertenecen a un solo PR.
 | Reconocimientos | Aplicar en el #85 los cambios pedidos y volver a correr la revisión | Ared11 | en curso |
 | Cuerpos académicos | Cerrar los menores del #88 (descripción del PR y mensaje de `cuerpoId`) | marisleidysvazquez8293-arch | en curso |
 | Cuerpos académicos | Completar la descripción del #89 y acordar el `@@unique` de la LGAC (D-209); los conflictos y los arreglos de código ya los aplicó I1 | marisleidysvazquez8293-arch | en curso |
-| Producción | Cambiar la base del #98 a `main` cuando se integre el #63, marcarlo como listo y hacer la revisión visual | irybyron | pendiente |
+| Producción | Acordar el alcance del #63 (D-210), corregir su descripción (`Closes #n`) y hacer la revisión visual; después integrarlo y cambiar la base del #98 a `main` | irybyron | pendiente |
 | Autenticación | Evaluar subir la vigencia del código de un solo uso (OTP) de Supabase a 24 horas | I1 | opcional |
 | Tablero | Que todo el equipo vea el GitHub Project | I1 | pendiente |
 | Acceso | Confirmar el acceso de colaborador de un integrante que aún no lo tiene | I1 | pendiente |
