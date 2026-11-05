@@ -68,3 +68,14 @@ Las publicaciones extraídas de fuentes indizadas (Scopus, OpenAlex, ORCID) repr
 - La prueba real de Scopus Search devolvió HTTP 400 (`INVALID_INPUT`: límite del nivel de servicio) al solicitar 100 resultados por página con la clave de prueba.
 - El conector solicita 25 resultados por página y avanza mediante `start` hasta completar los resultados. Con esa configuración la consulta real respondió HTTP 200 y recuperó nueve obras históricas del identificador probado, sin persistencia.
 - Las pruebas de paginación simulan un servicio que rechaza páginas mayores de 25 y comprueban que se recuperan 150 obras en seis peticiones. La capacidad permitida depende de la vista y el acceso del cliente; véase [la documentación de Elsevier](https://dev.elsevier.com/api_key_settings.html).
+
+## Consulta de publicaciones (issue #97)
+
+- `/produccion` conserva el motor y añade una consulta GET independiente. Los roles siguen siendo administración y coordinación, con `requireModulo("produccion")` antes de leer los datos.
+- Parámetros: `texto` (título, autores o DOI), `profesor` (ID), `anio`, `tipo`, `fuente`, `estado`, `tamanio` (20, 50 o 100) y `pagina`. El formulario de consulta no modifica el profesor seleccionado para escanear.
+- Las condiciones se combinan con Y lógico. Si se eligen profesor y estado, una misma autoría debe cumplir ambos. El listado de profesores de consulta incluye los no activos, para poder localizar su producción histórica; el motor sigue ofreciendo solo activos.
+- `consulta.ts` valida parámetros con Zod, crea las condiciones y calcula páginas y enlaces. Una URL inválida muestra errores en español y no ejecuta una consulta de publicaciones diferente de la solicitada. Cambiar filtros o tamaño reinicia la página; los enlaces de navegación conservan el resto de parámetros.
+- `consultas.ts` cuenta publicaciones, no autorías, y lee el total y las filas en un snapshot `RepeatableRead`. Ordena por creación e ID para que el orden sea determinista y limita cada lectura a 100 filas como máximo.
+- Si la página solicitada supera el resultado, se muestra la última página disponible. Sin resultados se muestra `0–0` y una explicación para limpiar filtros.
+- Las pruebas cubren validación, condiciones, paginación, conservación de filtros, autorización previa a lecturas y consulta coherente de total/filas. Una comprobación de solo lectura sobre datos DEMO devolvió 20 filas en la primera página y 10 en la segunda, sin repetir obras.
+- El alcance compartido con Reportes y Validación, los indicadores y los roles nuevos continúan pendientes de D-211. Esta entrega no modifica esos módulos, el esquema ni las dependencias.
