@@ -16,6 +16,7 @@ const conProdep = {
   apellidos: "López",
   codigo: "TC01",
   tipoContratacion: "TIEMPO_COMPLETO" as const,
+  estatusLaboral: "ACTIVO",
   prodepActivo: true,
 };
 
@@ -25,6 +26,7 @@ const sinProdep = {
   apellidos: "Pérez",
   codigo: "TC02",
   tipoContratacion: "TIEMPO_COMPLETO" as const,
+  estatusLaboral: "ACTIVO",
   prodepActivo: false,
 };
 
@@ -34,7 +36,17 @@ const asignatura = {
   apellidos: "Ruiz",
   codigo: "AS01",
   tipoContratacion: "ASIGNATURA" as const,
+  estatusLaboral: "ACTIVO",
   prodepActivo: true,
+};
+
+const dadoDeBaja = {
+  ...conProdep,
+  id: 5,
+  nombres: "Nora",
+  apellidos: "Gil",
+  codigo: "TC05",
+  estatusLaboral: "BAJA_TEMPORAL",
 };
 
 const sinProdep3 = {
@@ -123,6 +135,13 @@ describe("revisarAltaIntegrante (RF-013)", () => {
     expect(revisarAltaIntegrante(asignatura, [])).toEqual({
       campo: "profesorId",
       mensaje: "Ruiz Marta (AS01) no es de tiempo completo. Elige a otra persona.",
+    });
+  });
+
+  it("rechaza a un profesor de tiempo completo que no está activo", () => {
+    expect(revisarAltaIntegrante(dadoDeBaja, [])).toEqual({
+      campo: "profesorId",
+      mensaje: "Gil Nora (TC05) no está en estatus laboral activo. Elige a otra persona.",
     });
   });
 
@@ -224,5 +243,11 @@ describe("revisarCambioIntegrante (#59)", () => {
   it("permite editar o cambiar cuando el PRODEP ya había vencido", () => {
     expect(revisarCambioIntegrante(1, { ...conProdep, prodepActivo: false }, atascado)).toBeNull();
     expect(revisarCambioIntegrante(1, sinProdep3, atascado)).toBeNull();
+  });
+
+  it("rechaza el cambio a un profesor que no está activo", () => {
+    expect(revisarCambioIntegrante(1, dadoDeBaja, integrantesConProdep)?.mensaje).toMatch(
+      /no está en estatus laboral activo/,
+    );
   });
 });

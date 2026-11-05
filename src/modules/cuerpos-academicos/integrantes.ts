@@ -21,6 +21,7 @@ export type ProfesorParaCa = {
   apellidos: string;
   codigo: string;
   tipoContratacion: "TIEMPO_COMPLETO" | "ASIGNATURA";
+  estatusLaboral: string;
   prodepActivo: boolean;
 };
 
@@ -73,7 +74,7 @@ function comoIntegrante(profesor: ProfesorParaCa): IntegranteResumen {
   return { profesorId: profesor.id, nombre: nombreProfesor(profesor), prodepActivo: profesor.prodepActivo };
 }
 
-// RF-013 · CU-008: solo Tiempo Completo; no se duplica.
+// RF-013 · CU-008: solo Tiempo Completo activo; no se duplica.
 // El primer integrante sí debe traer PRODEP. Después, solo se rechaza un cambio que quite el último PRODEP vigente.
 export function revisarAltaIntegrante(
   profesor: ProfesorParaCa | undefined,
@@ -86,6 +87,12 @@ export function revisarAltaIntegrante(
     return {
       campo: "profesorId",
       mensaje: `${nombreProfesor(profesor)} no es de tiempo completo. Elige a otra persona.`,
+    };
+  }
+  if (profesor.estatusLaboral !== "ACTIVO") {
+    return {
+      campo: "profesorId",
+      mensaje: `${nombreProfesor(profesor)} no está en estatus laboral activo. Elige a otra persona.`,
     };
   }
   if (integrantes.some((i) => i.profesorId === profesor.id)) {
@@ -129,6 +136,12 @@ export function revisarCambioIntegrante(
     return {
       campo: "profesorId",
       mensaje: `${nombreProfesor(profesorNuevo)} no es de tiempo completo. Elige a otra persona.`,
+    };
+  }
+  if (profesorNuevo.estatusLaboral !== "ACTIVO") {
+    return {
+      campo: "profesorId",
+      mensaje: `${nombreProfesor(profesorNuevo)} no está en estatus laboral activo. Elige a otra persona.`,
     };
   }
   if (sinActual.some((i) => i.profesorId === profesorNuevo.id)) {

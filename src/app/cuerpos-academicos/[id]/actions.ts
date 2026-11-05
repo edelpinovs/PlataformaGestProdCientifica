@@ -40,6 +40,7 @@ function aProfesor(p: {
   apellidos: string;
   codigo: string;
   tipoContratacion: ProfesorParaCa["tipoContratacion"];
+  estatusLaboral: string;
   reconocimientosProdep: { resultado: string; inicio: Date; fin: Date }[];
 }): ProfesorParaCa {
   return {
@@ -48,6 +49,7 @@ function aProfesor(p: {
     apellidos: p.apellidos,
     codigo: p.codigo,
     tipoContratacion: p.tipoContratacion,
+    estatusLaboral: p.estatusLaboral,
     prodepActivo: tieneProdepActivo(p.reconocimientosProdep, hoyUtc()),
   };
 }
@@ -58,6 +60,7 @@ const selectProfesor = {
   apellidos: true,
   codigo: true,
   tipoContratacion: true,
+  estatusLaboral: true,
   reconocimientosProdep: { select: { resultado: true, inicio: true, fin: true } },
 } as const;
 

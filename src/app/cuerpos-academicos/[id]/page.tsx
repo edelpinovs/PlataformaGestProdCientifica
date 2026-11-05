@@ -82,7 +82,7 @@ export default async function DetalleCuerpoPage({
       titulo={cuerpo.nombre}
       subtitulo={`${cuerpo.clave} · ${ETIQUETA_NIVEL[cuerpo.nivel]} · ${cuerpo.departamento.nombre}`}
       volver={{ href: "/cuerpos-academicos", texto: "Cuerpos académicos" }}>
-      <Panel titulo="Asignar integrante" descripcion="RF-013 · CU-008. Solo profesores de tiempo completo. El primero debe tener PRODEP vigente; después no se quita el último PRODEP que aún esté vigente.">
+      <Panel titulo="Asignar integrante" descripcion="RF-013 · CU-008. Solo profesores de tiempo completo con estatus laboral activo. El primero debe tener PRODEP vigente; después no se quita el último PRODEP que aún esté vigente.">
         {profesoresTc.length === 0 ? (
           <EstadoVacio>
             Aún no hay profesores de tiempo completo en el directorio. Cuando el módulo de Profesores esté en marcha, aparecerán aquí.

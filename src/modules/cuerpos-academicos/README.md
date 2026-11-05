@@ -12,7 +12,7 @@ Editar y eliminar siguen la regla #59 (`src/app/cuerpos-academicos/fila.tsx`). N
 
 ## RF-013 · CU-008
 
-Asignar profesores de Tiempo Completo como integrantes. El primer integrante debe tener Perfil Deseable PRODEP vigente. Si el PRODEP de alguien ya venció, se puede quitar o cambiar integrantes: la regla solo bloquea un cambio que empeore la situación (había PRODEP vigente y ya no lo habría).
+Asignar profesores de Tiempo Completo con estatus laboral activo como integrantes. El primer integrante debe tener Perfil Deseable PRODEP vigente. Si el PRODEP de alguien ya venció, se puede quitar o cambiar integrantes: la regla solo bloquea un cambio que empeore la situación (había PRODEP vigente y ya no lo habría).
 
 `tieneProdepActivo` vive aquí mientras I3 (@Ared11) entrega `tiene_prodep_activo()`: dictamen APROBADO y vigencia que cubre hoy (misma regla que el panel de inicio). El listado solo ofrece profesores de tiempo completo con estatus laboral activo, agrupados con o sin PRODEP vigente.
 
