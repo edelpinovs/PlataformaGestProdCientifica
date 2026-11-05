@@ -76,7 +76,7 @@ export default function FormCarga() {
       titulo="Formulario de ingesta"
       descripcion="Carga el archivo oficial de resultados publicado por la institución (CU-010 / RF-016)"
     >
-      <form action={accion} className="space-y-6">
+      <form action={accion} className="flex flex-col gap-4">
         <div>
           <span className="block text-sm font-medium text-texto-2 mb-2">
             Programa de la convocatoria
