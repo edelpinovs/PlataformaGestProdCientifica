@@ -46,3 +46,12 @@ Las publicaciones extraídas de fuentes indizadas (Scopus, OpenAlex, ORCID) repr
 - Cada fuente exitosa actualiza su `ultimaFecha` solo después de guardar las publicaciones y sus autorías, usando la fecha de inicio del escaneo.
 - Si falla la consulta, falta la clave de Scopus o falla la persistencia de un profesor, se conserva su corte para reintentar. Un año histórico solicitado explícitamente no cambia el corte incremental.
 - `escaneo.test.ts` prueba el cambio de año, los errores por fuente, la persistencia previa al corte y los reintentos con un repositorio simulado.
+
+### Integración con autorías y validación (RF-021 y RF-022)
+- El repositorio recupera el registro existente cuando otra petición guarda primero el mismo DOI o la misma autoría (`P2002`). Otros errores se propagan para conservar el corte y permitir el reintento.
+- Un nuevo escaneo conserva las autorías `VALIDADA` y `RECHAZADA`: no las reinicia a `PENDIENTE`. Las exclusiones por homónimo siguen fuera del conteo validado.
+- Si falla la consulta de similitud, el motor no crea la obra sin comprobarla. Devuelve un error legible y conserva el corte; ya no degrada silenciosamente a coincidencia exacta.
+- Una publicación se cuenta como guardada en el resumen solo después de vincular sus autorías.
+- `repositorio.test.ts` cubre los conflictos de unicidad y los fallos de similitud. `integracion.test.ts` conecta el conector ORCID, el motor, el repositorio y las acciones de Validación con HTTP, sesión y Prisma simulados. Prueba coautorías entre lotes, confirmación, rechazo, permisos y escaneos simultáneos, sin escribir en Supabase.
+- Comprobación de infraestructura del 5 de noviembre de 2026: transacción de solo lectura contra la conexión configurada; `pg_trgm` y el índice GIN están presentes, y `similarity()` devuelve 1 para dos variantes de un título ficticio. No se consultaron registros de profesores ni se modificaron datos.
+- Pendiente de coordinación con Validación y Reportes: `calcularConteoOficial` cuenta autorías validadas. El total institucional de obras únicas y el conteo por departamento del documento RF-PC requieren agrupar por publicación; no se cambian desde este módulo.

@@ -9,6 +9,10 @@ import type { RepositorioProduccion } from "@/modules/produccion/escaneo";
 import { sonDuplicadosPorTitulo } from "@/modules/produccion/deduplicacion";
 import { limpiarDoi } from "@/modules/produccion/normalizacion";
 
+function esErrorUnicidad(error: unknown): boolean {
+  return typeof error === "object" && error !== null && "code" in error && error.code === "P2002";
+}
+
 export const repositorioPrisma: RepositorioProduccion = {
   async obtenerProfesores(filtro) {
     const where = filtro.profesorId
@@ -74,17 +78,9 @@ export const repositorioPrisma: RepositorioProduccion = {
       `;
       return filas;
     } catch {
-      // Fallback a coincidencia exacta de título normalizado si $queryRaw falla
-      return await prisma.publicacion.findMany({
-        where: { tituloNormalizado },
-        select: {
-          id: true,
-          titulo: true,
-          doi: true,
-          fechaPublicacion: true,
-        },
-        take: 10,
-      });
+      // Sin similitud no es seguro crear una obra: conserva el corte para
+      // reintentar, en lugar de degradar silenciosamente a título exacto.
+      throw new Error("No se pudo comprobar la similitud de publicaciones. El escaneo se reintentará.");
     }
   },
 
@@ -120,25 +116,34 @@ export const repositorioPrisma: RepositorioProduccion = {
     }
 
     // 3. Crear nuevo registro de publicación
-    const nueva = await prisma.publicacion.create({
-      data: {
-        tipo: item.tipo,
-        titulo: item.titulo,
-        tituloNormalizado: item.tituloNormalizado,
-        doi: item.doi,
-        autoresTexto: item.autoresTexto,
-        revistaEditorial: item.revistaEditorial,
-        isbnIssn: item.isbnIssn,
-        fechaPublicacion: item.fechaPublicacion,
-        volumen: item.volumen,
-        paginas: item.paginas,
-        evidenciaUrl: item.evidenciaUrl,
-        fuente: item.fuentePrincipal,
-      },
-      select: { id: true },
-    });
-
-    return nueva.id;
+    try {
+      const nueva = await prisma.publicacion.create({
+        data: {
+          tipo: item.tipo,
+          titulo: item.titulo,
+          tituloNormalizado: item.tituloNormalizado,
+          doi: item.doi,
+          autoresTexto: item.autoresTexto,
+          revistaEditorial: item.revistaEditorial,
+          isbnIssn: item.isbnIssn,
+          fechaPublicacion: item.fechaPublicacion,
+          volumen: item.volumen,
+          paginas: item.paginas,
+          evidenciaUrl: item.evidenciaUrl,
+          fuente: item.fuentePrincipal,
+        },
+        select: { id: true },
+      });
+      return nueva.id;
+    } catch (error: unknown) {
+      // Otro escaneo pudo guardar el DOI entre la búsqueda y la creación.
+      // Solo recuperamos el conflicto si la misma obra ya existe en la base.
+      if (esErrorUnicidad(error) && item.doi) {
+        const existente = await this.buscarPorDoi(item.doi);
+        if (existente) return existente.id;
+      }
+      throw error;
+    }
   },
 
   async vincularAutoria(publicacionId: number, profesorId: number) {
@@ -153,15 +158,20 @@ export const repositorioPrisma: RepositorioProduccion = {
 
     if (existente) return false;
 
-    await prisma.autoria.create({
-      data: {
-        publicacionId,
-        profesorId,
-        estado: "PENDIENTE",
-      },
-    });
-
-    return true;
+    try {
+      await prisma.autoria.create({
+        data: { publicacionId, profesorId, estado: "PENDIENTE" },
+      });
+      return true;
+    } catch (error: unknown) {
+      if (esErrorUnicidad(error)) {
+        const concurrente = await prisma.autoria.findUnique({
+          where: { publicacionId_profesorId: { publicacionId, profesorId } },
+        });
+        if (concurrente) return false;
+      }
+      throw error;
+    }
   },
 
   async actualizarJob(jobId: number, datos) {

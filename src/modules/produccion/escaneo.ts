@@ -278,7 +278,6 @@ export async function ejecutarEscaneo(
 
     try {
       const publicacionId = await repo.persistirOActualizar(consolidada);
-      resumen.publicacionesGuardadas++;
 
       // Registrar autoría para cada profesor vinculado (RF-022)
       for (const profId of consolidada.profesoresIds) {
@@ -287,6 +286,7 @@ export async function ejecutarEscaneo(
           resumen.autoriasCreadas++;
         }
       }
+      resumen.publicacionesGuardadas++;
     } catch (e: unknown) {
       for (const profesorId of consolidada.profesoresIds) {
         profesoresConFalloPersistencia.add(profesorId);
