@@ -1,33 +1,20 @@
 import Link from "next/link";
 import { requireModulo } from "@/lib/auth/session";
 import { Marco } from "@/components/marco";
-import {
-  claseBoton,
-  claseTabla,
-  EstadoVacio,
-  EtiquetaEstado,
-  Icono,
-  Panel,
-} from "@/components/ui";
+import { Aviso, claseBoton, claseTabla, EstadoVacio, Icono, Panel } from "@/components/ui";
 import { getModulo } from "@/modules/registry";
 import { prisma } from "@/lib/prisma";
+import { nombreDeRuta } from "@/modules/convocatorias/carga";
+import { FilaCarga } from "./fila";
 
 const numero = new Intl.NumberFormat("es-MX");
-
-const ETIQUETA_ESTADO = {
-  CONFIRMADA: { tipo: "exito" as const, texto: "Confirmada" },
-  PROCESANDO: { tipo: "aviso" as const, texto: "Procesando" },
-  EN_REVISION: { tipo: "aviso" as const, texto: "En revisión" },
-  FALLIDA: { tipo: "error" as const, texto: "Fallida" },
-};
 
 const ICONO_CARGA = "M4 16v1a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-1m-4-8-4-4m0 0L8 8m4-4v12";
 const ICONO_CONVOCATORIA = "M7 3v3M17 3v3M4 8h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z";
 const ICONO_CHECK = "M5 13l4 4L19 7";
 const ICONO_RELOJ = "M12 6v6l4 2m6-2a10 10 0 1 1-20 0 10 10 0 0 1 20 0z";
-const ICONO_DOCUMENTO = "M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.5L19 7.5V19a2 2 0 0 1-2 2z";
 
-export default async function Page() {
+export default async function Page({ searchParams }: PageProps<"/convocatorias">) {
   const perfil = await requireModulo("convocatorias");
   const modulo = getModulo("convocatorias");
 
@@ -43,6 +30,9 @@ export default async function Page() {
       prisma.cargaResultados.count({ where: { estado: "CONFIRMADA" } }),
       prisma.job.count({ where: { tipo: "carga-resultados", estado: "PENDIENTE" } }),
     ]);
+
+  // Eliminar redirige aquí con el resultado (#59).
+  const { eliminado } = await searchParams;
 
   return (
     <Marco
@@ -80,7 +70,7 @@ export default async function Page() {
       </section>
 
       <div className="grid gap-5 lg:grid-cols-3">
-        <div className="flex flex-col gap-5 lg:col-span-2">
+        <div className="flex min-w-0 flex-col gap-5 lg:col-span-2">
           <Panel
             titulo="Carga de resultados oficiales"
             descripcion="Ingesta de archivos oficiales de convocatorias anuales (RF-016)"
@@ -117,72 +107,52 @@ export default async function Page() {
 
 
           <Panel
-            titulo={`Historial de cargas (${cargas.length})`}
-            descripcion="Últimos resultados oficiales cargados en el sistema"
+            titulo={`Historial de cargas (${numero.format(totalCargas)})`}
+            descripcion={totalCargas > cargas.length ? `Se muestran las ${cargas.length} más recientes` : "Archivos oficiales cargados, del más reciente al más antiguo"}
           >
+            {typeof eliminado === "string" && (
+              <div className="mb-4"><Aviso tipo="exito">Se eliminó la carga «{eliminado}».</Aviso></div>
+            )}
             {cargas.length === 0 ? (
-              <EstadoVacio>No hay cargas registradas aún en el sistema.</EstadoVacio>
+              <EstadoVacio>Aún no hay archivos de resultados cargados.</EstadoVacio>
             ) : (
-              <div className="overflow-x-auto">
-                <table className={claseTabla.tabla}>
-                  <thead className={claseTabla.encabezado}>
-                    <tr>
-                      <th className={claseTabla.celdaEncabezado}>Convocatoria</th>
-                      <th className={claseTabla.celdaEncabezado}>Archivo</th>
-                      <th className={claseTabla.celdaEncabezado}>Estado</th>
-                      <th className={claseTabla.celdaEncabezado}>Fecha</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {cargas.map((c) => {
-                      const estadoInfo =
-                        ETIQUETA_ESTADO[c.estado] ?? { tipo: "aviso", texto: c.estado };
-                      const nombreArchivo = c.archivoRuta.split("/").pop() ?? c.archivoRuta;
-                      return (
-                        <tr key={c.id} className={claseTabla.fila}>
-                          <td className={claseTabla.celda}>
-                            <div className="flex items-center gap-2">
-                              <span className="font-semibold text-texto">
-                                {c.convocatoria.programa}
-                              </span>
-                              <span className="rounded-md bg-superficie-alt px-2 py-0.5 text-xs text-texto-3">
-                                {c.convocatoria.anio}
-                              </span>
-                            </div>
-                          </td>
-                          <td className={claseTabla.celda}>
-                            <span className="flex items-center gap-1.5 text-xs font-mono text-texto-2">
-                              <Icono d={ICONO_DOCUMENTO} />
-                              <span className="truncate max-w-[14rem]" title={nombreArchivo}>
-                                {nombreArchivo}
-                              </span>
-                            </span>
-                          </td>
-                          <td className={claseTabla.celda}>
-                            <EtiquetaEstado tipo={estadoInfo.tipo}>
-                              {estadoInfo.texto}
-                            </EtiquetaEstado>
-                          </td>
-                          <td className={claseTabla.celda}>
-                            <span className="text-xs text-texto-3">
-                              {c.creadaEn.toLocaleDateString("es-MX", {
-                                day: "2-digit",
-                                month: "short",
-                                year: "numeric",
-                              })}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+              <table className={claseTabla.tabla}>
+                <thead className={claseTabla.encabezado}>
+                  <tr>
+                    <th className={claseTabla.celdaEncabezado}>Convocatoria</th>
+                    <th className={`${claseTabla.celdaEncabezado} hidden sm:table-cell`}>Archivo</th>
+                    <th className={`${claseTabla.celdaEncabezado} hidden sm:table-cell`}>Estado</th>
+                    <th className={`${claseTabla.celdaEncabezado} hidden sm:table-cell`}>Fecha</th>
+                    <th className={`${claseTabla.celdaEncabezado} pr-0 text-right`}>
+                      <span className="sr-only">Acciones</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {cargas.map((c) => (
+                    <FilaCarga
+                      key={`${c.id}-${c.estado}`}
+                      carga={{
+                        id: c.id,
+                        programa: c.convocatoria.programa,
+                        anio: c.convocatoria.anio,
+                        nombre: nombreDeRuta(c.archivoRuta),
+                        estado: c.estado,
+                        fecha: c.creadaEn.toLocaleDateString("es-MX", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                        }),
+                      }}
+                    />
+                  ))}
+                </tbody>
+              </table>
             )}
           </Panel>
         </div>
 
-        <aside className="flex flex-col gap-5">
+        <aside className="flex min-w-0 flex-col gap-5">
           <Panel titulo="Flujo del módulo" descripcion="Etapas del proceso de ingesta">
             <ol className="flex flex-col gap-3">
               <li className="flex gap-3 text-sm">
