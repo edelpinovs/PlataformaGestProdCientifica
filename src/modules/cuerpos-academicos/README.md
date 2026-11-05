@@ -16,9 +16,12 @@ Asignar profesores de Tiempo Completo con estatus laboral activo como integrante
 
 `tieneProdepActivo` vive aquí mientras I3 (@Ared11) entrega `tiene_prodep_activo()` (issues #12–#16). Hay tres copias de la misma regla: esta función, la consulta Prisma de `src/lib/inicio.ts` y, cuando I3 la entregue, `tiene_prodep_activo()`. Unificarlas en el módulo de reconocimientos. El listado solo ofrece profesores de tiempo completo con estatus laboral activo, agrupados con o sin PRODEP vigente.
 
-Pantalla: `/cuerpos-academicos/[id]`. Editar cambia el profesor del vínculo. Quitar al integrante y limpiar `liderId` van en la misma transacción; si esa persona era líder, el mensaje lo dice (designar líder único es RF-014).
+Pantalla: `/cuerpos-academicos/[id]`. Editar cambia el profesor del vínculo. Quitar al integrante y limpiar `liderId` van en la misma transacción; si esa persona era líder, el mensaje lo dice.
+
+## RF-014 · CU-008
+
+Designar a un único integrante como líder. `CuerpoAcademico.liderId` impide más de uno; la regla rechaza a quien no sea integrante. La pantalla está en `/cuerpos-academicos/[id]`.
 
 ## Pendiente
 
-- RF-014 líder único, que sea integrante
 - RF-015 LGAC asociadas al CA

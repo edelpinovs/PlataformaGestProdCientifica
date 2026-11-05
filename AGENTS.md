@@ -70,6 +70,16 @@ Toda pantalla sigue la pauta de `docs/diseno/PAUTA_VISUAL.md` (léela antes de c
 - La descripción del PR lleva `Closes #<n>`, una línea por issue (`Closes #9`, `Closes #10`). GitHub solo reconoce palabras clave en inglés: con `Cierra #<n>` el issue no se cierra al integrar. El PR lo aprueba otro integrante antes de integrarse.
 - No incluyas en el commit archivos ajenos a la tarea (`.vscode/`, carpetas personales, archivos generados).
 
+## Bitácora del equipo
+
+Dos archivos llevan lo que el equipo va decidiendo y el estado de cada revisión: `docs/DECISIONES.md` (acuerdos y pendientes de acordar) y `docs/SEGUIMIENTO.md` (una fila por PR revisado y los pendientes del grupo).
+
+- Cuando una revisión se cierra, agrega o actualiza su fila en `docs/SEGUIMIENTO.md` (dictamen, puntos abiertos, enlace al registro de `docs/pruebas/`) en el mismo PR de documentación.
+- Cuando el equipo acuerda algo (en el chat, en un PR o en una sesión de trabajo), agrégalo a `docs/DECISIONES.md` con su fecha, el porqué y el origen. Lo que solo se propuso va como `pendiente`.
+- Una decisión no se edita: si cambia, agrega otra fila con `reemplaza a D-0xx` y marca la anterior como `reemplazada`.
+- Cuando se integra un PR o se cierra un punto, actualiza su estado.
+- Una línea por entrada, en español, con enlace al PR o al issue. Solo nombres de usuario de GitHub y roles (I1 a I8): el repositorio es público, nunca datos personales.
+
 ## Antes de decir "terminado"
 
 Ejecuta y muestra el resultado de:

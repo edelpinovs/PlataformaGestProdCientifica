@@ -27,10 +27,12 @@ const COLUMNAS = 4;
 export function FilaIntegrante({
   cuerpoId,
   integrante,
+  esLider,
   candidatos,
 }: {
   cuerpoId: number;
   integrante: Integrante;
+  esLider: boolean;
   candidatos: OpcionProfesor[];
 }) {
   const [modo, setModo] = useState<"ver" | "editar" | "eliminar">("ver");
@@ -49,7 +51,12 @@ export function FilaIntegrante({
 
   return (
     <tr className={claseTabla.fila}>
-      <td className={claseTabla.celda}>{integrante.nombre}</td>
+      <td className={claseTabla.celda}>
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
+          <span>{integrante.nombre}</span>
+          {esLider && <EtiquetaEstado tipo="exito">Líder</EtiquetaEstado>}
+        </div>
+      </td>
       <td className={`${claseTabla.celda} font-mono`}>{integrante.codigo}</td>
       <td className={claseTabla.celda}>
         {integrante.prodepActivo ? (

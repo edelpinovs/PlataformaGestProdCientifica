@@ -23,6 +23,7 @@ export default async function CuerposAcademicosPage({
       orderBy: { nombre: "asc" },
       include: {
         departamento: { select: { nombre: true, nomenclatura: true } },
+        lider: { select: { nombres: true, apellidos: true, codigo: true } },
         _count: { select: { integrantes: true } },
       },
     }),
@@ -35,7 +36,7 @@ export default async function CuerposAcademicosPage({
 
   return (
     <Marco correo={perfil.correo} rol={perfil.rol} activo="cuerpos-academicos" titulo={modulo.nombre}
-      subtitulo="Registro de CA, integrantes de tiempo completo y PRODEP activo.">
+      subtitulo="Registro de CA, integrantes de tiempo completo, líder único y PRODEP activo.">
       <Panel titulo="Registrar cuerpo académico" descripcion="RF-012 · CU-007">
         {departamentos.length === 0 ? (
           <EstadoVacio>
@@ -51,32 +52,31 @@ export default async function CuerposAcademicosPage({
         {cuerpos.length === 0 ? (
           <EstadoVacio>Aún no hay cuerpos académicos registrados.</EstadoVacio>
         ) : (
-          <div className="overflow-x-auto sm:overflow-visible">
-            <table className={claseTabla.tabla}>
-              <thead className={claseTabla.encabezado}>
-                <tr>
-                  <th className={claseTabla.celdaEncabezado}>Clave</th>
-                  <th className={claseTabla.celdaEncabezado}>Nombre</th>
-                  <th className={claseTabla.celdaEncabezado}>Nivel</th>
-                  <th className={claseTabla.celdaEncabezado}>Departamento</th>
-                  <th className={claseTabla.celdaEncabezado}>Vigencia</th>
-                  <th className={claseTabla.celdaEncabezado}>Integrantes</th>
-                  <th className={`${claseTabla.celdaEncabezado} pr-0 text-right`}>
-                    <span className="sr-only">Acciones</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {cuerpos.map((c) => (
-                  <FilaCuerpo
-                    key={`${c.id}-${c.clave}-${c.nombre}-${c.nivel}-${c.departamentoId}-${c.anioRegistro}-${c.anioVencimiento}`}
-                    cuerpo={c}
-                    departamentos={departamentos}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <table className={claseTabla.tabla}>
+            <thead className={claseTabla.encabezado}>
+              <tr>
+                <th className={claseTabla.celdaEncabezado}>Clave</th>
+                <th className={claseTabla.celdaEncabezado}>Nombre</th>
+                <th className={`${claseTabla.celdaEncabezado} hidden sm:table-cell`}>Nivel</th>
+                <th className={`${claseTabla.celdaEncabezado} hidden sm:table-cell`}>Departamento</th>
+                <th className={`${claseTabla.celdaEncabezado} hidden sm:table-cell`}>Vigencia</th>
+                <th className={`${claseTabla.celdaEncabezado} hidden sm:table-cell`}>Integrantes</th>
+                <th className={`${claseTabla.celdaEncabezado} hidden sm:table-cell`}>Líder</th>
+                <th className={`${claseTabla.celdaEncabezado} pr-0 text-right`}>
+                  <span className="sr-only">Acciones</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {cuerpos.map((c) => (
+                <FilaCuerpo
+                  key={`${c.id}-${c.clave}-${c.nombre}-${c.nivel}-${c.departamentoId}-${c.anioRegistro}-${c.anioVencimiento}`}
+                  cuerpo={c}
+                  departamentos={departamentos}
+                />
+              ))}
+            </tbody>
+          </table>
         )}
       </Panel>
     </Marco>

@@ -152,3 +152,120 @@ describe("revisión PR #88", () => {
 ```
 
 </details>
+
+## 9. Seguimiento: commit `818a553` (5 de noviembre)
+
+Tras la revisión, la autora subió dos commits (`ba70407` y `818a553`). Se repitió la prueba sobre el PR combinado con `main` en una copia aislada.
+
+### 9.1 Chequeos automáticos
+
+| Chequeo | Resultado |
+|---|---|
+| `npm test` | 258 pruebas pasan (17 archivos); con las pruebas de la sección 3 y las de este seguimiento, 73 en `cuerpos-academicos` |
+| `npm run lint` | sin errores |
+| `npm run typecheck` | `next typegen` y `tsc --noEmit` sin errores |
+| `npm run build` | no se ejecutó en la copia; el CI del PR sí lo corrió y pasó (`verificar`) |
+
+### 9.2 Estado de los hallazgos de la sección 4
+
+| Hallazgo | Estado | Cómo se verificó |
+|---|---|---|
+| 1. Escritura del líder sin condicionar | Corregido: `updateMany` con `where: { id, integrantes: { some: { profesorId } } }`; si `count` es 0 vuelve a leer y distingue «el CA ya no existe» de «esa persona ya no es integrante» | F1 a F3; lectura del código (`updateMany` cuenta filas que coinciden, así que «ya es el líder» sigue funcionando) |
+| 2. Descripción del PR sin plantilla | Sin cambios | Lectura de la descripción |
+| 3. Listado con `overflow-x-auto` | Corregido: se quitó el contenedor; en celular quedan Clave, Nombre y Acciones y el resto se apila en la celda del nombre | Solo lectura; falta verlo en el navegador |
+| 4. Mensaje de `cuerpoId` inválido | Sin cambios (C1) | C1 |
+| 5 y 6. Menores | Sin cambios | — |
+
+### 9.3 Puntos abiertos
+
+1. **Descripción del PR:** «Test plan» sin marcar y sin `npm test`, `lint` y `typecheck`.
+2. **`cuerpoId` manipulado** dice «Elige un integrante.»; usar un mensaje propio.
+3. **Pendiente en el navegador:** listado en celular en tema claro y oscuro, y el formulario del líder.
+
+### 9.4 Pruebas de seguimiento
+
+La prueba C1 describe el comportamiento actual (punto abierto 2): al corregirlo debe invertirse. F1 comprueba la forma del filtro, no que Prisma lo aplique en la base.
+
+| Id | Qué comprueba | Resultado |
+|---|---|---|
+| F1 | `filtroLiderIntegrante` exige el id del CA y el vínculo del integrante en la misma escritura | Pasa |
+| F2 | Filtros distintos para CA o profesor distintos | Pasa |
+| F3 | Mensajes de `errorSiNoGuardoLider` en español y distintos | Pasa |
+| G1 a G3 | Regresión: `profesorId` atípico, regla pura y mensaje de éxito sin cambios | Pasan |
+| C1 | Un `cuerpoId` inválido sigue diciendo «Elige un integrante.» | Pasa (punto abierto 2) |
+| P1 a P2, C1 y C2, R1 a R4, M1 | Pruebas de la sección 3, sin cambios (R4 sigue siendo una limitación de la regla pura; ahora la cubre el filtro) | Pasan |
+
+### 9.5 Lo que no se probó
+
+- La pantalla en el navegador: tema claro, oscuro y celular; designar, cambiar y volver a designar al mismo.
+- La Server Action contra la base real y con la carrera entre quitar y designar.
+- `npm run build` en la copia (lo cubre el CI).
+
+### 9.6 Dictamen del seguimiento
+
+**Aprobable con comentarios.** El hallazgo obligatorio y el de celular están resueltos; los abiertos son menores.
+
+### 9.7 Código de las pruebas de seguimiento
+
+<details>
+<summary><code>src/modules/cuerpos-academicos/revision-pr88-seguimiento.test.ts</code></summary>
+
+```ts
+import { describe, expect, it } from "vitest";
+import {
+  designarLider,
+  errorSiNoGuardoLider,
+  filtroLiderIntegrante,
+  mensajeTrasDesignar,
+  revisarDesignacionLider,
+} from "./lider";
+
+// Pruebas de seguimiento del PR #88, commit 818a553 (no forman parte del PR).
+const mensajes = (entrada: unknown) => {
+  const r = designarLider.safeParse(entrada);
+  return r.success ? [] : r.error.issues.map((i) => i.message);
+};
+
+describe("seguimiento PR #88", () => {
+  describe("hallazgo 1 corregido: escritura condicionada", () => {
+    it("F1: el filtro exige el id del CA y el vínculo del integrante en la misma escritura", () => {
+      expect(filtroLiderIntegrante(4, 12)).toEqual({ id: 4, integrantes: { some: { profesorId: 12 } } });
+    });
+    it("F2: el filtro no depende de otros datos (dos llamadas distintas dan filtros distintos)", () => {
+      expect(filtroLiderIntegrante(1, 2)).not.toEqual(filtroLiderIntegrante(1, 3));
+      expect(filtroLiderIntegrante(1, 2)).not.toEqual(filtroLiderIntegrante(2, 2));
+    });
+    it("F3: mensajes cuando no se guardó, en español y distintos", () => {
+      const a = errorSiNoGuardoLider(true);
+      const b = errorSiNoGuardoLider(false);
+      expect(a).toBe("Esa persona ya no es integrante. Recarga la página.");
+      expect(b).toBe("Ese cuerpo académico ya no existe. Recarga la página.");
+      expect(a).not.toBe(b);
+    });
+  });
+
+  describe("regresión: las reglas anteriores siguen igual", () => {
+    it("G1: profesorId atípico da «Elige un integrante.»", () => {
+      for (const profesorId of ["", "abc", "0", "-3", "1.5", "NaN"]) {
+        expect(mensajes({ cuerpoId: "1", profesorId }), profesorId).toEqual(["Elige un integrante."]);
+      }
+    });
+    it("G2: la regla pura rechaza no integrantes y CA vacío", () => {
+      expect(revisarDesignacionLider(9, [{ profesorId: 1, nombre: "A" }])?.mensaje).toMatch(/no es integrante/);
+      expect(revisarDesignacionLider(1, [])?.mensaje).toMatch(/Primero asigna integrantes/);
+    });
+    it("G3: el mensaje de éxito no cambió", () => {
+      expect(mensajeTrasDesignar("X", false)).toBe("Se designó a X como líder.");
+    });
+  });
+
+  describe("menor abierto", () => {
+    it("C1 (menor, confirma el estado actual): un cuerpoId inválido sigue diciendo «Elige un integrante.»", () => {
+      expect(mensajes({ cuerpoId: "0", profesorId: "1" })).toEqual(["Elige un integrante."]);
+      expect(mensajes({ cuerpoId: "abc", profesorId: "1" })).toEqual(["Elige un integrante."]);
+    });
+  });
+});
+```
+
+</details>
