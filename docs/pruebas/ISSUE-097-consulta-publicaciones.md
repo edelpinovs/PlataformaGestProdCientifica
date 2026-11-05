@@ -3,6 +3,7 @@
 | Dato | Valor |
 |---|---|
 | Issue | [#97](https://github.com/edelpinovs/PlataformaGestProdCientifica/issues/97) |
+| PR borrador | [#98](https://github.com/edelpinovs/PlataformaGestProdCientifica/pull/98), con base temporal en la rama del motor #63 |
 | Requisitos | RF-PC-01, RF-PC-09 y primera parte de RF-PC-02, RF-PC-04 a RF-PC-06 y RF-PC-10 |
 | Rama | `feat/M6-RF-PC-01-consulta-publicaciones` |
 | Responsable | I6 |
