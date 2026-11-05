@@ -43,8 +43,17 @@ describe("reconocimientoSnii (RF-007)", () => {
   it("rechaza asociaciones, CVU y valores obligatorios inválidos", () => {
     expect(reconocimientoSnii.safeParse({ ...reconocimiento, profesorId: 0 }).success).toBe(false);
     expect(reconocimientoSnii.safeParse({ ...reconocimiento, cvu: " " }).success).toBe(false);
+    expect(reconocimientoSnii.safeParse({ ...reconocimiento, cvu: "1234ABCD" }).success).toBe(false);
     expect(reconocimientoSnii.safeParse({ ...reconocimiento, nivel: "NIVEL_4" }).success).toBe(false);
     expect(reconocimientoSnii.safeParse({ ...reconocimiento, enRecursoReconsideracion: "false" }).success).toBe(false);
+  });
+
+  it("muestra el mensaje en español para identificadores de profesor inválidos", () => {
+    for (const profesorId of [Number.NaN, 1.5]) {
+      const resultado = reconocimientoSnii.safeParse({ ...reconocimiento, profesorId });
+      expect(resultado.success).toBe(false);
+      if (!resultado.success) expect(resultado.error.issues[0]?.message).toBe("Selecciona un profesor.");
+    }
   });
 
   it("mapea el nivel y la reconsideración al dictamen existente", () => {

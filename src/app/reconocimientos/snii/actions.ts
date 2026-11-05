@@ -6,6 +6,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { requireModulo } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { reconocimientoSnii, resultadoSnii, type ReconocimientoSnii } from "@/modules/reconocimientos/snii";
+import { hayTraslape } from "@/modules/reconocimientos/vigencia";
 
 export type EstadoSnii = {
   error?: string;
@@ -13,6 +14,7 @@ export type EstadoSnii = {
   valores?: {
     profesorId: string;
     cvu: string;
+    confirmarCambioCvu: boolean;
     nivel: string;
     tipoParticipacion: string;
     fechaInicio: string;
@@ -26,6 +28,7 @@ function leerValores(formData: FormData) {
   return {
     profesorId: Number(formData.get("profesorId")),
     cvu: String(formData.get("cvu") ?? ""),
+    confirmarCambioCvu: formData.get("confirmarCambioCvu") === "on",
     nivel: String(formData.get("nivel") ?? ""),
     tipoParticipacion: String(formData.get("tipoParticipacion") ?? ""),
     fechaInicio: String(formData.get("fechaInicio") ?? ""),
@@ -57,9 +60,12 @@ function validar(formData: FormData) {
   return { datos: datos.data, valores };
 }
 
-async function guardarSnii(datos: ReconocimientoSnii, id?: number) {
-  const profesor = await prisma.profesor.findUnique({ where: { id: datos.profesorId }, select: { id: true } });
+async function guardarSnii(datos: ReconocimientoSnii, confirmarCambioCvu: boolean, id?: number) {
+  const profesor = await prisma.profesor.findUnique({ where: { id: datos.profesorId }, select: { id: true, cvu: true } });
   if (!profesor) return { error: "El profesor seleccionado ya no existe." };
+  if (profesor.cvu && profesor.cvu !== datos.cvu && !confirmarCambioCvu) {
+    return { error: "El profesor ya tiene un CVU distinto. Confirma el reemplazo para continuar.", campo: "cvu" as const };
+  }
 
   const otroProfesor = await prisma.profesor.findFirst({
     where: { cvu: datos.cvu, NOT: { id: datos.profesorId } },
@@ -67,24 +73,47 @@ async function guardarSnii(datos: ReconocimientoSnii, id?: number) {
   });
   if (otroProfesor) return { error: "Ese CVU ya está asociado a otro profesor.", campo: "cvu" as const };
 
+  const inicio = new Date(`${datos.fechaInicio}T00:00:00.000Z`);
+  const fin = new Date(`${datos.fechaFin}T00:00:00.000Z`);
+  if (datos.nivel !== "NO_APROBADO") {
+    const periodos = await prisma.reconocimientoSnii.findMany({
+      where: { profesorId: datos.profesorId, resultado: { not: "NO_APROBADO" } },
+      select: { id: true, inicio: true, fin: true },
+    });
+    const choque = hayTraslape(periodos, { inicio, fin }, id);
+    if (choque) {
+      return {
+        error: "Ese periodo se traslapa con otro reconocimiento SNII del mismo profesor. Ajusta las fechas.",
+        campo: "fechaInicio" as const,
+      };
+    }
+  }
+
   const data = {
     profesorId: datos.profesorId,
     nivel: datos.nivel,
     tipoParticipacion: datos.tipoParticipacion,
     resultado: resultadoSnii(datos.nivel, datos.enRecursoReconsideracion),
-    inicio: new Date(`${datos.fechaInicio}T00:00:00.000Z`),
-    fin: new Date(`${datos.fechaFin}T00:00:00.000Z`),
+    inicio,
+    fin,
   };
 
-  await prisma.$transaction(async (transaccion) => {
-    await transaccion.profesor.update({ where: { id: datos.profesorId }, data: { cvu: datos.cvu } });
+  return prisma.$transaction(async (transaccion) => {
     if (id === undefined) {
+      await transaccion.profesor.update({ where: { id: datos.profesorId }, data: { cvu: datos.cvu } });
       await transaccion.reconocimientoSnii.create({ data });
     } else {
-      await transaccion.reconocimientoSnii.update({ where: { id }, data });
+      const actualizacion = await transaccion.reconocimientoSnii.updateMany({ where: { id, convocatoriaId: null }, data });
+      if (actualizacion.count === 0) {
+        const reconocimiento = await transaccion.reconocimientoSnii.findUnique({ where: { id }, select: { id: true } });
+        return { error: reconocimiento
+          ? "No se puede editar: este reconocimiento forma parte de un resultado oficial de convocatoria."
+          : "Ese reconocimiento ya no existe. Recarga la página." };
+      }
+      await transaccion.profesor.update({ where: { id: datos.profesorId }, data: { cvu: datos.cvu } });
     }
+    return { error: null };
   });
-  return { error: null };
 }
 
 export async function registrarReconocimientoSnii(_: EstadoSnii, formData: FormData): Promise<EstadoSnii> {
@@ -94,7 +123,7 @@ export async function registrarReconocimientoSnii(_: EstadoSnii, formData: FormD
   if (validacion.error) return validacion.error;
 
   try {
-    const guardado = await guardarSnii(validacion.datos);
+    const guardado = await guardarSnii(validacion.datos, validacion.valores.confirmarCambioCvu);
     if (guardado.error) return errorValidacion(validacion.valores, guardado.error, guardado.campo);
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
@@ -113,16 +142,22 @@ export async function editarReconocimientoSnii(_: EstadoSnii, formData: FormData
   const id = leerId(formData);
   if (!id) return { error: "Ese reconocimiento ya no existe. Recarga la página." };
 
+  const reconocimiento = await prisma.reconocimientoSnii.findUnique({ where: { id }, select: { convocatoriaId: true } });
+  if (!reconocimiento) return { error: "Ese reconocimiento ya no existe. Recarga la página." };
+  if (reconocimiento.convocatoriaId !== null) {
+    return { error: "No se puede editar: este reconocimiento forma parte de un resultado oficial de convocatoria." };
+  }
+
   const validacion = validar(formData);
   if (validacion.error) return validacion.error;
 
   try {
-    const guardado = await guardarSnii(validacion.datos, id);
+    const guardado = await guardarSnii(validacion.datos, validacion.valores.confirmarCambioCvu, id);
     if (guardado.error) return errorValidacion(validacion.valores, guardado.error, guardado.campo);
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       if (error.code === "P2002") return errorValidacion(validacion.valores, "Ese CVU ya está asociado a otro profesor.", "cvu");
-      if (error.code === "P2025") return { error: "Ese reconocimiento ya no existe. Recarga la página." };
+      if (error.code === "P2025") return { error: "El profesor seleccionado ya no existe." };
     }
     throw error;
   }

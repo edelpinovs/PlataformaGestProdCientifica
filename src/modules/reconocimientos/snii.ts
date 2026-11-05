@@ -12,8 +12,13 @@ function fechaValida(valor: string) {
 const fechaSnii = z.string().refine(fechaValida, "Ingresa una fecha válida.");
 
 export const reconocimientoSnii = z.object({
-  profesorId: z.number().int().positive("Selecciona un profesor."),
-  cvu: z.string().trim().min(1, "El CVU es obligatorio.").max(30, "El CVU no puede superar 30 caracteres."),
+  profesorId: z.number({ error: "Selecciona un profesor." })
+    .int("Selecciona un profesor.")
+    .positive("Selecciona un profesor."),
+  cvu: z.string().trim()
+    .min(1, "El CVU es obligatorio.")
+    .max(30, "El CVU no puede superar 30 caracteres.")
+    .regex(/^\d+$/, "El CVU solo puede contener números."),
   nivel: z.enum(NIVELES_SNII, { error: "Selecciona un nivel SNII válido." }),
   tipoParticipacion: z.enum(TIPOS_PARTICIPACION_SNII, { error: "Selecciona un tipo de participación válido." }),
   fechaInicio: fechaSnii,
