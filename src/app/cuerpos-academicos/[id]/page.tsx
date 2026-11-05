@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { ETIQUETA_NIVEL } from "@/modules/cuerpos-academicos/cuerpo";
 import { nombreProfesor, notaSiDejaDeSerLider, tieneProdepActivo } from "@/modules/cuerpos-academicos/integrantes";
 import { FilaIntegrante } from "./fila";
-import { FormularioIntegrante } from "./formulario";
+import { FormularioIntegrante, FormularioLider } from "./formulario";
 
 export default async function DetalleCuerpoPage({
   params,
@@ -126,11 +126,29 @@ export default async function DetalleCuerpoPage({
                     key={`${i.profesorId}-${i.nombre}`}
                     cuerpoId={cuerpo.id}
                     integrante={i}
+                    esLider={cuerpo.liderId === i.profesorId}
                     candidatos={candidatos}
                   />
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+      </Panel>
+
+      <Panel titulo="Líder del cuerpo académico" descripcion="RF-014 · CU-008. Un único líder, que debe ser integrante.">
+        {integrantes.length === 0 ? (
+          <EstadoVacio>Primero asigna integrantes. El líder se elige entre quienes ya forman parte del cuerpo académico.</EstadoVacio>
+        ) : (
+          <div className="flex flex-col gap-4">
+            {!cuerpo.liderId && (
+              <Aviso tipo="aviso">Este cuerpo académico aún no tiene líder.</Aviso>
+            )}
+            <FormularioLider
+              cuerpoId={cuerpo.id}
+              integrantes={integrantes.map((i) => ({ profesorId: i.profesorId, nombre: i.nombre }))}
+              liderId={cuerpo.liderId}
+            />
           </div>
         )}
       </Panel>
