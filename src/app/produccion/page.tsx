@@ -9,6 +9,8 @@ import { requireModulo } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { FormularioEscaneo } from "./formulario-escaneo";
 
+export const maxDuration = 300;
+
 export default async function ProduccionPage() {
   const perfil = await requireModulo("produccion");
 
@@ -77,7 +79,10 @@ export default async function ProduccionPage() {
         titulo="Escanear producción científica (RF-020)"
         descripcion="Consulta APIs externas por identificadores de profesor, deduplica por DOI/título y asocia autorías institucionales."
       >
-        <FormularioEscaneo profesores={profesores} />
+        <FormularioEscaneo profesores={profesores} trabajoPendiente={
+          ultimoJob && (ultimoJob.estado === "PENDIENTE" || ultimoJob.estado === "EN_PROCESO")
+            ? ultimoJob.id : undefined
+        } />
       </Panel>
 
       {/* Listado de publicaciones */}

@@ -1,54 +1,28 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { ejecutarEscaneo } from "@/modules/produccion/escaneo";
-import { repositorioPrisma } from "@/app/produccion/repositorio";
+import { crearTrabajoEscaneo, obtenerTrabajoPendiente, procesarSiguienteProfesor } from "@/app/produccion/trabajos";
 
-// Escaneo incremental diario (RF-020), lanzado por Vercel Cron (ver vercel.json).
-// Vercel envía "Authorization: Bearer <CRON_SECRET>"; cualquier otra llamada se rechaza.
+export const maxDuration = 300;
+
+// Vercel Cron y la pantalla comparten la cola persistida y la reserva por Job.
 export async function GET(request: Request) {
-  if (request.headers.get("authorization") !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!process.env.CRON_SECRET || request.headers.get("authorization") !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
-
-  let jobId: number | undefined;
-
   try {
-    const job = await prisma.job.create({
-      data: {
-        tipo: "escaneo-diario",
-        estado: "PENDIENTE",
-      },
+    const trabajo = await obtenerTrabajoPendiente() ?? await crearTrabajoEscaneo("escaneo-diario");
+    after(async () => {
+      const inicio = Date.now();
+      // Cada profesor deja un punto de recuperación. El siguiente cron retoma
+      // desde ese índice, aunque el navegador se cierre o el proceso expire.
+      for (let procesados = 0; procesados < 25 && Date.now() - inicio < 180_000; procesados++) {
+        await procesarSiguienteProfesor(trabajo.id);
+        const actual = await prisma.job.findUnique({ where: { id: trabajo.id } });
+        if (!actual || actual.estado !== "PENDIENTE") break;
+      }
     });
-    jobId = job.id;
-
-    // Escaneo incremental diario por lotes (RF-020, Hallazgos 2a y 3c).
-    // No se fuerza un año fijo para que el motor consulte CorteEscaneo por profesor y fuente.
-    // Se limita a un lote de hasta 25 profesores por ejecución para respetar el timeout de Vercel.
-    const resumen = await ejecutarEscaneo(
-      {
-        jobId: job.id,
-        limiteProfesores: 25,
-      },
-      repositorioPrisma,
-    );
-
-    return NextResponse.json({ ok: true, resumen, jobId: job.id });
-  } catch (err: unknown) {
-    if (jobId) {
-      await prisma.job
-        .update({
-          where: { id: jobId },
-          data: {
-            estado: "FALLIDO",
-            error: err instanceof Error ? err.message : "Error durante la ejecución del cron",
-          },
-        })
-        .catch(() => {});
-    }
-    return NextResponse.json(
-      { ok: false, error: "Error durante la ejecución del cron" },
-      { status: 500 },
-    );
+    return NextResponse.json({ ok: true, jobId: trabajo.id, estado: trabajo.estado }, { status: 202 });
+  } catch {
+    return NextResponse.json({ ok: false, error: "No se pudo iniciar el escaneo programado." }, { status: 500 });
   }
 }
-

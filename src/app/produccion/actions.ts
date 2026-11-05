@@ -1,125 +1,64 @@
 "use server";
 
+import { after } from "next/server";
 import { revalidatePath } from "next/cache";
-import { z } from "zod";
 import { requireModulo } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
-import { ejecutarEscaneo, type ResumenEscaneo } from "@/modules/produccion/escaneo";
-import { repositorioPrisma } from "./repositorio";
+import { datosLoteEsquema, solicitudEscaneoEsquema } from "@/modules/produccion/lotes";
+import type { ResumenEscaneo } from "@/modules/produccion/escaneo";
+import { crearTrabajoEscaneo, procesarSiguienteProfesor, TIPOS_ESCANEO } from "./trabajos";
 
 export type EstadoEscaneo = {
-  error?: string;
-  exito?: boolean;
-  mensaje?: string;
-  resumen?: ResumenEscaneo;
+  error?: string; exito?: boolean; mensaje?: string; resumen?: ResumenEscaneo;
+  jobId?: number; pendiente?: boolean; avance?: number; total?: number;
+  erroresCampos?: { profesorId?: string; anio?: string };
 };
 
-const anioActual = new Date().getFullYear();
-
-const esquemaEscaneo = z.object({
-  profesorId: z.string().optional().default("todos"),
-  anio: z
-    .string()
-    .trim()
-    .optional()
-    .refine((v) => !v || (/^\d{4}$/.test(v) && Number(v) >= 1990 && Number(v) <= anioActual + 1), {
-      message: `El año debe ser un valor de 4 dígitos entre 1990 y ${anioActual + 1}.`,
-    }),
-});
-
-/**
- * Server Action para disparar el escaneo incremental desde la interfaz (RF-020, RNF-001).
- * Protegido por requireModulo("produccion") (RNF-005).
- */
-export async function iniciarEscaneoAction(
-  _: EstadoEscaneo,
-  formData: FormData,
-): Promise<EstadoEscaneo> {
+export async function iniciarEscaneoAction(_: EstadoEscaneo, formData: FormData): Promise<EstadoEscaneo> {
   await requireModulo("produccion");
-
-  const profesorIdRaw = formData.get("profesorId");
-  const anioRaw = formData.get("anio");
-
-  const parseo = esquemaEscaneo.safeParse({
-    profesorId: profesorIdRaw ? String(profesorIdRaw) : "todos",
-    anio: anioRaw ? String(anioRaw) : "",
-  });
-
-  if (!parseo.success) {
-    return {
-      error: parseo.error.issues[0]?.message || "Datos del formulario inválidos.",
-    };
-  }
-
-  const { profesorId: profVal, anio: anioVal } = parseo.data;
-  const profesorId = profVal !== "todos" && !isNaN(Number(profVal)) ? Number(profVal) : undefined;
-  const anio = anioVal && anioVal !== "" ? Number(anioVal) : undefined;
-
-  let jobId: number | undefined;
-
   try {
-    const job = await prisma.job.create({
-      data: {
-        tipo: "escaneo-manual",
-        estado: "PENDIENTE",
-      },
-    });
-    jobId = job.id;
-
-    const resumen = await ejecutarEscaneo(
-      {
-        profesorId,
-        anio,
-        jobId,
-      },
-      repositorioPrisma,
-    );
-
-    revalidatePath("/produccion");
-
-    if (
-      resumen.errores.length > 0 &&
-      resumen.publicacionesEncontradas === 0 &&
-      resumen.publicacionesGuardadas === 0
-    ) {
-      if (jobId) {
-        await prisma.job.update({
-          where: { id: jobId },
-          data: {
-            estado: "FALLIDO",
-            error: resumen.errores.slice(0, 3).join("; "),
-          },
-        });
+    const jobId = formData.get("jobId");
+    let trabajo;
+    if (jobId !== null) {
+      if (typeof jobId !== "string" || !/^[1-9]\d*$/.test(jobId) || !Number.isSafeInteger(Number(jobId))) {
+        return { error: "El escaneo solicitado no es válido." };
       }
-      return {
-        error: "No se pudo consultar ninguna de las fuentes externas. Revise la conexión o las claves de API.",
-        resumen,
+      trabajo = await prisma.job.findFirst({ where: { id: Number(jobId), tipo: { in: TIPOS_ESCANEO } } });
+      if (!trabajo) return { error: "No se encontró el escaneo solicitado." };
+    } else {
+      const parseo = solicitudEscaneoEsquema.safeParse({
+        profesorId: formData.get("profesorId") ?? "todos", anio: formData.get("anio") ?? "",
+      });
+      if (!parseo.success) return {
+        error: parseo.error.issues[0]?.message ?? "Revisa los datos del escaneo.",
+        erroresCampos: {
+          profesorId: parseo.error.issues.find((error) => error.path[0] === "profesorId")?.message,
+          anio: parseo.error.issues.find((error) => error.path[0] === "anio")?.message,
+        },
       };
+      trabajo = await crearTrabajoEscaneo("escaneo-manual",
+        parseo.data.profesorId === "todos" ? undefined : Number(parseo.data.profesorId),
+        parseo.data.anio ? Number(parseo.data.anio) : undefined);
     }
-
-    const mensaje = `Escaneo finalizado: ${resumen.publicacionesEncontradas} publicaciones encontradas, ${resumen.publicacionesGuardadas} guardadas, ${resumen.coautoriasDetectadas} coautorías vinculadas.`;
-
+    const pendiente = trabajo.estado === "PENDIENTE" || trabajo.estado === "EN_PROCESO";
+    if (pendiente) {
+      const id = trabajo.id;
+      after(async () => { await procesarSiguienteProfesor(id); });
+    }
+    const datos = datosLoteEsquema.safeParse(trabajo.datos);
+    revalidatePath("/produccion");
     return {
-      exito: true,
-      mensaje,
-      resumen,
+      jobId: trabajo.id, pendiente, avance: trabajo.avance, total: trabajo.total,
+      resumen: datos.success ? {
+        ...datos.data.resumen,
+        errores: datos.data.resumen.errores.map(() => "No se pudo completar una consulta o guardar sus resultados."),
+      } : undefined,
+      error: trabajo.estado === "FALLIDO" ? "El escaneo terminó con incidencias. Puedes iniciar otro para reintentar los datos pendientes." : undefined,
+      exito: trabajo.estado === "COMPLETADO",
+      mensaje: pendiente ? `Escaneo en curso: ${trabajo.avance} de ${trabajo.total} profesores revisados.` :
+        trabajo.estado === "COMPLETADO" ? "Escaneo finalizado." : undefined,
     };
   } catch {
-    if (jobId) {
-      try {
-        await prisma.job.update({
-          where: { id: jobId },
-          data: {
-            estado: "FALLIDO",
-            error: "Error inesperado al ejecutar el escaneo.",
-          },
-        });
-      } catch {
-        // Ignorar fallo secundario de conexión
-      }
-    }
-    return {
-      error: "Ocurrió un error al ejecutar el escaneo. Por favor intente más tarde.",
-    };
+    return { error: "No se pudo consultar o iniciar el escaneo. Inténtalo de nuevo más tarde." };
   }
 }

@@ -7,14 +7,15 @@ import { consultarOrcid } from "./conectores/orcid";
 import type { PublicacionCandidata } from "./tipos";
 
 const prismaFalso = vi.hoisted(() => ({
-  job: { create: vi.fn(), update: vi.fn() },
+  job: { findFirst: vi.fn() },
 }));
-const escaneoFalso = vi.hoisted(() => ({ ejecutarEscaneo: vi.fn() }));
+const trabajosFalsos = vi.hoisted(() => ({ crearTrabajoEscaneo: vi.fn(), procesarSiguienteProfesor: vi.fn(), TIPOS_ESCANEO: ["escaneo-manual", "escaneo-diario"] }));
 
 vi.mock("@/lib/prisma", () => ({ prisma: prismaFalso }));
 vi.mock("@/lib/auth/session", () => ({ requireModulo: vi.fn(async () => ({ rol: "ADMINISTRADOR" })) }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
-vi.mock("@/modules/produccion/escaneo", () => escaneoFalso);
+vi.mock("@/app/produccion/trabajos", () => trabajosFalsos);
+vi.mock("next/server", () => ({ after: vi.fn() }));
 
 const base: PublicacionCandidata = {
   tipo: "ARTICULO",
@@ -132,29 +133,34 @@ describe("Menor · ORCID con filtro de año", () => {
 describe("Notas 2 y 6 · Server Action iniciarEscaneoAction", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    prismaFalso.job.create.mockResolvedValue({ id: 7 });
-    prismaFalso.job.update.mockResolvedValue({});
+    vi.resetAllMocks();
+    trabajosFalsos.crearTrabajoEscaneo.mockResolvedValue({ id: 7, estado: "PENDIENTE", avance: 0, total: 2 });
   });
 
-  it("control: un escaneo correcto responde con éxito", async () => {
+  it("control: encola el escaneo y responde sin esperar a las fuentes externas", async () => {
     const { iniciarEscaneoAction } = await import("@/app/produccion/actions");
-    escaneoFalso.ejecutarEscaneo.mockResolvedValue({ ...resumenVacio, publicacionesEncontradas: 3, publicacionesGuardadas: 3 });
     const r = await iniciarEscaneoAction({}, formulario({ profesorId: "todos", anio: "" }));
-    expect(r.exito).toBe(true);
+    expect(r.pendiente).toBe(true);
+    expect(r.jobId).toBe(7);
+    expect(trabajosFalsos.procesarSiguienteProfesor).not.toHaveBeenCalled();
+    const { after } = await import("next/server");
+    expect(after).toHaveBeenCalledOnce();
+    const tarea = vi.mocked(after).mock.calls[0][0] as () => Promise<void>;
+    await tarea();
+    expect(trabajosFalsos.procesarSiguienteProfesor).toHaveBeenCalledWith(7);
   });
 
-  it("2b. si el escaneo lanza una excepción, el Job queda FALLIDO y no EN_PROCESO", async () => {
+  it("2b. muestra el fallo persistido por el trabajador sin dejar la pantalla esperando", async () => {
     const { iniciarEscaneoAction } = await import("@/app/produccion/actions");
-    escaneoFalso.ejecutarEscaneo.mockRejectedValue(new Error("Connection terminated unexpectedly"));
-    await iniciarEscaneoAction({}, formulario({ profesorId: "todos", anio: "" }));
-    expect(prismaFalso.job.update).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { id: 7 }, data: expect.objectContaining({ estado: "FALLIDO" }) }),
-    );
+    prismaFalso.job.findFirst.mockResolvedValue({ id: 7, estado: "FALLIDO", avance: 0, total: 2 });
+    const r = await iniciarEscaneoAction({}, formulario({ jobId: "7" }));
+    expect(r.error).toBeDefined();
+    expect(r.pendiente).toBe(false);
   });
 
   it("6a. no muestra a la persona el mensaje técnico de la excepción", async () => {
     const { iniciarEscaneoAction } = await import("@/app/produccion/actions");
-    escaneoFalso.ejecutarEscaneo.mockRejectedValue(new Error("Connection terminated unexpectedly"));
+    trabajosFalsos.crearTrabajoEscaneo.mockRejectedValue(new Error("Connection terminated unexpectedly"));
     const r = await iniciarEscaneoAction({}, formulario({ profesorId: "todos", anio: "" }));
     expect(r.error).toBeDefined();
     expect(r.error).not.toContain("Connection terminated");
@@ -162,19 +168,35 @@ describe("Notas 2 y 6 · Server Action iniciarEscaneoAction", () => {
 
   it("6b. si todas las fuentes fallan, no responde con éxito", async () => {
     const { iniciarEscaneoAction } = await import("@/app/produccion/actions");
-    escaneoFalso.ejecutarEscaneo.mockResolvedValue({
-      ...resumenVacio,
-      errores: ["OpenAlex (Prof. 1): HTTP_503", "ORCID (Prof. 1): TIMEOUT"],
-    });
-    const r = await iniciarEscaneoAction({}, formulario({ profesorId: "todos", anio: "" }));
+    prismaFalso.job.findFirst.mockResolvedValue({ id: 7, estado: "FALLIDO", datos: {
+      version: 1, profesoresIds: [1], indice: 1, resumen: { ...resumenVacio, errores: ["HTTP_503"] },
+    } });
+    const r = await iniciarEscaneoAction({}, formulario({ jobId: "7" }));
     expect(r.exito).not.toBe(true);
   });
 
   it("6c. rechaza un año fuera de rango en vez de escanear todos los años", async () => {
     const { iniciarEscaneoAction } = await import("@/app/produccion/actions");
-    escaneoFalso.ejecutarEscaneo.mockResolvedValue(resumenVacio);
     const r = await iniciarEscaneoAction({}, formulario({ profesorId: "todos", anio: "1500" }));
     expect(r.error).toBeDefined();
-    expect(escaneoFalso.ejecutarEscaneo).not.toHaveBeenCalled();
+    expect(trabajosFalsos.crearTrabajoEscaneo).not.toHaveBeenCalled();
+  });
+
+  it("cada consulta de progreso exige permiso del módulo y restringe el tipo de Job", async () => {
+    const { iniciarEscaneoAction } = await import("@/app/produccion/actions");
+    const { requireModulo } = await import("@/lib/auth/session");
+    prismaFalso.job.findFirst.mockResolvedValue({ id: 7, estado: "COMPLETADO", avance: 2, total: 2 });
+    const resultado = await iniciarEscaneoAction({}, formulario({ jobId: "7" }));
+    expect(requireModulo).toHaveBeenCalledWith("produccion");
+    expect(prismaFalso.job.findFirst).toHaveBeenCalledWith({ where: { id: 7, tipo: { in: ["escaneo-manual", "escaneo-diario"] } } });
+    expect(resultado.exito).toBe(true);
+  });
+
+  it("no agenda trabajo si se deniega el permiso", async () => {
+    const { iniciarEscaneoAction } = await import("@/app/produccion/actions");
+    const { requireModulo } = await import("@/lib/auth/session");
+    vi.mocked(requireModulo).mockRejectedValueOnce(new Error("Sin permiso"));
+    await expect(iniciarEscaneoAction({}, formulario({ profesorId: "todos", anio: "" }))).rejects.toThrow("Sin permiso");
+    expect(trabajosFalsos.crearTrabajoEscaneo).not.toHaveBeenCalled();
   });
 });
