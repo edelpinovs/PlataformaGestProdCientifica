@@ -29,10 +29,10 @@ export type CuerpoFila = {
   anioVencimiento: number;
   departamento: { nombre: string; nomenclatura: string };
   lider: { nombres: string; apellidos: string; codigo: string } | null;
-  _count: { integrantes: number };
+  _count: { integrantes: number; lgacs: number };
 };
 
-const COLUMNAS = 8;
+const COLUMNAS = 9;
 
 export function FilaCuerpo({ cuerpo, departamentos }: { cuerpo: CuerpoFila; departamentos: Departamento[] }) {
   const [modo, setModo] = useState<"ver" | "editar" | "eliminar">("ver");
@@ -66,6 +66,11 @@ export function FilaCuerpo({ cuerpo, departamentos }: { cuerpo: CuerpoFila; depa
         ) : (
           <Link href={`/cuerpos-academicos/${cuerpo.id}`} className="font-medium text-marca">Designar</Link>
         )}
+      </td>
+      <td className={claseTabla.celda}>
+        <Link href={`/cuerpos-academicos/${cuerpo.id}`} className="font-medium text-marca">
+          {cuerpo._count.lgacs === 0 ? "Registrar" : `${cuerpo._count.lgacs}`}
+        </Link>
       </td>
       <td className={`${claseTabla.celda} pr-0 text-right whitespace-nowrap`}>
         <button type="button" onClick={() => setModo("editar")} className={claseAccionFila()}

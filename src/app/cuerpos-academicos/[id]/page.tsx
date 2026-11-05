@@ -6,14 +6,22 @@ import { prisma } from "@/lib/prisma";
 import { ETIQUETA_NIVEL } from "@/modules/cuerpos-academicos/cuerpo";
 import { nombreProfesor, notaSiDejaDeSerLider, tieneProdepActivo } from "@/modules/cuerpos-academicos/integrantes";
 import { FilaIntegrante } from "./fila";
+import { FilaLgac } from "./fila-lgac";
 import { FormularioIntegrante, FormularioLider } from "./formulario";
+import { FormularioLgac } from "./formulario-lgac";
 
 export default async function DetalleCuerpoPage({
   params,
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ editado?: string; eliminado?: string; lider?: string }>;
+  searchParams: Promise<{
+    editado?: string;
+    eliminado?: string;
+    lider?: string;
+    lgac?: string;
+    lgacEliminada?: string;
+  }>;
 }) {
   const perfil = await requireModulo("cuerpos-academicos");
   const { id: bruto } = await params;
@@ -21,7 +29,7 @@ export default async function DetalleCuerpoPage({
   if (!Number.isInteger(id) || id <= 0) notFound();
 
   const hoy = new Date();
-  const [{ editado, eliminado, lider }, cuerpo, profesoresTc] = await Promise.all([
+  const [{ editado, eliminado, lider, lgac: lgacEditada, lgacEliminada }, cuerpo, profesoresTc] = await Promise.all([
     searchParams,
     prisma.cuerpoAcademico.findUnique({
       where: { id },
@@ -40,6 +48,12 @@ export default async function DetalleCuerpoPage({
             },
           },
           orderBy: { profesor: { apellidos: "asc" } },
+        },
+        lgacs: {
+          include: {
+            profesores: { select: { id: true, nombres: true, apellidos: true, codigo: true } },
+          },
+          orderBy: { nombre: "asc" },
         },
       },
     }),
@@ -77,6 +91,17 @@ export default async function DetalleCuerpoPage({
     typeof editado === "string" ? `Se guardaron los cambios de ${editado}.${avisoLider}`
     : typeof eliminado === "string" ? `Se quitó a ${eliminado}.${avisoLider}`
     : null;
+  const resultadoLgac =
+    typeof lgacEditada === "string" ? `Se guardaron los cambios de «${lgacEditada}».`
+    : typeof lgacEliminada === "string" ? `Se eliminó «${lgacEliminada}».`
+    : null;
+  const paraLgac = integrantes.map((i) => ({ profesorId: i.profesorId, nombre: i.nombre }));
+  const lineas = cuerpo.lgacs.map((l) => ({
+    id: l.id,
+    nombre: l.nombre,
+    descripcion: l.descripcion,
+    profesores: l.profesores.map((p) => ({ profesorId: p.id, nombre: nombreProfesor(p) })),
+  }));
 
   return (
     <Marco correo={perfil.correo} rol={perfil.rol} activo="cuerpos-academicos"
@@ -149,6 +174,46 @@ export default async function DetalleCuerpoPage({
               integrantes={integrantes.map((i) => ({ profesorId: i.profesorId, nombre: i.nombre }))}
               liderId={cuerpo.liderId}
             />
+          </div>
+        )}
+      </Panel>
+
+      <Panel titulo="Registrar LGAC" descripcion="RF-015 · CU-009. Cada línea pertenece a este cuerpo académico y se vincula a sus integrantes.">
+        {integrantes.length === 0 ? (
+          <EstadoVacio>Primero asigna integrantes. Una LGAC se vincula a quienes ya forman parte del cuerpo académico.</EstadoVacio>
+        ) : (
+          <FormularioLgac cuerpoId={cuerpo.id} integrantes={paraLgac} />
+        )}
+      </Panel>
+
+      <Panel titulo={`LGAC (${lineas.length})`}>
+        {resultadoLgac && <div className="mb-4"><Aviso tipo="exito">{resultadoLgac}</Aviso></div>}
+        {lineas.length === 0 ? (
+          <EstadoVacio>Aún no hay líneas registradas en este cuerpo académico.</EstadoVacio>
+        ) : (
+          <div className="overflow-x-auto sm:overflow-visible">
+            <table className={claseTabla.tabla}>
+              <thead className={claseTabla.encabezado}>
+                <tr>
+                  <th className={claseTabla.celdaEncabezado}>Nombre</th>
+                  <th className={claseTabla.celdaEncabezado}>Descripción</th>
+                  <th className={claseTabla.celdaEncabezado}>Integrantes</th>
+                  <th className={`${claseTabla.celdaEncabezado} pr-0 text-right`}>
+                    <span className="sr-only">Acciones</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {lineas.map((l) => (
+                  <FilaLgac
+                    key={`${l.id}-${l.nombre}-${l.descripcion ?? ""}-${l.profesores.map((p) => p.profesorId).join(",")}`}
+                    cuerpoId={cuerpo.id}
+                    lgac={l}
+                    integrantes={paraLgac}
+                  />
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </Panel>

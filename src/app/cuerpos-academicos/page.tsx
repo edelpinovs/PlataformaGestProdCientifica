@@ -24,7 +24,7 @@ export default async function CuerposAcademicosPage({
       include: {
         departamento: { select: { nombre: true, nomenclatura: true } },
         lider: { select: { nombres: true, apellidos: true, codigo: true } },
-        _count: { select: { integrantes: true } },
+        _count: { select: { integrantes: true, lgacs: true } },
       },
     }),
   ]);
@@ -36,7 +36,7 @@ export default async function CuerposAcademicosPage({
 
   return (
     <Marco correo={perfil.correo} rol={perfil.rol} activo="cuerpos-academicos" titulo={modulo.nombre}
-      subtitulo="Registro de CA, integrantes de tiempo completo, líder único y PRODEP activo.">
+      subtitulo="Registro de CA, integrantes, líder único, LGAC y PRODEP activo.">
       <Panel titulo="Registrar cuerpo académico" descripcion="RF-012 · CU-007">
         {departamentos.length === 0 ? (
           <EstadoVacio>
@@ -63,6 +63,7 @@ export default async function CuerposAcademicosPage({
                   <th className={claseTabla.celdaEncabezado}>Vigencia</th>
                   <th className={claseTabla.celdaEncabezado}>Integrantes</th>
                   <th className={claseTabla.celdaEncabezado}>Líder</th>
+                  <th className={claseTabla.celdaEncabezado}>LGAC</th>
                   <th className={`${claseTabla.celdaEncabezado} pr-0 text-right`}>
                     <span className="sr-only">Acciones</span>
                   </th>
