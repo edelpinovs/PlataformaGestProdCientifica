@@ -1,4 +1,4 @@
-import path from "node:path";
+﻿import path from "node:path";
 import { defineConfig } from "vitest/config";
 
 // Alias @/ igual que tsconfig, para poder probar Server Actions (revisión del PR #66).
