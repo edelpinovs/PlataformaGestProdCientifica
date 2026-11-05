@@ -191,30 +191,28 @@ export default async function DetalleCuerpoPage({
         {lineas.length === 0 ? (
           <EstadoVacio>Aún no hay líneas registradas en este cuerpo académico.</EstadoVacio>
         ) : (
-          <div className="overflow-x-auto sm:overflow-visible">
-            <table className={claseTabla.tabla}>
-              <thead className={claseTabla.encabezado}>
-                <tr>
-                  <th className={claseTabla.celdaEncabezado}>Nombre</th>
-                  <th className={claseTabla.celdaEncabezado}>Descripción</th>
-                  <th className={claseTabla.celdaEncabezado}>Integrantes</th>
-                  <th className={`${claseTabla.celdaEncabezado} pr-0 text-right`}>
-                    <span className="sr-only">Acciones</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {lineas.map((l) => (
-                  <FilaLgac
-                    key={`${l.id}-${l.nombre}-${l.descripcion ?? ""}-${l.profesores.map((p) => p.profesorId).join(",")}`}
-                    cuerpoId={cuerpo.id}
-                    lgac={l}
-                    integrantes={paraLgac}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <table className={claseTabla.tabla}>
+            <thead className={claseTabla.encabezado}>
+              <tr>
+                <th className={claseTabla.celdaEncabezado}>Nombre</th>
+                <th className={`${claseTabla.celdaEncabezado} hidden sm:table-cell`}>Descripción</th>
+                <th className={`${claseTabla.celdaEncabezado} hidden sm:table-cell`}>Integrantes</th>
+                <th className={`${claseTabla.celdaEncabezado} pr-0 text-right`}>
+                  <span className="sr-only">Acciones</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {lineas.map((l) => (
+                <FilaLgac
+                  key={`${l.id}-${l.nombre}-${l.descripcion ?? ""}-${l.profesores.map((p) => p.profesorId).join(",")}`}
+                  cuerpoId={cuerpo.id}
+                  lgac={l}
+                  integrantes={paraLgac}
+                />
+              ))}
+            </tbody>
+          </table>
         )}
       </Panel>
     </Marco>

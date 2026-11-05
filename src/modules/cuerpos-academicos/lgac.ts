@@ -16,7 +16,9 @@ export const altaLgac = z.object({
   descripcion: descripcionOpcional,
   profesorIds: z
     .array(z.coerce.number({ error: eligeIntegrante }).int().positive())
-    .min(1, eligeIntegrante),
+    .min(1, eligeIntegrante)
+    // Un envío manipulado podría repetir el mismo integrante; se queda una sola vez.
+    .transform((ids) => [...new Set(ids)]),
 });
 
 export type AltaLgac = z.infer<typeof altaLgac>;

@@ -35,6 +35,11 @@ describe("altaLgac (RF-015)", () => {
     });
   });
 
+  it("elimina integrantes repetidos y conserva el orden", () => {
+    const resultado = altaLgac.parse({ ...base, cuerpoId: "4", profesorIds: ["2", "1", "2", "1", "3"] });
+    expect(resultado.profesorIds).toEqual([2, 1, 3]);
+  });
+
   it("rechaza una descripción demasiado larga", () => {
     const resultado = altaLgac.safeParse({ ...base, descripcion: "x".repeat(401) });
     expect(resultado.success).toBe(false);

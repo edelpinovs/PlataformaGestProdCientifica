@@ -44,11 +44,19 @@ export function FilaLgac({
 
   return (
     <tr className={claseTabla.fila}>
-      <td className={claseTabla.celda}>{lgac.nombre}</td>
       <td className={claseTabla.celda}>
+        {lgac.nombre}
+        <div className="mt-2 flex flex-col gap-1 text-xs text-texto-3 sm:hidden">
+          <span>{lgac.descripcion ?? "Sin descripción"}</span>
+          <span>{nombres || "Sin integrantes"}</span>
+        </div>
+      </td>
+      <td className={`${claseTabla.celda} hidden sm:table-cell`}>
         {lgac.descripcion ? lgac.descripcion : <span className="text-texto-3">Sin descripción</span>}
       </td>
-      <td className={claseTabla.celda}>{nombres || <span className="text-texto-3">Sin integrantes</span>}</td>
+      <td className={`${claseTabla.celda} hidden sm:table-cell`}>
+        {nombres || <span className="text-texto-3">Sin integrantes</span>}
+      </td>
       <td className={`${claseTabla.celda} pr-0 text-right whitespace-nowrap`}>
         <button type="button" onClick={() => setModo("editar")} className={claseAccionFila()}
           aria-label={`Editar ${lgac.nombre}`}>
