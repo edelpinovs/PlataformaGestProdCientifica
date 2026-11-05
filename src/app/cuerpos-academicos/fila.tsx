@@ -41,26 +41,34 @@ export function FilaCuerpo({ cuerpo, departamentos }: { cuerpo: CuerpoFila; depa
   if (modo === "editar") return <EdicionCuerpo cuerpo={cuerpo} departamentos={departamentos} cerrar={cerrar} />;
   if (modo === "eliminar") return <ConfirmarEliminacion cuerpo={cuerpo} cerrar={cerrar} />;
 
+  const integrantes = cuerpo._count.integrantes === 0 ? "Asignar integrantes" : `${cuerpo._count.integrantes} integrantes`;
+  const lider = cuerpo.lider ? nombreProfesor(cuerpo.lider) : "Sin líder";
+
   return (
     <tr className={claseTabla.fila}>
       <td className={`${claseTabla.celda} font-mono`}>{cuerpo.clave}</td>
       <td className={claseTabla.celda}>
         <Link href={`/cuerpos-academicos/${cuerpo.id}`} className="font-medium text-marca">{cuerpo.nombre}</Link>
+        <div className="mt-2 flex flex-col gap-1 text-xs text-texto-3 sm:hidden">
+          <span>{ETIQUETA_NIVEL[cuerpo.nivel]} · {cuerpo.anioRegistro}–{cuerpo.anioVencimiento}</span>
+          <span>{cuerpo.departamento.nombre} ({cuerpo.departamento.nomenclatura})</span>
+          <span>{integrantes} · {lider}</span>
+        </div>
       </td>
-      <td className={claseTabla.celda}>{ETIQUETA_NIVEL[cuerpo.nivel]}</td>
-      <td className={claseTabla.celda}>
+      <td className={`${claseTabla.celda} hidden sm:table-cell`}>{ETIQUETA_NIVEL[cuerpo.nivel]}</td>
+      <td className={`${claseTabla.celda} hidden sm:table-cell`}>
         {cuerpo.departamento.nombre}{" "}
         <span className="font-mono text-texto-3">({cuerpo.departamento.nomenclatura})</span>
       </td>
-      <td className={`${claseTabla.celda} whitespace-nowrap`}>
+      <td className={`${claseTabla.celda} hidden whitespace-nowrap sm:table-cell`}>
         {cuerpo.anioRegistro}–{cuerpo.anioVencimiento}
       </td>
-      <td className={claseTabla.celda}>
+      <td className={`${claseTabla.celda} hidden sm:table-cell`}>
         <Link href={`/cuerpos-academicos/${cuerpo.id}`} className="font-medium text-marca">
           {cuerpo._count.integrantes === 0 ? "Asignar" : `${cuerpo._count.integrantes}`}
         </Link>
       </td>
-      <td className={claseTabla.celda}>
+      <td className={`${claseTabla.celda} hidden sm:table-cell`}>
         {cuerpo.lider ? (
           nombreProfesor(cuerpo.lider)
         ) : (
