@@ -37,4 +37,7 @@ Las publicaciones extraídas de fuentes indizadas (Scopus, OpenAlex, ORCID) repr
 ### Escaneo incremental (Hallazgo 3c)
 - Si no se especifica un año forzado, el motor consulta `CorteEscaneo` para cada par `(profesorId, fuente)`.
 - Si el profesor nunca ha sido escaneado, inicia desde el año en curso.
-- Cada fuente exitosa actualiza su `ultimaFecha` en `CorteEscaneo` al concluir.
+- Con un corte previo se reconsulta desde el año anterior hasta el año actual para recuperar indexaciones tardías y cubrir los años transcurridos. La deduplicación evita repetir las obras guardadas.
+- Cada fuente exitosa actualiza su `ultimaFecha` solo después de guardar las publicaciones y sus autorías, usando la fecha de inicio del escaneo.
+- Si falla la consulta, falta la clave de Scopus o falla la persistencia de un profesor, se conserva su corte para reintentar. Un año histórico solicitado explícitamente no cambia el corte incremental.
+- `escaneo.test.ts` prueba el cambio de año, los errores por fuente, la persistencia previa al corte y los reintentos con un repositorio simulado.

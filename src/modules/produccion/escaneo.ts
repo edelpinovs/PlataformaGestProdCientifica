@@ -76,6 +76,30 @@ export type ResumenEscaneo = {
   errores: string[];
 };
 
+/** Reconsulta desde el año anterior al corte para recuperar indexaciones tardías.
+ * La deduplicación evita repetir las obras ya guardadas. Un fallo descarta el
+ * resultado del periodo y conserva el corte anterior para reintentarlo completo.
+ */
+async function consultarPeriodo(
+  consultar: (profesor: ProfesorParaEscaneo, anio?: number) => Promise<{
+    publicaciones: PublicacionCandidata[];
+    error?: string;
+  }>,
+  profesor: ProfesorParaEscaneo,
+  anioInicial: number,
+  anioExplicito: number | undefined,
+  inicio: Date,
+) {
+  const publicaciones: PublicacionCandidata[] = [];
+  const anioFinal = anioExplicito ?? inicio.getUTCFullYear();
+  for (let anio = Math.min(anioInicial, anioFinal); anio <= anioFinal; anio++) {
+    const resultado = await consultar(profesor, anio);
+    if (resultado.error) return { publicaciones: [], error: resultado.error };
+    publicaciones.push(...resultado.publicaciones);
+  }
+  return { publicaciones };
+}
+
 /**
  * Escanea la producción científica de uno o más profesores consultando las fuentes externas
  * configuradas (Scopus, OpenAlex, ORCID), deduplica los registros y persiste publicaciones
@@ -121,6 +145,9 @@ export async function ejecutarEscaneo(
   }
 
   const todasCandidatas: PublicacionCandidata[] = [];
+  const cortesPendientes: { profesorId: number; fuente: FuentePublicacion }[] = [];
+  const inicioEscaneo = new Date();
+  const profesoresConFalloPersistencia = new Set<number>();
 
   // 2. Extraer publicaciones de fuentes externas por cada profesor
   for (const prof of profesores) {
@@ -134,23 +161,21 @@ export async function ejecutarEscaneo(
           if (repo.obtenerUltimoCorte) {
             const ultimoCorte = await repo.obtenerUltimoCorte(prof.id, "SCOPUS");
             if (ultimoCorte) {
-              anioScopus = ultimoCorte.getUTCFullYear();
+              anioScopus = Math.max(1900, ultimoCorte.getUTCFullYear() - 1);
             }
           }
           if (!anioScopus) {
-            anioScopus = new Date().getFullYear();
+            anioScopus = inicioEscaneo.getUTCFullYear();
           }
         }
 
-        const res = await consultarScopus(prof, anioScopus);
-        if (res.error && res.error !== "NO_API_KEY") {
+        const res = await consultarPeriodo(consultarScopus, prof, anioScopus, opciones?.anio, inicioEscaneo);
+        if (res.error) {
           resumen.errores.push(`Scopus (Prof. ${prof.id}): ${res.error}`);
           huboErrorEnProfesor = true;
         } else {
           todasCandidatas.push(...res.publicaciones);
-          if (repo.registrarCorte) {
-            await repo.registrarCorte(prof.id, "SCOPUS");
-          }
+          cortesPendientes.push({ profesorId: prof.id, fuente: "SCOPUS" });
         }
       } catch (err: unknown) {
         resumen.errores.push(`Scopus (Prof. ${prof.id}): ${err instanceof Error ? err.message : String(err)}`);
@@ -166,23 +191,21 @@ export async function ejecutarEscaneo(
           if (repo.obtenerUltimoCorte) {
             const ultimoCorte = await repo.obtenerUltimoCorte(prof.id, "OPENALEX");
             if (ultimoCorte) {
-              anioOA = ultimoCorte.getUTCFullYear();
+              anioOA = Math.max(1900, ultimoCorte.getUTCFullYear() - 1);
             }
           }
           if (!anioOA) {
-            anioOA = new Date().getFullYear();
+            anioOA = inicioEscaneo.getUTCFullYear();
           }
         }
 
-        const res = await consultarOpenAlex(prof, anioOA);
+        const res = await consultarPeriodo(consultarOpenAlex, prof, anioOA, opciones?.anio, inicioEscaneo);
         if (res.error) {
           resumen.errores.push(`OpenAlex (Prof. ${prof.id}): ${res.error}`);
           huboErrorEnProfesor = true;
         } else {
           todasCandidatas.push(...res.publicaciones);
-          if (repo.registrarCorte) {
-            await repo.registrarCorte(prof.id, "OPENALEX");
-          }
+          cortesPendientes.push({ profesorId: prof.id, fuente: "OPENALEX" });
         }
       } catch (err: unknown) {
         resumen.errores.push(`OpenAlex (Prof. ${prof.id}): ${err instanceof Error ? err.message : String(err)}`);
@@ -198,23 +221,21 @@ export async function ejecutarEscaneo(
           if (repo.obtenerUltimoCorte) {
             const ultimoCorte = await repo.obtenerUltimoCorte(prof.id, "ORCID");
             if (ultimoCorte) {
-              anioOrcid = ultimoCorte.getUTCFullYear();
+              anioOrcid = Math.max(1900, ultimoCorte.getUTCFullYear() - 1);
             }
           }
           if (!anioOrcid) {
-            anioOrcid = new Date().getFullYear();
+            anioOrcid = inicioEscaneo.getUTCFullYear();
           }
         }
 
-        const res = await consultarOrcid(prof, anioOrcid);
+        const res = await consultarPeriodo(consultarOrcid, prof, anioOrcid, opciones?.anio, inicioEscaneo);
         if (res.error) {
           resumen.errores.push(`ORCID (Prof. ${prof.id}): ${res.error}`);
           huboErrorEnProfesor = true;
         } else {
           todasCandidatas.push(...res.publicaciones);
-          if (repo.registrarCorte) {
-            await repo.registrarCorte(prof.id, "ORCID");
-          }
+          cortesPendientes.push({ profesorId: prof.id, fuente: "ORCID" });
         }
       } catch (err: unknown) {
         resumen.errores.push(`ORCID (Prof. ${prof.id}): ${err instanceof Error ? err.message : String(err)}`);
@@ -222,7 +243,7 @@ export async function ejecutarEscaneo(
       }
     }
 
-    if (!huboErrorEnProfesor || todasCandidatas.length > 0) {
+    if (!huboErrorEnProfesor || todasCandidatas.some((publicacion) => publicacion.profesorId === prof.id)) {
       resumen.profesoresProcesados++;
     }
 
@@ -267,7 +288,23 @@ export async function ejecutarEscaneo(
         }
       }
     } catch (e: unknown) {
+      for (const profesorId of consolidada.profesoresIds) {
+        profesoresConFalloPersistencia.add(profesorId);
+      }
       resumen.errores.push(`Persistencia: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+
+  // Un escaneo histórico explícito no adelanta el corte incremental. Se guarda el
+  // inicio, no el final, para volver a consultar lo indexado durante la ejecución.
+  if (!opciones?.anio && repo.registrarCorte) {
+    for (const corte of cortesPendientes) {
+      if (profesoresConFalloPersistencia.has(corte.profesorId)) continue;
+      try {
+        await repo.registrarCorte(corte.profesorId, corte.fuente, inicioEscaneo);
+      } catch {
+        resumen.errores.push(`No se pudo guardar el corte del profesor ${corte.profesorId}. Se reintentará en el próximo escaneo.`);
+      }
     }
   }
 
