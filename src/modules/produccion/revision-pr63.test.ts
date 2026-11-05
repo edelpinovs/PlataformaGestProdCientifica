@@ -91,7 +91,9 @@ describe("Nota 3 · los conectores traen todas las páginas", () => {
   it("3b. Scopus: un profesor con 150 obras devuelve las 150", async () => {
     const fetchFalso = vi.fn(async (url: string) => {
       const inicio = Number(new URL(url).searchParams.get("start") ?? 0);
-      const n = Math.max(0, Math.min(100, 150 - inicio));
+      const cantidad = Number(new URL(url).searchParams.get("count"));
+      if (cantidad > 25) return new Response(null, { status: 400 });
+      const n = Math.max(0, Math.min(cantidad, 150 - inicio));
       return respuestaJson({
         "search-results": {
           "opensearch:totalResults": "150",
@@ -102,6 +104,9 @@ describe("Nota 3 · los conectores traen todas las páginas", () => {
     vi.stubGlobal("fetch", fetchFalso);
     const r = await consultarScopus({ id: 1, scopusId: "57200000000" }, undefined, "clave-ficticia");
     expect(r.publicaciones).toHaveLength(150);
+    expect(r.error).toBeUndefined();
+    expect(fetchFalso).toHaveBeenCalledTimes(6);
+    expect(fetchFalso.mock.calls.map(([url]) => Number(new URL(url).searchParams.get("start")))).toEqual([0, 25, 50, 75, 100, 125]);
   });
 });
 

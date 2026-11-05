@@ -504,3 +504,18 @@ Comprobación del autor desde el entorno local con los conectores actuales de OR
 Los resultados corresponden al mismo identificador en ambas consultas. Las cantidades históricas no se suman como obras únicas: pueden existir publicaciones compartidas entre fuentes. El cero de 2026 significa que esos conectores no devolvieron obras de ese año para este identificador; no es un fallo de conexión.
 
 Esta prueba confirma conexión y transformación de respuestas reales desde el entorno local. Quedan pendientes Scopus, la ejecución integral del escaneo con persistencia autorizada y la comprobación de APIs y cron desde Vercel. El script temporal de diagnóstico se retiró; no se incorporó información personal ni claves al repositorio.
+
+## 12. Consulta real de Scopus y ajuste de paginación (2026-11-05)
+
+Prueba del autor en modo de solo lectura. La clave se obtuvo temporalmente del proyecto anterior proporcionado por I6, se transmitió al proceso por entrada estándar y no se guardó en archivos de entorno, código ni salida de diagnóstico. Se utilizó un Scopus ID del archivo de entrada sin publicarlo ni guardar datos de la persona.
+
+La petición inicial del conector solicitaba `count=100`. Scopus respondió HTTP 400 con `INVALID_INPUT` y el mensaje «Exceeds the maximum number allowed for the service level». Tras reducir el tamaño de página a 25, las dos consultas respondieron HTTP 200:
+
+| Consulta Scopus Search | HTTP | Publicaciones |
+|---|---|---|
+| Año 2026 | 200 | 0 |
+| Sin filtro de año | 200 | 9 |
+
+El resultado comprueba acceso y transformación de respuestas de Scopus Search desde el entorno local con esa clave. No comprueba el índice H, otros permisos de la clave, las variables de Vercel ni el escaneo integral con persistencia. No se utilizó Prisma ni se insertaron publicaciones o autorías; el script temporal fue retirado.
+
+Las pruebas de regresión simulan un servicio que rechaza `count > 25` y devuelve 150 registros en seis páginas. Comprueban la recuperación completa y el avance `0, 25, 50, 75, 100, 125`. El dictamen independiente de la sección 9 permanece vigente hasta una nueva revisión.

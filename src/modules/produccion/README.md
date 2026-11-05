@@ -63,3 +63,8 @@ Las publicaciones extraídas de fuentes indizadas (Scopus, OpenAlex, ORCID) repr
 - Se reintentan 429, 5xx y fallos transitorios de conexión; no se reintentan 401, 403, 404 ni un JSON inválido. Las respuestas del escaneo usan `cache: "no-store"`.
 - La cola es local al proceso: no garantiza una cuota global entre varias instancias de Vercel. Las cuotas y los 429 del proveedor siguen aplicando. Referencias: [OpenAlex](https://help.openalex.org/api/errors/) y [Crossref](https://www.crossref.org/documentation/retrieve-metadata/rest-api/access-and-authentication/).
 - `conectores/http.test.ts` comprueba concurrencia, separación por proveedor, pausas del servidor, descarga bloqueada, reintentos y liberación de temporizadores con reloj y HTTP simulados.
+
+### Tamaño de página de Scopus
+- La prueba real de Scopus Search devolvió HTTP 400 (`INVALID_INPUT`: límite del nivel de servicio) al solicitar 100 resultados por página con la clave de prueba.
+- El conector solicita 25 resultados por página y avanza mediante `start` hasta completar los resultados. Con esa configuración la consulta real respondió HTTP 200 y recuperó nueve obras históricas del identificador probado, sin persistencia.
+- Las pruebas de paginación simulan un servicio que rechaza páginas mayores de 25 y comprueban que se recuperan 150 obras en seis peticiones. La capacidad permitida depende de la vista y el acceso del cliente; véase [la documentación de Elsevier](https://dev.elsevier.com/api_key_settings.html).

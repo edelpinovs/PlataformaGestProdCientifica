@@ -141,7 +141,9 @@ export async function consultarScopus(
   const query = consultas[0];
   const publicaciones: PublicacionCandidata[] = [];
   let start = 0;
-  const count = 100;
+  // Algunas claves limitan el tamaño de página según su nivel de servicio.
+  // La paginación permite recuperar todas las obras con páginas de 25.
+  const count = 25;
   let totalResultados = Infinity;
 
   while (start < totalResultados) {
