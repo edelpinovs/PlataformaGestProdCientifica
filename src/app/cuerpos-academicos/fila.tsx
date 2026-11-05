@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useState } from "react";
 import {
   Aviso,
@@ -26,9 +27,10 @@ export type CuerpoFila = {
   anioRegistro: number;
   anioVencimiento: number;
   departamento: { nombre: string; nomenclatura: string };
+  _count: { integrantes: number };
 };
 
-const COLUMNAS = 6;
+const COLUMNAS = 7;
 
 export function FilaCuerpo({ cuerpo, departamentos }: { cuerpo: CuerpoFila; departamentos: Departamento[] }) {
   const [modo, setModo] = useState<"ver" | "editar" | "eliminar">("ver");
@@ -40,7 +42,9 @@ export function FilaCuerpo({ cuerpo, departamentos }: { cuerpo: CuerpoFila; depa
   return (
     <tr className={claseTabla.fila}>
       <td className={`${claseTabla.celda} font-mono`}>{cuerpo.clave}</td>
-      <td className={claseTabla.celda}>{cuerpo.nombre}</td>
+      <td className={claseTabla.celda}>
+        <Link href={`/cuerpos-academicos/${cuerpo.id}`} className="font-medium text-marca">{cuerpo.nombre}</Link>
+      </td>
       <td className={claseTabla.celda}>{ETIQUETA_NIVEL[cuerpo.nivel]}</td>
       <td className={claseTabla.celda}>
         {cuerpo.departamento.nombre}{" "}
@@ -48,6 +52,11 @@ export function FilaCuerpo({ cuerpo, departamentos }: { cuerpo: CuerpoFila; depa
       </td>
       <td className={`${claseTabla.celda} whitespace-nowrap`}>
         {cuerpo.anioRegistro}–{cuerpo.anioVencimiento}
+      </td>
+      <td className={claseTabla.celda}>
+        <Link href={`/cuerpos-academicos/${cuerpo.id}`} className="font-medium text-marca">
+          {cuerpo._count.integrantes === 0 ? "Asignar" : `${cuerpo._count.integrantes}`}
+        </Link>
       </td>
       <td className={`${claseTabla.celda} pr-0 text-right whitespace-nowrap`}>
         <button type="button" onClick={() => setModo("editar")} className={claseAccionFila()}

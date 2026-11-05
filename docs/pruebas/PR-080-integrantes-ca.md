@@ -217,3 +217,221 @@ describe("revisión PR #80", () => {
 ```
 
 </details>
+
+## 10. Seguimiento: commit `a3ba897` (5 de noviembre)
+
+Tras la revisión, la autora subió seis commits (`f3a9780` a `a3ba897`). Se repitió la prueba sobre el PR combinado con `main` en una copia aislada. Las pruebas B1–B5 y S1 de la sección 3 **fallan ahora**, como se esperaba (los defectos se corrigieron), y se reescribieron en positivo.
+
+### 10.1 Chequeos automáticos
+
+| Chequeo | Resultado |
+|---|---|
+| `npm test` | 262 pruebas pasan (16 archivos); 23 son de este seguimiento |
+| `npm run lint` | sin errores |
+| `npm run typecheck` | sin errores |
+| `npm run build` | no se ejecutó en la copia; el CI del PR sí lo corrió y pasó (`verificar`) |
+
+### 10.2 Estado de los hallazgos de la sección 4
+
+| Hallazgo | Estado | Cómo se verificó |
+|---|---|---|
+| 1. CA bloqueado al vencer el PRODEP | Corregido: `pierdeProdepVigente` solo bloquea si el cambio deja al CA sin el último PRODEP vigente | B1–B7 en positivo; N1–N7 comprueban que sigue protegido el único PRODEP y el primer integrante |
+| 2. Estatus laboral | Corregido en el alta y en el cambio | S1–S5 |
+| 3. `quitarIntegrante` no atómica | Corregido con `$transaction` | Lectura del código (requiere base) |
+| 4. Líder borrado en silencio | Corregido: aviso con código fijo `?lider=1` | L1, L2 |
+| 5. Regla duplicada | Anotada en el README del módulo | Lectura |
+| 6. Menores | Sin cambios (ver 10.3) | Lectura |
+
+### 10.3 Puntos abiertos
+
+1. **Editar sin cambiar de persona** se rechaza si el integrante ya no está activo (S4). Omitir la revisión cuando el profesor nuevo es el mismo.
+2. **Un CA sin PRODEP vigente puede crecer sin PRODEP** (D1). Consecuencia de la regla nueva; decisión del equipo.
+3. **Menores abiertos:** `?editado=` y `?eliminado=` con texto de la URL, `hoyUtc()` repetido y borde de huso horario (V3), y `overflow-x-auto` en la tabla en celular.
+
+### 10.4 Pruebas de seguimiento
+
+S4 y D1 describen el comportamiento actual (puntos abiertos 1 y 2): si se decide cambiarlo, deben invertirse.
+
+| Id | Qué comprueba | Resultado |
+|---|---|---|
+| B1–B7 | CA sin PRODEP vigente: se puede quitar, cambiar, editar y agregar; un solo integrante se puede quitar | Pasan |
+| N1–N7 | Se protege al único PRODEP vigente (baja y cambio), el primer integrante exige PRODEP y se permite sumar sin PRODEP si hay uno vigente | Pasan |
+| S1–S3, S5 | Los cuatro estatus no activos y asignatura se rechazan en alta y cambio; cadena en minúsculas no pasa | Pasan |
+| S4 | Editar sin cambiar a un integrante no activo se rechaza | Pasa (punto abierto 1) |
+| L1, L2 | `notaSiDejaDeSerLider` | Pasan |
+| D1 | Un CA sin PRODEP vigente admite a alguien sin PRODEP | Pasa (punto abierto 2) |
+| V1–V4 | Bordes de `tieneProdepActivo` (sin cambios) | Pasan |
+
+### 10.5 Lo que no se probó
+
+- La pantalla en el navegador: tema claro, oscuro, celular, cierre de la fila al editar sin cambios y aviso al dejar de ser líder.
+- Las Server Actions contra la base real (transacción de `quitarIntegrante`).
+- `npm run build` en la copia (lo cubre el CI).
+
+### 10.6 Dictamen del seguimiento
+
+**Aprobable con comentarios.** Los hallazgos obligatorios y solicitados están resueltos; los puntos abiertos son menores.
+
+### 10.7 Código de las pruebas de seguimiento
+
+<details>
+<summary><code>src/modules/cuerpos-academicos/revision-pr80-seguimiento.test.ts</code></summary>
+
+```ts
+import { describe, expect, it } from "vitest";
+import {
+  notaSiDejaDeSerLider,
+  revisarAltaIntegrante,
+  revisarBajaIntegrante,
+  revisarCambioIntegrante,
+  tieneProdepActivo,
+  type IntegranteResumen,
+  type ProfesorParaCa,
+} from "./integrantes";
+
+// Pruebas de seguimiento del PR #80, commit a3ba897 (no forman parte del PR).
+const profesor = (
+  id: number,
+  prodepActivo: boolean,
+  extra: Partial<ProfesorParaCa> = {},
+): ProfesorParaCa => ({
+  id,
+  nombres: `Nombre${id}`,
+  apellidos: `Apellido${id}`,
+  codigo: `TC${id}`,
+  tipoContratacion: "TIEMPO_COMPLETO",
+  estatusLaboral: "ACTIVO",
+  prodepActivo,
+  ...extra,
+});
+const integrante = (id: number, prodepActivo: boolean): IntegranteResumen => ({
+  profesorId: id,
+  nombre: `Apellido${id} Nombre${id} (TC${id})`,
+  prodepActivo,
+});
+
+describe("seguimiento PR #80", () => {
+  describe("hallazgo 1 corregido: CA sin PRODEP vigente ya no queda bloqueado", () => {
+    const sinProdep = [integrante(1, false), integrante(2, false)];
+
+    it("B1, B2: se puede quitar a cualquiera", () => {
+      expect(revisarBajaIntegrante(1, sinProdep)).toBeNull();
+      expect(revisarBajaIntegrante(2, sinProdep)).toBeNull();
+    });
+    it("B3, B4: se puede cambiar o editar a un integrante", () => {
+      expect(revisarCambioIntegrante(1, profesor(3, false), sinProdep)).toBeNull();
+      expect(revisarCambioIntegrante(1, profesor(1, false), sinProdep)).toBeNull();
+    });
+    it("B5, B6: se puede agregar a alguien con o sin PRODEP", () => {
+      expect(revisarAltaIntegrante(profesor(3, false), sinProdep)).toBeNull();
+      expect(revisarAltaIntegrante(profesor(3, true), sinProdep)).toBeNull();
+    });
+    it("B7: con un solo integrante sin PRODEP se puede quitar", () => {
+      expect(revisarBajaIntegrante(1, [integrante(1, false)])).toBeNull();
+    });
+  });
+
+  describe("la regla sigue protegiendo el último PRODEP vigente", () => {
+    const conProdep = [integrante(1, true), integrante(2, false)];
+
+    it("N1: no se quita al único con PRODEP si quedan otros", () => {
+      expect(revisarBajaIntegrante(1, conProdep)).toMatch(/se quedaría sin un integrante con PRODEP/);
+    });
+    it("N2: se quita al que no tiene PRODEP", () => {
+      expect(revisarBajaIntegrante(2, conProdep)).toBeNull();
+    });
+    it("N3: si el único con PRODEP es el único integrante, se puede quitar (CA vacío)", () => {
+      expect(revisarBajaIntegrante(1, [integrante(1, true)])).toBeNull();
+    });
+    it("N4: no se cambia al único con PRODEP por alguien sin PRODEP", () => {
+      expect(revisarCambioIntegrante(1, profesor(3, false), conProdep)?.mensaje).toMatch(/PRODEP activo/);
+    });
+    it("N5: se cambia al único con PRODEP por otro con PRODEP", () => {
+      expect(revisarCambioIntegrante(1, profesor(3, true), conProdep)).toBeNull();
+    });
+    it("N6: el primer integrante debe tener PRODEP", () => {
+      expect(revisarAltaIntegrante(profesor(1, false), [])?.mensaje).toMatch(/PRODEP activo/);
+      expect(revisarAltaIntegrante(profesor(1, true), [])).toBeNull();
+    });
+    it("N7: con PRODEP vigente en el CA se suma a alguien sin PRODEP", () => {
+      expect(revisarAltaIntegrante(profesor(3, false), conProdep)).toBeNull();
+    });
+  });
+
+  describe("hallazgo 2 corregido: estatus laboral", () => {
+    const base = [integrante(1, true)];
+
+    it("S1: se rechaza en el alta a quien no está ACTIVO", () => {
+      for (const estatusLaboral of ["LICENCIA", "BAJA_TEMPORAL", "BAJA_POSDOCTORAL", "TRASLADADO"]) {
+        expect(revisarAltaIntegrante(profesor(3, true, { estatusLaboral }), base)?.mensaje).toMatch(
+          /no está en estatus laboral activo/,
+        );
+      }
+    });
+    it("S2: asignatura sigue rechazado", () => {
+      expect(revisarAltaIntegrante(profesor(3, true, { tipoContratacion: "ASIGNATURA" }), base)?.mensaje).toMatch(
+        /no es de tiempo completo/,
+      );
+    });
+    it("S3: el cambio también exige estatus activo", () => {
+      expect(revisarCambioIntegrante(1, profesor(3, true, { estatusLaboral: "LICENCIA" }), base)?.mensaje).toMatch(
+        /no está en estatus laboral activo/,
+      );
+    });
+    it("S4 (observación): editar sin cambiar de persona a un integrante que ya no está activo se rechaza", () => {
+      expect(revisarCambioIntegrante(1, profesor(1, true, { estatusLaboral: "LICENCIA" }), base)?.mensaje).toMatch(
+        /no está en estatus laboral activo/,
+      );
+    });
+    it("S5: el servidor no confía en una cadena distinta (minúsculas)", () => {
+      expect(revisarAltaIntegrante(profesor(3, true, { estatusLaboral: "activo" }), base)).not.toBeNull();
+    });
+  });
+
+  describe("hallazgo 4: aviso al dejar de ser líder", () => {
+    it("L1: sin ser líder no agrega texto", () => {
+      expect(notaSiDejaDeSerLider(false)).toBe("");
+    });
+    it("L2: siendo líder avisa en español y nombra RF-014", () => {
+      expect(notaSiDejaDeSerLider(true)).toBe(
+        " Ya no es líder de este cuerpo académico. Designar un líder único corresponde a RF-014.",
+      );
+    });
+  });
+
+  describe("decisión de diseño", () => {
+    it("D1: con integrantes sin PRODEP vigente el CA puede crecer sin PRODEP (la regla no obliga a recuperarlo)", () => {
+      const sinProdep = [integrante(1, false)];
+      expect(revisarAltaIntegrante(profesor(3, false), sinProdep)).toBeNull();
+    });
+  });
+
+  describe("tieneProdepActivo: bordes", () => {
+    const aprobado = (inicio: string, fin: string) => ({
+      resultado: "APROBADO",
+      inicio: new Date(inicio),
+      fin: new Date(fin),
+    });
+
+    it("V1: basta un dictamen vigente aunque otros hayan vencido", () => {
+      const hoy = new Date("2026-11-04T12:00:00Z");
+      expect(
+        tieneProdepActivo([aprobado("2018-01-01", "2020-12-31"), aprobado("2025-01-01", "2028-12-31")], hoy),
+      ).toBe(true);
+    });
+    it("V2: el último día de vigencia cuenta, también a las 23:59 UTC", () => {
+      expect(tieneProdepActivo([aprobado("2025-01-01", "2026-11-04")], new Date("2026-11-04T23:59:00Z"))).toBe(true);
+    });
+    it("V3: en México (UTC-6) a las 20:00 del último día, el día UTC ya es el siguiente y se considera vencido", () => {
+      // 2026-11-04 20:00 en México = 2026-11-05 02:00 UTC
+      expect(tieneProdepActivo([aprobado("2025-01-01", "2026-11-04")], new Date("2026-11-05T02:00:00Z"))).toBe(false);
+    });
+    it("V4: un periodo con fin anterior al inicio nunca está vigente", () => {
+      expect(tieneProdepActivo([aprobado("2027-01-01", "2026-01-01")], new Date("2026-11-04T12:00:00Z"))).toBe(false);
+    });
+  });
+
+});
+```
+
+</details>
