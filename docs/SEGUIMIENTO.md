@@ -15,7 +15,7 @@ Dictámenes: **Aprobado**, **Aprobado con comentarios**, **Solicitar cambios**, 
 | #57 | edelpinovs | Pauta visual, marco y tema oscuro | Aprobado con comentarios | Acordar cambios en `AGENTS.md` y `src/components/` (D-002) | [PR-057](pruebas/PR-057-pauta-visual.md) | 2026-10-17 | Integrado |
 | #58 | edelpinovs | RF-001 editar y eliminar grados | Aprobado | — | [PR-058](pruebas/PR-058-editar-eliminar-grados.md) | 2026-10-17 | Integrado |
 | #61 | edelpinovs | Editar y eliminar en divisiones y departamentos | Solicitar cambios (primera revisión) | Casos sin probar; corregido antes de integrar | [PR-061](pruebas/PR-061-editar-eliminar-catalogos.md) | 2026-10-22 | Integrado |
-| #63 | irybyron | RF-020 a RF-022 motor de escaneo | Solicitar cambios (segunda revisión; correcciones del autor pendientes de nueva revisión) | Lotes, cortes, concurrencia y similitud corregidos; tres fuentes comprobadas en lectura local y repetición del motor sin duplicados en memoria (secciones 11 a 13); capturas de escritorio claro/oscuro (14); faltan revisión independiente, celular y recorrido con persistencia en Vercel; acordar alcance (D-208), justificar #59 y definir consultas/conteos RF-PC (D-209) | [PR-063](pruebas/PR-063-motor-escaneo.md) | 2026-11-03 | **Abierto** |
+| #63 | irybyron | RF-020 a RF-022 motor de escaneo | Solicitar cambios (segunda revisión; correcciones del autor pendientes de nueva revisión) | Lotes, cortes, concurrencia y similitud corregidos; tres fuentes comprobadas en lectura local y repetición del motor sin duplicados en memoria (secciones 11 a 13); capturas de escritorio claro/oscuro (14); faltan revisión independiente, celular y recorrido con persistencia en Vercel; acordar alcance (D-210), justificar #59 y definir consultas/conteos RF-PC (D-211) | [PR-063](pruebas/PR-063-motor-escaneo.md) | 2026-11-03 | **Abierto** |
 | #65 | marisleidysvazquez8293-arch | RF-012 cuerpos académicos | Aprobado | — | [PR-065](pruebas/PR-065-cuerpos-academicos.md) | 2026-10-22 | Integrado |
 | #66 | dpfuentes92 | RF-004 registro de profesores | Solicitar cambios | Sustituido por el #69, que lo incluye | [PR-066](pruebas/PR-066-registro-profesores.md) | 2026-10-29 | Cerrado |
 | #69 | dpfuentes92 | RF-005 unicidad de identificadores | Aprobado con comentarios | R1 (campo marcado en carrera); pruebas a `profesores.test.ts`; `Closes`; `vitest.config.mts` | [PR-069](pruebas/PR-069-unicidad-identificadores.md) | 2026-10-30 | Integrado |
@@ -26,7 +26,7 @@ Dictámenes: **Aprobado**, **Aprobado con comentarios**, **Solicitar cambios**, 
 | #80 | marisleidysvazquez8293-arch | RF-013 integrantes del CA | Solicitar cambios, luego **Aprobado con comentarios** (seguimiento) | 3 menores: editar sin cambio a un integrante no activo (D-203); CA que crece sin PRODEP (D-204); `?editado=`/`?eliminado=` por la URL, `hoyUtc()` y `overflow-x-auto` | [PR-080](pruebas/PR-080-integrantes-ca.md) | 2026-11-05 | Integrado |
 | #85 | Ared11 | RF-007 observaciones del #79 | Solicitar cambios | Lockfile ajeno; `Closes #` vacío; traslape por resultado y no por nivel (D-104) | [PR-085](pruebas/PR-085-snii-observaciones.md) | 2026-11-05 | **Abierto** |
 | #88 | marisleidysvazquez8293-arch | RF-014 líder único del CA | Solicitar cambios, luego **Aprobado con comentarios** (seguimiento) | Descripción del PR sin marcar; mensaje de `cuerpoId` inválido; ver en el navegador el listado en celular y el formulario del líder | [PR-088](pruebas/PR-088-lider-ca.md) | 2026-11-05 | **Abierto** |
-| #89 | marisleidysvazquez8293-arch | RF-015 LGAC del CA | Sin revisar | — | — | — | **Abierto** |
+| #89 | marisleidysvazquez8293-arch | RF-015 LGAC del CA | Solicitar cambios, luego **Aprobable con comentarios** (conflictos y dos arreglos aplicados por I1 en `43c39d2` y `edfacf8`) | Nombre de LGAC sin `@@unique` (D-209); descripción del PR; ver en el navegador listado y detalle en celular y tema oscuro | [PR-089](pruebas/PR-089-lgac-ca.md) | 2026-11-05 | **Abierto** |
 
 Los PR de documentación, reglas e infraestructura de I1 (#1 a #48, #54, #56, #60, #64, #67, #68, #70, #71, #73, #75, #76, #78, #81 a #84, #86, #87 y #90) no se listan aquí.
 
@@ -38,9 +38,10 @@ Cosas que no pertenecen a un solo PR.
 |---|---|---|---|
 | Vigencias | Respaldo en la base contra el traslape de periodos (D-201) | Equipo, con I3 | pendiente |
 | PRODEP | Unificar las tres copias de la regla de PRODEP activo (D-205) | I3 | pendiente |
-| Datos de demostración | Decidir si se agrega `seed-demo.ts` y dónde se carga (D-206) | Equipo, con quien amplía `seed.ts` | pendiente |
+| Datos de demostración | Cargados en la base compartida; avisar al equipo y revisar el PR de `scripts/demo.ts` (D-008) | I1 | en curso |
 | Reconocimientos | Aplicar en el #85 los cambios pedidos y volver a correr la revisión | Ared11 | en curso |
 | Cuerpos académicos | Cerrar los menores del #88 (descripción del PR y mensaje de `cuerpoId`) | marisleidysvazquez8293-arch | en curso |
+| Cuerpos académicos | Completar la descripción del #89 y acordar el `@@unique` de la LGAC (D-209); los conflictos y los arreglos de código ya los aplicó I1 | marisleidysvazquez8293-arch | en curso |
 | Autenticación | Evaluar subir la vigencia del código de un solo uso (OTP) de Supabase a 24 horas | I1 | opcional |
 | Tablero | Que todo el equipo vea el GitHub Project | I1 | pendiente |
 | Acceso | Confirmar el acceso de colaborador de un integrante que aún no lo tiene | I1 | pendiente |

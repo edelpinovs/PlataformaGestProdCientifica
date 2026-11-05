@@ -22,6 +22,6 @@ Pantalla: `/cuerpos-academicos/[id]`. Editar cambia el profesor del vínculo. Qu
 
 Designar a un único integrante como líder. `CuerpoAcademico.liderId` impide más de uno; la regla rechaza a quien no sea integrante. La pantalla está en `/cuerpos-academicos/[id]`.
 
-## Pendiente
+## RF-015 · CU-009
 
-- RF-015 LGAC asociadas al CA
+Registrar LGAC asociadas a un CA. El nombre no se duplica en el mismo cuerpo; los profesores de la línea deben ser integrantes. Editar y eliminar siguen #59. Si se quita a un integrante, se desvincula de las LGAC de ese CA.

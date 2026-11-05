@@ -489,8 +489,8 @@ La comprobación de infraestructura no consultó profesores ni modificó datos. 
 - Revisar `/produccion` en claro, oscuro y celular. El navegador automatizado no pudo iniciar en la sesión anterior; no se declara verificación visual.
 - Probar APIs reales y medir tiempos y recuperación del cron en Vercel. Un profesor con muchas páginas todavía puede exceder la duración de una ejecución; la reserva permite recuperarla.
 - El control de tasa es por proceso: no coordina la cuota entre varias instancias de Vercel.
-- Acordar el alcance de Crossref, cuartiles y reporte unificado (D-208), y dejar la justificación de #59 también en el issue. La justificación del README no equivale a un acuerdo del equipo.
-- Acordar las consultas RF-PC y el conteo institucional de obras únicas con Validación y Reportes (D-209). No se modificaron esos módulos en estas correcciones.
+- Acordar el alcance de Crossref, cuartiles y reporte unificado (D-210), y dejar la justificación de #59 también en el issue. La justificación del README no equivale a un acuerdo del equipo.
+- Acordar las consultas RF-PC y el conteo institucional de obras únicas con Validación y Reportes (D-211). No se modificaron esos módulos en estas correcciones.
 
 ## 11. Consulta real de fuentes en modo de solo lectura (2026-11-05)
 
