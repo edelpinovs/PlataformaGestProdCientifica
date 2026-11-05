@@ -203,3 +203,129 @@ Para avanzar, I1 resolvió los conflictos del hallazgo 1 y subió un commit de f
 
 - La pantalla en el navegador (tema claro, oscuro y celular del listado y del detalle).
 - Las Server Actions contra la base real.
+
+## 10. Arreglos aplicados: commit `edfacf8` (5 de noviembre)
+
+Con el PR ya fusionable, I1 aplicó dos de los hallazgos solicitados y subió un commit a la rama del PR (sin reescribir su historial). Se avisó en un comentario del PR.
+
+### 10.1 Qué se hizo
+
+| Archivo | Cambio |
+|---|---|
+| `src/modules/cuerpos-academicos/lgac.ts` | `profesorIds` se deduplica en el esquema (`.transform((ids) => [...new Set(ids)])`) después de validar que haya al menos uno |
+| `src/modules/cuerpos-academicos/lgac.test.ts` | Prueba nueva: elimina repetidos y conserva el orden |
+| `src/app/cuerpos-academicos/[id]/page.tsx`, `fila-lgac.tsx` | Se quita el `overflow-x-auto` de la tabla de LGAC; descripción e integrantes se apilan bajo el nombre en celular (columnas `hidden sm:table-cell`) |
+
+### 10.2 Chequeos
+
+| Chequeo | Resultado |
+|---|---|
+| `npm test` | 296 pruebas pasan (19 archivos), incluidas las 17 de revisión |
+| `npm run lint` | sin errores |
+| `npm run typecheck` | `next typegen` y `tsc --noEmit` sin errores |
+| `npm run build` | no se ejecutó en la copia; el CI del PR lo corre |
+
+La prueba E4 de la sección 3 **falló** al aplicar el arreglo, como se esperaba, y se invirtió (código en 10.5).
+
+### 10.3 Estado de los hallazgos
+
+| Hallazgo | Estado |
+|---|---|
+| 1. Conflictos con `main` | Resuelto (sección 9) |
+| 3. Integrantes repetidos | Corregido en `edfacf8` (E4 y E4b) |
+| 4. `overflow-x-auto` | Corregido en el listado (sección 9) y en la tabla de LGAC del detalle |
+| 2. `@@unique` del nombre | Abierto: se acuerda en el chat (D-209) y puede ir en un PR aparte |
+| 5. Descripción del PR | Abierto: la completa la autora |
+| 6 a 10 (menores) | Sin cambios; D-208 sigue pendiente |
+
+### 10.4 Lo que no se probó
+
+- La pantalla en el navegador: tema claro, oscuro y celular del listado y del detalle, registro, edición y eliminación de una LGAC, y quitar a un integrante vinculado.
+- Las Server Actions contra la base real.
+- `npm run build` en la copia (lo cubre el CI).
+
+### 10.5 Código de las pruebas de revisión y seguimiento
+
+<details>
+<summary><code>src/modules/cuerpos-academicos/revision-pr89.test.ts</code> (E4 invertida)</summary>
+
+```ts
+import { describe, expect, it } from "vitest";
+import { altaLgac, idsDeProfesores, revisarLgac } from "./lgac";
+
+// Pruebas de revisión y seguimiento del PR #89 (no forman parte del PR).
+const base = { cuerpoId: "4", nombre: "Gestión ambiental", descripcion: "", profesorIds: ["1"] };
+const enIngles = (m: string) => /Invalid|expected|received|Too small|Too big/i.test(m);
+const mensajes = (entrada: unknown) => {
+  const r = altaLgac.safeParse(entrada);
+  return r.success ? [] : r.error.issues.map((i) => i.message);
+};
+
+describe("revisión PR #89", () => {
+  describe("esquema altaLgac", () => {
+    it("E1: valores atípicos no muestran texto en inglés", () => {
+      const casos: unknown[] = [
+        { ...base, cuerpoId: "0" }, { ...base, cuerpoId: "abc" }, { ...base, cuerpoId: "1.5" },
+        { ...base, profesorIds: [] }, { ...base, profesorIds: ["abc"] }, { ...base, profesorIds: ["0"] },
+        { ...base, profesorIds: ["1.5"] }, { ...base, profesorIds: ["-2"] }, { ...base, nombre: "" },
+        { ...base, nombre: "   " }, { ...base, nombre: "x".repeat(201) }, { ...base, descripcion: "x".repeat(401) },
+      ];
+      for (const c of casos) {
+        const m = mensajes(c);
+        expect(m.length, JSON.stringify(c)).toBeGreaterThan(0);
+        expect(m.some(enIngles), JSON.stringify(c) + " -> " + m.join("|")).toBe(false);
+      }
+    });
+    it("E2: nombre de 200 caracteres pasa; 201 se rechaza", () => {
+      expect(altaLgac.safeParse({ ...base, nombre: "x".repeat(200) }).success).toBe(true);
+      expect(altaLgac.safeParse({ ...base, nombre: "x".repeat(201) }).success).toBe(false);
+    });
+    it("E3: descripción de 400 pasa; solo espacios queda en nulo", () => {
+      expect(altaLgac.safeParse({ ...base, descripcion: "x".repeat(400) }).success).toBe(true);
+      const r = altaLgac.parse({ ...base, descripcion: " \n  " });
+      expect(r.descripcion).toBeNull();
+    });
+    it("E4 (corregido): profesorIds repetidos se eliminan y se conserva el orden", () => {
+      expect(altaLgac.parse({ ...base, profesorIds: ["1", "1", "2"] }).profesorIds).toEqual([1, 2]);
+      expect(altaLgac.parse({ ...base, profesorIds: ["3", "1", "3", "1"] }).profesorIds).toEqual([3, 1]);
+    });
+    it("E4b: eliminar repetidos no oculta los errores (vacío o inválido siguen dando su mensaje)", () => {
+      expect(mensajes({ ...base, profesorIds: [] })).toEqual(["Elige al menos un integrante de esta línea."]);
+      expect(mensajes({ ...base, profesorIds: ["x", "x"] }).length).toBeGreaterThan(0);
+    });
+    it("E5: idsDeProfesores devuelve cadenas tal cual llegan", () => {
+      const f = new FormData();
+      f.append("profesorIds", "3");
+      f.append("profesorIds", "3");
+      expect(idsDeProfesores(f)).toEqual(["3", "3"]);
+    });
+  });
+
+  describe("revisarLgac", () => {
+    const integrantes = [{ profesorId: 1 }, { profesorId: 2 }];
+    const datos = (nombre: string, profesorIds = [1]) => altaLgac.parse({ ...base, nombre, profesorIds: profesorIds.map(String) });
+
+    it("N1: el duplicado ignora acentos y mayúsculas", () => {
+      expect(revisarLgac(datos("GESTIÓN AMBIENTAL"), integrantes, [{ nombre: "gestion ambiental" }])?.campo).toBe("nombre");
+    });
+    it("N2: espacios repetidos se normalizan antes de comparar", () => {
+      expect(revisarLgac(datos("Gestión   ambiental"), integrantes, [{ nombre: "Gestión ambiental" }])?.campo).toBe("nombre");
+    });
+    it("N3: un nombre distinto pasa", () => {
+      expect(revisarLgac(datos("Otra línea"), integrantes, [{ nombre: "Gestión ambiental" }])).toBeNull();
+    });
+    it("N4: al editar, otra LGAC con el mismo nombre sí choca", () => {
+      expect(revisarLgac(datos("Gestión ambiental"), integrantes, [{ id: 8, nombre: "Gestión ambiental" }], 9)?.campo).toBe("nombre");
+    });
+    it("N5: prioridad: sin integrantes, luego no integrante, luego nombre", () => {
+      expect(revisarLgac(datos("A"), [], [])?.mensaje).toMatch(/Primero asigna integrantes/);
+      expect(revisarLgac(datos("A", [9]), integrantes, [{ nombre: "A" }])?.mensaje).toMatch(/Solo se vinculan integrantes/);
+    });
+    it("N6: con profesores repetidos la regla no los cuenta de más", () => {
+      expect(revisarLgac(datos("Nueva", [1, 1]), integrantes, [])).toBeNull();
+    });
+  });
+});
+```
+
+</details>
