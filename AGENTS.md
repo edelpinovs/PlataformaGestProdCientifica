@@ -25,6 +25,7 @@ Todo el equipo usa **una sola base de desarrollo** en Supabase. Un error ahí lo
 - **Prohibido:** `prisma migrate dev`, `prisma migrate reset`, `prisma db push`, SQL `DROP`/`TRUNCATE`/`DELETE` sin `WHERE`, o cualquier comando que proponga borrar o reiniciar la base.
 - Para cambiar el modelo: editar `prisma/schema.prisma`, `npm run db:nueva-migracion -- <nombre>`, revisar el SQL generado y aplicarlo con `npm run db:migrar`. La migración va en el mismo PR que el cambio al esquema.
 - Solo datos ficticios. Nunca datos reales de profesores, ni en la base, ni en pruebas, ni en semillas.
+- Para ver pantallas con contenido hay datos de demostración marcados: `npm run db:demo` (cargar), `npm run db:demo:contar` y `npm run db:demo:limpiar`. Detalle en `docs/DATOS_DEMO.md`. No agregues datos de prueba a mano en la base compartida.
 - No edites `src/generated/`: se regenera con `prisma generate`.
 
 ## Secretos

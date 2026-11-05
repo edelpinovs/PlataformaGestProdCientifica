@@ -17,6 +17,7 @@ Estados: `vigente`, `reemplazada`, `pendiente` (se propuso y falta acordar).
 | D-005 | 2026-11-04 | Mensajes | Todo mensaje al usuario va en español, también con valores atípicos (`NaN`, campo ausente, envío manipulado); nada de texto de Zod, Prisma o `Error` | Un mensaje en inglés llegó a la pantalla en el PR #79 | PR #83 | vigente |
 | D-006 | 2026-11-05 | Revisiones | Las revisiones se publican como comentario, nunca como «Request changes»; las aprueba otra persona; nadie integra su propio PR; cada revisión deja su registro en `docs/pruebas/` | La aprobación y la integración las decide una persona | Sesiones de revisión | vigente |
 | D-007 | 2026-11-05 | Bitácora | Cada revisión y cada acuerdo se registran en `DECISIONES.md` y `SEGUIMIENTO.md` en el mismo PR de documentación | Que el seguimiento no dependa del chat | Este PR | vigente |
+| D-008 | 2026-11-05 | Datos de demostración | Hay datos ficticios de demostración (50 profesores, SNII, PRODEP, cuerpos académicos, LGAC y publicaciones) en la base compartida, disponibles para todo el equipo, marcados y eliminables en cualquier momento sin afectar datos reales (`npm run db:demo:limpiar`). Reemplaza a D-206 | Que todos vean las pantallas con contenido sin inventar datos | Este PR | vigente |
 
 ## Reglas de negocio
 
@@ -43,5 +44,5 @@ Estados: `vigente`, `reemplazada`, `pendiente` (se propuso y falta acordar).
 | D-203 | 2026-11-05 | Cuerpos académicos | ¿Se rechaza editar sin cambios a un integrante que ya no está activo? Hoy se rechaza | PR #80 | pendiente |
 | D-204 | 2026-11-05 | Cuerpos académicos | Un CA sin PRODEP vigente puede sumar integrantes sin PRODEP; confirmar que es lo deseado | PR #80 | pendiente |
 | D-205 | 2026-11-05 | PRODEP | Hay tres copias de la regla de PRODEP activo (`tieneProdepActivo`, `src/lib/inicio.ts` y la futura `tiene_prodep_activo()` de I3); unificarlas en el módulo de reconocimientos | PR #80 | pendiente |
-| D-206 | 2026-11-05 | Datos de demostración | Un script `prisma/seed-demo.ts` con ≈ 40 profesores y datos relacionados, solo `upsert`, con marcador `@demo.invalid` y opción de limpieza; coordinar con quien amplía `seed.ts` | Propuesta de revisión | pendiente |
+| D-206 | 2026-11-05 | Datos de demostración | Un script `prisma/seed-demo.ts` con ≈ 40 profesores y datos relacionados, solo `upsert`, con marcador `@demo.invalid` y opción de limpieza; coordinar con quien amplía `seed.ts` | Propuesta de revisión | reemplazada por D-008 |
 | D-207 | 2026-10-16 | Login SIIAU | No activar el login con SIIAU hasta resolver las decisiones de `docs/diseno/LOGIN_SIIAU.md` | PR #51 | pendiente |

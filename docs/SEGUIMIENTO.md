@@ -38,7 +38,7 @@ Cosas que no pertenecen a un solo PR.
 |---|---|---|---|
 | Vigencias | Respaldo en la base contra el traslape de periodos (D-201) | Equipo, con I3 | pendiente |
 | PRODEP | Unificar las tres copias de la regla de PRODEP activo (D-205) | I3 | pendiente |
-| Datos de demostración | Decidir si se agrega `seed-demo.ts` y dónde se carga (D-206) | Equipo, con quien amplía `seed.ts` | pendiente |
+| Datos de demostración | Cargados en la base compartida; avisar al equipo y revisar el PR de `scripts/demo.ts` (D-008) | I1 | en curso |
 | Reconocimientos | Aplicar en el #85 los cambios pedidos y volver a correr la revisión | Ared11 | en curso |
 | Cuerpos académicos | Cerrar los menores del #88 (descripción del PR y mensaje de `cuerpoId`) | marisleidysvazquez8293-arch | en curso |
 | Autenticación | Evaluar subir la vigencia del código de un solo uso (OTP) de Supabase a 24 horas | I1 | opcional |
