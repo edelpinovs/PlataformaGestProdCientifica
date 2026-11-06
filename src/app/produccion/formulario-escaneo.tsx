@@ -63,11 +63,13 @@ export function FormularioEscaneo({
             max={new Date().getUTCFullYear() + 1}
             disabled={estado.pendiente}
             aria-invalid={Boolean(estado.erroresCampos?.anio)}
-            placeholder="Vacío para escaneo incremental"
+            placeholder="Vacío para historial inicial o actualización"
             className={claseCampo(Boolean(estado.erroresCampos?.anio))}
           />
         </label>
       </div>
+
+      <p className="text-sm text-texto-3">Sin año, ORCID y OpenAlex recuperan el historial si no existe un escaneo previo; después consultan novedades. Para revisar un año concreto, indícalo arriba.</p>
 
       {estado.error && !estado.resultado && <Aviso tipo="error">{estado.error}</Aviso>}
       {estado.resultado && <ResultadoEscaneo resultado={estado.resultado} />}

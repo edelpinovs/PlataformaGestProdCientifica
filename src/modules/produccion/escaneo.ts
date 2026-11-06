@@ -194,12 +194,11 @@ export async function ejecutarEscaneo(
               anioOA = Math.max(1900, ultimoCorte.getUTCFullYear() - 1);
             }
           }
-          if (!anioOA) {
-            anioOA = inicioEscaneo.getUTCFullYear();
-          }
         }
 
-        const res = await consultarPeriodo(consultarOpenAlex, prof, anioOA, opciones?.anio, inicioEscaneo);
+        const res = anioOA === undefined
+          ? await consultarOpenAlex(prof)
+          : await consultarPeriodo(consultarOpenAlex, prof, anioOA, opciones?.anio, inicioEscaneo);
         if (res.error) {
           resumen.errores.push(`OpenAlex (Prof. ${prof.id}): ${res.error}`);
           huboErrorEnProfesor = true;
@@ -224,12 +223,11 @@ export async function ejecutarEscaneo(
               anioOrcid = Math.max(1900, ultimoCorte.getUTCFullYear() - 1);
             }
           }
-          if (!anioOrcid) {
-            anioOrcid = inicioEscaneo.getUTCFullYear();
-          }
         }
 
-        const res = await consultarPeriodo(consultarOrcid, prof, anioOrcid, opciones?.anio, inicioEscaneo);
+        const res = anioOrcid === undefined
+          ? await consultarOrcid(prof)
+          : await consultarPeriodo(consultarOrcid, prof, anioOrcid, opciones?.anio, inicioEscaneo);
         if (res.error) {
           resumen.errores.push(`ORCID (Prof. ${prof.id}): ${res.error}`);
           huboErrorEnProfesor = true;
