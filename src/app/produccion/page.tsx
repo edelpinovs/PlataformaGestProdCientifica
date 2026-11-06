@@ -34,7 +34,7 @@ export default async function ProduccionPage({ searchParams }: { searchParams: P
       </div>
     </div>
     <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-      <Panel titulo="Publicaciones" descripcion="Busca las obras registradas, aplica filtros y elige cuántas mostrar por página.">
+      <Panel titulo="Publicaciones" descripcion="Busca las obras registradas, aplica filtros y ordénalas por cualquier columna. Se muestran 10 por página.">
         <Link className={`${claseBoton} inline-block`} href="/produccion/publicaciones">Consultar publicaciones</Link>
       </Panel>
       <Panel titulo="Escaneo de producción" descripcion="Consulta ORCID, Scopus y OpenAlex para los profesores activos y revisa el avance.">

@@ -2,6 +2,7 @@ import { Marco } from "@/components/marco";
 import { EstadoVacio, Panel } from "@/components/ui";
 import { requireModulo } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
+import { hayFiltrosActivos } from "@/lib/listados/consulta";
 import { analizarConsulta, type ErroresConsulta, type ParametrosConsulta } from "@/modules/produccion/consulta";
 import { FiltrosPublicaciones } from "../filtros-publicaciones";
 import { consultarPublicaciones } from "../consultas";
@@ -34,7 +35,7 @@ export default async function PublicacionesPage({ searchParams }: { searchParams
       <Panel titulo="Resultados">
         <div className="flex min-w-0 flex-col gap-4">
           {resultado && (resultado.publicaciones.length ? <TablaPublicaciones publicaciones={resultado.publicaciones} consulta={consulta} /> :
-            <EstadoVacio>No hay publicaciones con estos filtros. Prueba a limpiarlos o cambiar la búsqueda.</EstadoVacio>)}
+            <EstadoVacio>{hayFiltrosActivos(consulta) ? "No hay publicaciones con estos filtros. Prueba a limpiarlos o cambiar la búsqueda." : "Aún no hay publicaciones registradas."}</EstadoVacio>)}
           <PaginacionPublicaciones consulta={consulta} resultado={resultado} />
         </div>
       </Panel>
