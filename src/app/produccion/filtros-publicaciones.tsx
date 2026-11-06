@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { claseBoton, claseBotonSecundario, claseCampo, claseEtiqueta } from "@/components/ui";
-import { ETIQUETAS_TIPO, ETIQUETAS_FUENTE, ETIQUETAS_ESTADO, type ConsultaPublicaciones, type ErroresConsulta } from "@/modules/produccion/consulta";
+import { CONSULTA_INICIAL, RUTA_PUBLICACIONES, enlaceConsulta, ETIQUETAS_TIPO, ETIQUETAS_FUENTE, ETIQUETAS_ESTADO, type ConsultaPublicaciones, type ErroresConsulta } from "@/modules/produccion/consulta";
 
 export function FiltrosPublicaciones({ consulta, profesores, errores }: {
   consulta: ConsultaPublicaciones;
@@ -14,12 +14,14 @@ export function FiltrosPublicaciones({ consulta, profesores, errores }: {
   ].filter(Boolean);
   return (
     <div className="flex flex-col gap-4">
-      <form action="/produccion#publicaciones" method="get" className="flex flex-col gap-4">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <form action={`${RUTA_PUBLICACIONES}#publicaciones`} method="get" className="flex flex-col gap-4">
           <label className={`${claseEtiqueta} min-w-0`}>Buscar publicaciones
             <input name="texto" defaultValue={consulta.texto} maxLength={200} placeholder="Título, autores o DOI"
               aria-invalid={Boolean(errores.texto)} className={`${claseCampo(Boolean(errores.texto))} min-w-0 w-full`} />
           </label>
+        <details open={Boolean(errores.profesor || errores.anio || errores.tipo || errores.fuente || errores.estado)}>
+          <summary className="w-fit cursor-pointer rounded-xl px-3 py-2 text-sm font-medium text-marca hover:bg-hover">Filtros avanzados</summary>
+          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           <label className={`${claseEtiqueta} min-w-0`}>Profesor de la publicación
             <select name="profesor" defaultValue={consulta.profesor} aria-invalid={Boolean(errores.profesor)} className={`${claseCampo(Boolean(errores.profesor))} min-w-0 w-full`}>
               <option value="">Todos los profesores</option>
@@ -50,15 +52,12 @@ export function FiltrosPublicaciones({ consulta, profesores, errores }: {
               {Object.entries(ETIQUETAS_ESTADO).map(([clave, etiqueta]) => <option key={clave} value={clave}>{etiqueta}</option>)}
             </select>
           </label>
-          <label className={`${claseEtiqueta} min-w-0`}>Filas por página
-            <select name="tamanio" defaultValue={consulta.tamanio} aria-invalid={Boolean(errores.tamanio)} className={`${claseCampo(Boolean(errores.tamanio))} min-w-0 w-full`}>
-              {[20, 50, 100].map((tamanio) => <option key={tamanio} value={tamanio}>{tamanio}</option>)}
-            </select>
-          </label>
-        </div>
+          </div>
+        </details>
+        <input type="hidden" name="tamanio" value={consulta.tamanio} />
         <div className="flex flex-wrap gap-4">
           <button type="submit" className={claseBoton}>Aplicar filtros</button>
-          <Link href="/produccion#publicaciones" className={claseBotonSecundario}>Limpiar filtros</Link>
+          <Link href={enlaceConsulta({ ...CONSULTA_INICIAL, tamanio: consulta.tamanio }, 1)} className={claseBotonSecundario}>Limpiar filtros</Link>
         </div>
       </form>
       {filtros.length > 0 && <ul aria-label="Filtros activos" className="flex flex-wrap gap-4">
