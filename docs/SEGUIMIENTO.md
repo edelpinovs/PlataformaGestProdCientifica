@@ -31,6 +31,8 @@ Dictámenes: **Aprobado**, **Aprobado con comentarios**, **Solicitar cambios**, 
 | #100 | Grillo-de-Alambre | RF-016 Storage no borra el archivo de una carga confirmada | **Aprobable con comentarios** | Falta el borrado real contra Storage con una carga confirmada; la migración ya se aplicó a la base compartida antes de aprobar; función ejecutable por cualquier usuario autenticado | [PR-100](pruebas/PR-100-proteger-archivos-confirmados.md) | 2026-11-05 | **Abierto** |
 | #117 | edelpinovs (con agente de código) | Pieza compartida de listados (D-009, #108) | Integrado sin revisión independiente (0 reseñas) | Revisión visual en claro, oscuro y celular y página 2 con más de 10 grados, todavía sin hacer; avisar al equipo del cambio en `src/components/` y `src/lib/` | [PR-117](pruebas/PR-117-listados-compartidos.md) | 2026-11-06 | **Integrado** |
 
+| #123 | irybyron | RF-021 persistencia multifuente e idempotencia (#122) | Sin revisión independiente | 519 pruebas, lint, tipos y build correctos; Prisma y HTTP simulados, sin escritura en Supabase | [Issue-122](pruebas/ISSUE-122-persistencia-multifuente.md) | 2026-11-05 | **Abierto** |
+
 Los PR de documentación, reglas e infraestructura de I1 (#1 a #48, #54, #56, #60, #64, #67, #68, #70, #71, #73, #75, #76, #78, #81 a #84, #86, #87 y #90) no se listan aquí.
 
 ## Pendientes del grupo
