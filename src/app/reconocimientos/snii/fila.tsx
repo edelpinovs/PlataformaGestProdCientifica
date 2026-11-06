@@ -51,7 +51,9 @@ export function FilaSnii({ reconocimiento, profesores }: {
       </div>
       <div><EtiquetaEstado tipo={tipoEstado}>{etiquetaResultado}</EtiquetaEstado></div>
       <div className="flex gap-1 sm:justify-end">
-        <button type="button" onClick={() => setModo("editar")} className={claseAccionFila()} aria-label={`Editar reconocimiento de ${persona}`}>Editar</button>
+        {reconocimiento.convocatoriaId === null && (
+          <button type="button" onClick={() => setModo("editar")} className={claseAccionFila()} aria-label={`Editar reconocimiento de ${persona}`}>Editar</button>
+        )}
         <button type="button" onClick={() => setModo("eliminar")} className={claseAccionFila(true)} aria-label={`Eliminar reconocimiento de ${persona}`}>Eliminar</button>
       </div>
     </li>
