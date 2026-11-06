@@ -4,6 +4,7 @@ import { startTransition, useActionState, useEffect } from "react";
 import { useFormStatus } from "react-dom";
 import { Aviso, claseBoton, claseCampo, claseEtiqueta } from "@/components/ui";
 import { iniciarEscaneoAction, type EstadoEscaneo } from "./actions";
+import { ResultadoEscaneo } from "./resultado-escaneo";
 
 function BotonEscanear({ enCurso }: { enCurso: boolean }) {
   const { pending } = useFormStatus();
@@ -68,8 +69,8 @@ export function FormularioEscaneo({
         </label>
       </div>
 
-      {estado.error && <Aviso tipo="error">{estado.error}</Aviso>}
-      {estado.exito && estado.mensaje && <Aviso tipo="exito">{estado.mensaje}</Aviso>}
+      {estado.error && !estado.resultado && <Aviso tipo="error">{estado.error}</Aviso>}
+      {estado.resultado && <ResultadoEscaneo resultado={estado.resultado} />}
       {estado.pendiente && (
         <div role="status" className="text-sm text-texto-3">
           <p>{estado.mensaje ?? "Recuperando el avance del escaneo..."}</p>
