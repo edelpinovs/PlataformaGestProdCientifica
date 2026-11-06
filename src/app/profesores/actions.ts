@@ -238,9 +238,11 @@ export async function eliminarProfesor(_: EstadoFila, formData: FormData): Promi
       where: { id },
       select: { perfil: { select: { id: true } }, _count: { select: seleccionUso } },
     });
+    if (!ahora) return { error: NO_EXISTE };
     return {
       error:
-        (ahora && motivoProfesorNoEliminable(nombre, usoDeConteo(Boolean(ahora.perfil), ahora._count))) || NO_EXISTE,
+        motivoProfesorNoEliminable(nombre, usoDeConteo(Boolean(ahora.perfil), ahora._count)) ??
+        `No se puede eliminar a «${nombre}»: tiene otros registros relacionados. Quita esas relaciones antes de eliminarlo.`,
     };
   }
 
