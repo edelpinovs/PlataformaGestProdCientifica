@@ -37,3 +37,7 @@ Se restauró el archivo y la copia quedó limpia.
 ## 5. Dictamen y lo que no se probó
 
 **Aprobable con comentarios**, sin defectos de código. No se probó: persistencia contra una base real ni `npm run build` en la copia.
+
+## 6. Seguimiento
+
+`3dc09f4` (I1): la fila del #123 volvió a la tabla de `SEGUIMIENTO.md` y se quitó el BOM del registro de la autora. El PR se integró el 5 de noviembre.

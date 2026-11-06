@@ -126,3 +126,12 @@ describe("revisión PR #121: presentarResultadoEscaneo", () => {
 ```
 
 </details>
+
+## 7. Seguimiento: arreglos aplicados por I1
+
+| Commit | Qué se hizo |
+|---|---|
+| `c41e270` | Hallazgo 1: se integró el #119 ya corregido y se quitaron las líneas en blanco de las tablas (D-116 y la fila del #121) |
+| fusión con `main` | Tras integrarse el #119 (y el #123, #124 y #125), el #121 quedó con conflicto en `SEGUIMIENTO.md`: se conservaron las filas y se actualizaron las de #119, #121 y #123. Se cambió la base del PR a `main` |
+
+Siguen abiertos los hallazgos menores 2 a 4 (mover su prueba fuera de `revision-pr63.test.ts`, indicar si el último escaneo fue manual o programado, y que el mensaje de clave faltante lo vea solo quien administra) y la revisión visual. El timeout de `revision-pr63.test.ts` ya se subió a 30 s en el #125.

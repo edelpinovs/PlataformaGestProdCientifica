@@ -186,3 +186,12 @@ describe("revisión PR #119", () => {
 ```
 
 </details>
+
+## 8. Seguimiento: arreglos aplicados por I1 e integración
+
+| Commit | Qué se hizo |
+|---|---|
+| `6672c39` | Hallazgos 1 a 5: tablas de `SEGUIMIENTO.md` y `DECISIONES.md` sin líneas en blanco; D-115 con sus tildes; el panel «Publicaciones» del resumen ya no dice «elige cuántas mostrar» (D-009 fija 10); sin publicaciones distingue «aún no hay» de «ningún resultado con estos filtros». La descripción del PR se corrigió («debajo de los resultados») |
+| `669b58d` | Fusión de `main` (#123, #124 y #125 ya integrados) y conflicto en `SEGUIMIENTO.md`: se conservaron las filas del #119 y del #123 |
+
+Chequeos tras los arreglos: lint, `next typegen` y `tsc --noEmit` sin errores, 86 pruebas de Producción y 210 tras la fusión; CI en verde. El PR se integró el 6 de noviembre **sin revisión visual**. Siguen abiertos los hallazgos menores 6 a 8 (filtro de año, búsqueda por nombre completo, celdas sin etiqueta en celular).

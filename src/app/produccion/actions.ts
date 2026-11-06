@@ -7,8 +7,10 @@ import { prisma } from "@/lib/prisma";
 import { datosLoteEsquema, solicitudEscaneoEsquema } from "@/modules/produccion/lotes";
 import type { ResumenEscaneo } from "@/modules/produccion/escaneo";
 import { crearTrabajoEscaneo, procesarSiguienteProfesor, TIPOS_ESCANEO } from "./trabajos";
+import { presentarResultadoEscaneo } from "@/modules/produccion/resultado-escaneo";
 
 export type EstadoEscaneo = {
+  resultado?: ReturnType<typeof presentarResultadoEscaneo>;
   error?: string; exito?: boolean; mensaje?: string; resumen?: ResumenEscaneo;
   jobId?: number; pendiente?: boolean; avance?: number; total?: number;
   erroresCampos?: { profesorId?: string; anio?: string };
@@ -55,6 +57,7 @@ export async function iniciarEscaneoAction(_: EstadoEscaneo, formData: FormData)
     const datos = datosLoteEsquema.safeParse(trabajo.datos);
     actualizarPantallasProduccion();
     return {
+      resultado: presentarResultadoEscaneo(trabajo.estado, trabajo.datos),
       jobId: trabajo.id, pendiente, avance: trabajo.avance, total: trabajo.total,
       resumen: datos.success ? {
         ...datos.data.resumen,

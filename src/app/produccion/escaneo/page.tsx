@@ -5,6 +5,8 @@ import { prisma } from "@/lib/prisma";
 import { FormularioEscaneo } from "../formulario-escaneo";
 import { NavegacionProduccion } from "../navegacion-produccion";
 import { obtenerTrabajoPendiente } from "../trabajos";
+import { presentarResultadoEscaneo } from "@/modules/produccion/resultado-escaneo";
+import { ResultadoEscaneo } from "../resultado-escaneo";
 
 export const maxDuration = 300;
 
@@ -24,7 +26,8 @@ export default async function EscaneoPage() {
       <FormularioEscaneo profesores={profesores} trabajoPendiente={pendiente?.id} />
     </Panel>
     <Panel titulo="Último escaneo registrado">
-      <p className="text-sm text-texto-2">{ultimoJob ? `${ultimoJob.estado} · ${ultimoJob.avance} de ${ultimoJob.total} profesores revisados` : "Todavía no hay escaneos registrados."}</p>
+      {ultimoJob && <ResultadoEscaneo resultado={presentarResultadoEscaneo(ultimoJob.estado, ultimoJob.datos)} />}
+      <p className="text-sm text-texto-2">{ultimoJob ? `${ultimoJob.avance} de ${ultimoJob.total} profesores revisados` : "Todavía no hay escaneos registrados."}</p>
     </Panel>
   </Marco>;
 }

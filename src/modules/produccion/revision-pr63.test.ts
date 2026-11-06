@@ -182,6 +182,18 @@ describe("Notas 2 y 6 · Server Action iniciarEscaneoAction", { timeout: 30_000 
     expect(r.exito).not.toBe(true);
   });
 
+  it("presenta los resultados parciales guardados sin exponer el error técnico", async () => {
+    const { iniciarEscaneoAction } = await import("@/app/produccion/actions");
+    prismaFalso.job.findFirst.mockResolvedValue({ id: 7, estado: "FALLIDO", datos: {
+      version: 1, profesoresIds: [1], indice: 1, resumen: { ...resumenVacio,
+        publicacionesEncontradas: 2, publicacionesGuardadas: 2, errores: ["Scopus (Prof. 1): NO_API_KEY"] },
+    } });
+    const r = await iniciarEscaneoAction({}, formulario({ jobId: "7" }));
+    expect(r.resultado?.tipo).toBe("aviso");
+    expect(r.resultado?.mensaje).toContain("Guardadas o actualizadas: 2");
+    expect(JSON.stringify(r.resultado)).not.toContain("NO_API_KEY");
+  });
+
   it("6c. rechaza un año fuera de rango en vez de escanear todos los años", async () => {
     const { iniciarEscaneoAction } = await import("@/app/produccion/actions");
     const r = await iniciarEscaneoAction({}, formulario({ profesorId: "todos", anio: "1500" }));
