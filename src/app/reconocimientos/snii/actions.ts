@@ -75,7 +75,9 @@ async function guardarSnii(datos: ReconocimientoSnii, confirmarCambioCvu: boolea
 
   const inicio = new Date(`${datos.fechaInicio}T00:00:00.000Z`);
   const fin = new Date(`${datos.fechaFin}T00:00:00.000Z`);
-  if (datos.nivel !== "NO_APROBADO") {
+  // El traslape se revisa según el resultado que se guarda (un NO_APROBADO no vigente no cuenta).
+  const resultado = resultadoSnii(datos.nivel, datos.enRecursoReconsideracion);
+  if (resultado !== "NO_APROBADO") {
     const periodos = await prisma.reconocimientoSnii.findMany({
       where: { profesorId: datos.profesorId, resultado: { not: "NO_APROBADO" } },
       select: { id: true, inicio: true, fin: true },
@@ -93,7 +95,7 @@ async function guardarSnii(datos: ReconocimientoSnii, confirmarCambioCvu: boolea
     profesorId: datos.profesorId,
     nivel: datos.nivel,
     tipoParticipacion: datos.tipoParticipacion,
-    resultado: resultadoSnii(datos.nivel, datos.enRecursoReconsideracion),
+    resultado,
     inicio,
     fin,
   };
