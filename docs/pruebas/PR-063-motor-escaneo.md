@@ -458,3 +458,89 @@ Los hallazgos 9, 10 y 11 de la sección 5 no se volvieron a revisar.
 1. Hacer que el lote del cron avance (por ejemplo, ordenando por el corte más antiguo o guardando el `offset`), y limitar o repartir el escaneo manual de "todos" (hallazgos 2a, 12 y 13).
 2. Acordar en el chat del equipo el cambio de alcance (hallazgo 14), o separar Crossref, cuartiles y reporte unificado en otro PR.
 3. Dejar escrita en el issue la justificación de #59.
+
+## 10. Seguimiento de correcciones del autor (2026-11-05)
+
+Este apartado registra el trabajo de I6 y sus verificaciones; **no sustituye la revisión independiente ni cambia el dictamen de la sección 9**.
+
+| Entrega | Corrección | Evidencia |
+|---|---|---|
+| `0eb6d05` | El corte solo avanza después de guardar obras y autorías; recupera los años transcurridos y conserva el corte ante fallos | `escaneo.test.ts` |
+| `ef85296` | Cola persistida por profesor; cron que continúa después del profesor 25, acción manual en segundo plano y reservas recuperables | `lotes.test.ts`, `trabajos.test.ts`, `cron.test.ts`, `revision-pr63.test.ts` |
+| `320f4b3` | Recuperación de conflictos `P2002` por DOI y autoría; conserva validaciones y rechazos; un fallo de similitud impide crear sin comprobar duplicados | `repositorio.test.ts`, `integracion.test.ts` |
+| Entrega de cliente HTTP | Cola por origen, separación de 250 ms, respeto de `Retry-After` y timeout que incluye la descarga del JSON | 14 pruebas en `conectores/http.test.ts`, con HTTP y reloj simulados |
+
+### 10.1 Verificaciones locales de la entrega de cliente HTTP
+
+| Verificación | Resultado |
+|---|---|
+| `npm test` | Correcto: 30 archivos, 409 pruebas |
+| `npm run lint` | Correcto |
+| `npm run typecheck` | Correcto |
+| `npm run build` | Correcto; requiere acceso a Google Fonts |
+| Infraestructura de similitud | Transacción de solo lectura sobre la conexión configurada: `pg_trgm` e índice GIN presentes; `similarity()` devuelve 1 sobre variantes de un título ficticio |
+| CI de la entrega anterior `320f4b3` | Correcto; `verificar` y `Vercel Preview Comments` completados con éxito |
+
+La comprobación de infraestructura no consultó profesores ni modificó datos. Las pruebas de integración usan el conector, el motor, el repositorio y las acciones de Validación reales, con HTTP, Prisma y sesión simulados.
+
+### 10.2 Pendientes y límites
+
+- Solicitar una nueva revisión independiente de las correcciones; no se han integrado a `main`.
+- Revisar `/produccion` en claro, oscuro y celular. El navegador automatizado no pudo iniciar en la sesión anterior; no se declara verificación visual.
+- Probar APIs reales y medir tiempos y recuperación del cron en Vercel. Un profesor con muchas páginas todavía puede exceder la duración de una ejecución; la reserva permite recuperarla.
+- El control de tasa es por proceso: no coordina la cuota entre varias instancias de Vercel.
+- Acordar el alcance de Crossref, cuartiles y reporte unificado (D-210), y dejar la justificación de #59 también en el issue. La justificación del README no equivale a un acuerdo del equipo.
+- Acordar las consultas RF-PC y el conteo institucional de obras únicas con Validación y Reportes (D-211). No se modificaron esos módulos en estas correcciones.
+
+## 11. Consulta real de fuentes en modo de solo lectura (2026-11-05)
+
+Comprobación del autor desde el entorno local con los conectores actuales de ORCID y OpenAlex. Se tomó un ORCID público del archivo de entrada facilitado por I6, sin incluir el identificador ni los datos de la persona en el repositorio. No se utilizó Prisma, no se ejecutó el flujo de persistencia y no se guardaron publicaciones ni autorías.
+
+| Fuente | HTTP con filtro 2026 | Publicaciones de 2026 | HTTP sin filtro de año | Publicaciones históricas |
+|---|---|---|---|---|
+| ORCID | 200 | 0 | 200 | 11 |
+| OpenAlex | 200 | 0 | 200 | 17 |
+
+Los resultados corresponden al mismo identificador en ambas consultas. Las cantidades históricas no se suman como obras únicas: pueden existir publicaciones compartidas entre fuentes. El cero de 2026 significa que esos conectores no devolvieron obras de ese año para este identificador; no es un fallo de conexión.
+
+Esta prueba confirma conexión y transformación de respuestas reales desde el entorno local. Quedan pendientes Scopus, la ejecución integral del escaneo con persistencia autorizada y la comprobación de APIs y cron desde Vercel. El script temporal de diagnóstico se retiró; no se incorporó información personal ni claves al repositorio.
+
+## 12. Consulta real de Scopus y ajuste de paginación (2026-11-05)
+
+Prueba del autor en modo de solo lectura. La clave se obtuvo temporalmente del proyecto anterior proporcionado por I6, se transmitió al proceso por entrada estándar y no se guardó en archivos de entorno, código ni salida de diagnóstico. Se utilizó un Scopus ID del archivo de entrada sin publicarlo ni guardar datos de la persona.
+
+La petición inicial del conector solicitaba `count=100`. Scopus respondió HTTP 400 con `INVALID_INPUT` y el mensaje «Exceeds the maximum number allowed for the service level». Tras reducir el tamaño de página a 25, las dos consultas respondieron HTTP 200:
+
+| Consulta Scopus Search | HTTP | Publicaciones |
+|---|---|---|
+| Año 2026 | 200 | 0 |
+| Sin filtro de año | 200 | 9 |
+
+El resultado comprueba acceso y transformación de respuestas de Scopus Search desde el entorno local con esa clave. No comprueba el índice H, otros permisos de la clave, las variables de Vercel ni el escaneo integral con persistencia. No se utilizó Prisma ni se insertaron publicaciones o autorías; el script temporal fue retirado.
+
+Las pruebas de regresión simulan un servicio que rechaza `count > 25` y devuelve 150 registros en seis páginas. Comprueban la recuperación completa y el avance `0, 25, 50, 75, 100, 125`. El dictamen independiente de la sección 9 permanece vigente hasta una nueva revisión.
+
+## 13. Motor con fuentes reales y repositorio temporal en memoria (2026-11-05)
+
+Prueba del autor con `ejecutarEscaneo`, los tres conectores y las reglas de deduplicación actuales. Se seleccionaron ORCID y Scopus ID de la misma fila del archivo de entrada, sin publicar esos valores. Tras consultar el historial se eligió 2025, el año más reciente con resultados entre los recuperados y no posterior a 2026.
+
+El repositorio temporal almacenó las obras y las claves de autoría únicamente en memoria. No importó Prisma, no creó profesores ni modificó Supabase. La clave de Scopus se transmitió por entrada estándar y se mantuvo solo en el proceso; el script temporal se retiró después de la prueba.
+
+| Medida | Primer escaneo de 2025 | Segundo escaneo de 2025 |
+|---|---|---|
+| Contextos de profesor procesados | 1 | 1 |
+| Resultados recibidos de las fuentes antes de deduplicar | 3 | 3 |
+| Obras consolidadas procesadas | 2 | 2 |
+| Autorías nuevas en memoria | 2 | 0 |
+| Errores del motor | 0 | 0 |
+| Obras únicas totales en el repositorio temporal | 2 | 2 |
+
+La repetición no aumentó las obras ni las autorías del repositorio temporal. El contador `publicacionesGuardadas` del motor incluye registros reutilizados, por lo que no debe interpretarse como cantidad de publicaciones nuevas.
+
+Esta prueba comprueba consulta real, transformación, deduplicación y repetición con un repositorio en memoria. Se desactivó el enriquecimiento opcional de Crossref para aislar las tres fuentes. No prueba persistencia Prisma, validación docente, actualización de cortes, trabajos de segundo plano ni el despliegue de Vercel. La persistencia y la integración con Validación tienen pruebas simuladas en la sección 10; su recorrido real sigue pendiente.
+
+## 14. Evidencia visual compartida durante la sesión (2026-11-05)
+
+I6 proporcionó capturas de `/produccion` con sesión de administrador, en escritorio y temas claro y oscuro. Se observaron el selector de profesores de prueba, 30 publicaciones de demostración, 18 autorías pendientes y vínculos de coautoría en el listado. No se observaron superposiciones en las zonas visibles. No se incorporan las imágenes al repositorio porque muestran datos de la sesión.
+
+Las capturas confirman la lectura y presentación de datos de demostración desde la vista previa; no demuestran extracción real desde las APIs. No permiten certificar contraste AA, toda la página ni el commit desplegado. La revisión de celular se pospuso a petición de I6 y permanece pendiente. El navegador automatizado continuó sin poder iniciar.

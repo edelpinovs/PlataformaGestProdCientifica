@@ -1,12 +1,28 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { crearTrabajoEscaneo, obtenerTrabajoPendiente, procesarSiguienteProfesor } from "@/app/produccion/trabajos";
 
-// Escaneo incremental diario (RF-020), lanzado por Vercel Cron (ver vercel.json).
-// Vercel envía "Authorization: Bearer <CRON_SECRET>"; cualquier otra llamada se rechaza.
+export const maxDuration = 300;
+
+// Vercel Cron y la pantalla comparten la cola persistida y la reserva por Job.
 export async function GET(request: Request) {
-  if (request.headers.get("authorization") !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!process.env.CRON_SECRET || request.headers.get("authorization") !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
-
-  // TODO(Integrante 6): crear un Job de tipo "escaneo" y procesar el primer lote.
-  return NextResponse.json({ ok: true, pendiente: "Motor de escaneo en desarrollo" });
+  try {
+    const trabajo = await obtenerTrabajoPendiente() ?? await crearTrabajoEscaneo("escaneo-diario");
+    after(async () => {
+      const inicio = Date.now();
+      // Cada profesor deja un punto de recuperación. El siguiente cron retoma
+      // desde ese índice, aunque el navegador se cierre o el proceso expire.
+      for (let procesados = 0; procesados < 25 && Date.now() - inicio < 180_000; procesados++) {
+        await procesarSiguienteProfesor(trabajo.id);
+        const actual = await prisma.job.findUnique({ where: { id: trabajo.id } });
+        if (!actual || actual.estado !== "PENDIENTE") break;
+      }
+    });
+    return NextResponse.json({ ok: true, jobId: trabajo.id, estado: trabajo.estado }, { status: 202 });
+  } catch {
+    return NextResponse.json({ ok: false, error: "No se pudo iniciar el escaneo programado." }, { status: 500 });
+  }
 }

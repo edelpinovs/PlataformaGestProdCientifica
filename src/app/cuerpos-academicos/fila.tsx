@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useState } from "react";
 import {
   Aviso,
@@ -10,6 +11,7 @@ import {
   claseTabla,
 } from "@/components/ui";
 import { ETIQUETA_NIVEL, type NivelConsolidacion } from "@/modules/cuerpos-academicos/cuerpo";
+import { nombreProfesor } from "@/modules/cuerpos-academicos/integrantes";
 import { editarCuerpo, eliminarCuerpo, type EstadoFila, type ValoresCuerpo } from "./actions";
 import { CamposCuerpo } from "./formulario";
 
@@ -26,9 +28,11 @@ export type CuerpoFila = {
   anioRegistro: number;
   anioVencimiento: number;
   departamento: { nombre: string; nomenclatura: string };
+  lider: { nombres: string; apellidos: string; codigo: string } | null;
+  _count: { integrantes: number; lgacs: number };
 };
 
-const COLUMNAS = 6;
+const COLUMNAS = 9;
 
 export function FilaCuerpo({ cuerpo, departamentos }: { cuerpo: CuerpoFila; departamentos: Departamento[] }) {
   const [modo, setModo] = useState<"ver" | "editar" | "eliminar">("ver");
@@ -37,17 +41,46 @@ export function FilaCuerpo({ cuerpo, departamentos }: { cuerpo: CuerpoFila; depa
   if (modo === "editar") return <EdicionCuerpo cuerpo={cuerpo} departamentos={departamentos} cerrar={cerrar} />;
   if (modo === "eliminar") return <ConfirmarEliminacion cuerpo={cuerpo} cerrar={cerrar} />;
 
+  const integrantes = cuerpo._count.integrantes === 0 ? "Asignar integrantes" : `${cuerpo._count.integrantes} integrantes`;
+  const lider = cuerpo.lider ? nombreProfesor(cuerpo.lider) : "Sin líder";
+  const lgacs = cuerpo._count.lgacs === 0 ? "Sin LGAC" : `${cuerpo._count.lgacs} LGAC`;
+
   return (
     <tr className={claseTabla.fila}>
       <td className={`${claseTabla.celda} font-mono`}>{cuerpo.clave}</td>
-      <td className={claseTabla.celda}>{cuerpo.nombre}</td>
-      <td className={claseTabla.celda}>{ETIQUETA_NIVEL[cuerpo.nivel]}</td>
       <td className={claseTabla.celda}>
+        <Link href={`/cuerpos-academicos/${cuerpo.id}`} className="font-medium text-marca">{cuerpo.nombre}</Link>
+        <div className="mt-2 flex flex-col gap-1 text-xs text-texto-3 sm:hidden">
+          <span>{ETIQUETA_NIVEL[cuerpo.nivel]} · {cuerpo.anioRegistro}–{cuerpo.anioVencimiento}</span>
+          <span>{cuerpo.departamento.nombre} ({cuerpo.departamento.nomenclatura})</span>
+          <span>{integrantes} · {lider}</span>
+          <span>{lgacs}</span>
+        </div>
+      </td>
+      <td className={`${claseTabla.celda} hidden sm:table-cell`}>{ETIQUETA_NIVEL[cuerpo.nivel]}</td>
+      <td className={`${claseTabla.celda} hidden sm:table-cell`}>
         {cuerpo.departamento.nombre}{" "}
         <span className="font-mono text-texto-3">({cuerpo.departamento.nomenclatura})</span>
       </td>
-      <td className={`${claseTabla.celda} whitespace-nowrap`}>
+      <td className={`${claseTabla.celda} hidden whitespace-nowrap sm:table-cell`}>
         {cuerpo.anioRegistro}–{cuerpo.anioVencimiento}
+      </td>
+      <td className={`${claseTabla.celda} hidden sm:table-cell`}>
+        <Link href={`/cuerpos-academicos/${cuerpo.id}`} className="font-medium text-marca">
+          {cuerpo._count.integrantes === 0 ? "Asignar" : `${cuerpo._count.integrantes}`}
+        </Link>
+      </td>
+      <td className={`${claseTabla.celda} hidden sm:table-cell`}>
+        {cuerpo.lider ? (
+          nombreProfesor(cuerpo.lider)
+        ) : (
+          <Link href={`/cuerpos-academicos/${cuerpo.id}`} className="font-medium text-marca">Designar</Link>
+        )}
+      </td>
+      <td className={`${claseTabla.celda} hidden sm:table-cell`}>
+        <Link href={`/cuerpos-academicos/${cuerpo.id}`} className="font-medium text-marca">
+          {cuerpo._count.lgacs === 0 ? "Registrar" : `${cuerpo._count.lgacs}`}
+        </Link>
       </td>
       <td className={`${claseTabla.celda} pr-0 text-right whitespace-nowrap`}>
         <button type="button" onClick={() => setModo("editar")} className={claseAccionFila()}
