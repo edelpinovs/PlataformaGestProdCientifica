@@ -15,3 +15,5 @@ Se conserva la excepci?n de edici?n y eliminaci?n del issue #97: los resultados 
 - Revisi?n visual pendiente: el navegador no inici? por error del entorno (failed to write kernel assets, error 3). Revisar claro, oscuro y celular antes de aprobar. Este registro no constituye aprobaci?n independiente.
 
 Comprobaciones: npm test (538 pruebas), npm run lint, npm run typecheck y npm run build: correctas.
+
+PR: https://github.com/edelpinovs/PlataformaGestProdCientifica/pull/119 (borrador, sin aprobación independiente).
