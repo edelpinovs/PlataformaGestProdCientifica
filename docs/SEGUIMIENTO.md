@@ -41,7 +41,7 @@ Cosas que no pertenecen a un solo PR.
 | Vigencias | Respaldo en la base contra el traslape de periodos (D-201) | Equipo, con I3 | pendiente |
 | PRODEP | Unificar las tres copias de la regla de PRODEP activo (D-205) | I3 | pendiente |
 | Datos de demostración | Cargados en la base compartida; avisar al equipo y revisar el PR de `scripts/demo.ts` (D-008) | I1 | en curso |
-| Listados | Aplicar la regla D-009 (paginación de 10, búsqueda y orden por columna) en los listados existentes y acordar la pieza compartida (D-212); abrir un issue por módulo | Equipo, con I1 | pendiente |
+| Listados | Pieza compartida de paginación, búsqueda y orden (#108); después, un issue por módulo: Catálogos #109, Profesores #110, SNII #111, Cuerpos académicos #112, Convocatorias #113 (el historial hoy solo muestra 10), Producción #114 y Validación #115 | I1 (pieza compartida) y cada dueño de módulo | pendiente |
 | Reconocimientos | Ver el #85 en el navegador (claro, oscuro, celular) y acordar el respaldo del traslape en la base (D-201); los cambios de código ya los aplicó I1 | Ared11 | en curso |
 | Cuerpos académicos | Cerrar los menores del #88 (descripción del PR y mensaje de `cuerpoId`) | marisleidysvazquez8293-arch | en curso |
 | Cuerpos académicos | Completar la descripción del #89 y acordar el `@@unique` de la LGAC (D-209); los conflictos y los arreglos de código ya los aplicó I1 | marisleidysvazquez8293-arch | en curso |
