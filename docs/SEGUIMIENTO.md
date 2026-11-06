@@ -33,6 +33,8 @@ Dictámenes: **Aprobado**, **Aprobado con comentarios**, **Solicitar cambios**, 
 
 | #119 | irybyron | RF-PC-10 pantallas independientes y listado compartido de Producción (#114); paginación solo al pie por petición de I6 | Sin revisión independiente | Claro, oscuro y celular pendientes; 538 pruebas, lint, tipos y build correctos | [Issue-114](pruebas/ISSUE-114-pantallas-produccion.md) | 2026-11-05 | **Abierto, borrador** |
 
+| #121 | irybyron | RF-020 resultados parciales e incidencias seguras (#120) | Sin revisión independiente | Depende de #119; revisión visual pendiente; 543 pruebas, lint, tipos y build correctos | [Issue-120](pruebas/ISSUE-120-resultado-escaneo.md) | 2026-11-05 | **Abierto, borrador** |
+
 Los PR de documentación, reglas e infraestructura de I1 (#1 a #48, #54, #56, #60, #64, #67, #68, #70, #71, #73, #75, #76, #78, #81 a #84, #86, #87 y #90) no se listan aquí.
 
 ## Pendientes del grupo

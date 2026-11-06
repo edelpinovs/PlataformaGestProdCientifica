@@ -41,6 +41,8 @@ Estados: `vigente`, `reemplazada`, `pendiente` (se propuso y falta acordar).
 
 | D-115 | 2026-11-05 | Pantallas de Producci?n | Separar resumen, escaneo y publicaciones; listado compartido de 10 elementos, cantidad visible y enlaces numerados seg?n D-009 | Reducir la acumulaci?n de formularios y resultados | Petici?n de I6; issue #114 | implementada; revisi?n visual pendiente |
 
+| D-116 | 2026-11-05 | Resultado del escaneo | Mostrar resultados parciales si hay obras guardadas e incidencias; conservar FALLIDO en persistencia para los reintentos y presentar errores por lista permitida | Una fuente fallida ocultaba resultados válidos | Issue #120; PR #121 | implementada; revisión pendiente |
+
 ## Pendientes de acordar
 
 | ID | Fecha | Tema | Propuesta o pregunta | Origen | Estado |
