@@ -194,7 +194,34 @@ Todo listado de registros sigue estas tres reglas (acuerdo D-009). El estado viv
 - **Validación:** los parámetros se validan en el servidor con Zod; el nombre de la columna se acepta solo si está en una lista permitida y nunca se pasa directo a `orderBy`. Un valor inválido muestra un aviso en español y no cambia la consulta.
 - **Consulta:** `count` y `findMany` con `skip`/`take`, y desempate por `id` para que el orden sea estable.
 - **Celular:** si las columnas se apilan y el encabezado se oculta, el listado ofrece un selector «Ordenar por» con las mismas columnas.
-- **Reglas puras:** el esquema, el filtro, el orden y la paginación van en `src/modules/<módulo>/` con su prueba. Ejemplo: `src/modules/produccion/consulta.ts` (la paginación de 20/50/100 de Producción se alineará a 10, D-212).
+- **Pieza compartida:** no repitas el código. Las reglas puras están en `src/lib/listados/consulta.ts` (con su prueba) y las piezas de interfaz en `src/components/listado.tsx`. Cada módulo solo declara sus columnas, filtros y campos de búsqueda en `src/modules/<módulo>/`. Ejemplo completo: `src/app/catalogos/grados/page.tsx` y `src/modules/catalogos/grados-listado.ts`.
+**Cómo se usa** (resumen del ejemplo de Grados):
+
+```tsx
+// src/modules/<módulo>/<listado>-listado.ts: columnas, filtros, búsqueda y orden
+export const LISTADO: DefinicionListado = {
+  columnas: ["nombre", "division"],          // solo estas se aceptan en `orden`
+  ordenInicial: { columna: "nombre", dir: "asc" },
+  filtros: { estatus: ["ACTIVO", "BAJA"] },  // valores finitos
+};
+export const filtro = (c: ConsultaListado) =>
+  condicionTexto(c.q, (contiene) => [{ nombre: contiene }, { division: { nombre: contiene } }]);
+export const orden = (c: ConsultaListado) =>
+  ordenarPor(c, { nombre: (d) => ({ nombre: d }), division: (d) => ({ division: { nombre: d } }) });
+
+// page.tsx
+const { consulta, errores } = analizarListado(LISTADO, await searchParams);
+const where = { ...filtro(consulta), ...(consulta.filtros.estatus ? { estatus: consulta.filtros.estatus } : {}) };
+const total = await prisma.x.count({ where });
+const paginacion = paginar(total, consulta);
+const filas = await prisma.x.findMany({ where, orderBy: orden(consulta), skip: paginacion.salto, take: paginacion.tamanio });
+// <BarraListado …/>, <EncabezadoOrdenable columna="nombre" …>Nombre</EncabezadoOrdenable>, <PaginacionListado …/>
+```
+
+- Los filtros de valores finitos van dentro del `where` de cada página (la pieza valida el valor; la página decide qué campo filtra).
+- Un parámetro inválido (columna que no existe, página 0, texto repetido) no rompe la pantalla: se ignora, se usa el valor inicial y `BarraListado` muestra el aviso.
+- Tras Editar o Eliminar, las acciones redirigen al listado sin el estado de búsqueda; es aceptable porque el mensaje de éxito se muestra arriba.
+
 - **Excepción:** un listado pequeño y acotado por diseño puede omitir alguna regla si se justifica en su issue.
 
 ## 8. Antes de entregar una pantalla
