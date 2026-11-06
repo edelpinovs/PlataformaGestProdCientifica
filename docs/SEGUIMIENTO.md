@@ -35,6 +35,8 @@ Dictámenes: **Aprobado**, **Aprobado con comentarios**, **Solicitar cambios**, 
 | #123 | irybyron | RF-021 persistencia multifuente e idempotencia (#122) | **Aprobable con comentarios** (fila de seguimiento arreglada por I1 en `3dc09f4`) | No prueba persistencia real contra la base; la prueba nueva detecta dos mutaciones del repositorio | [PR-123](pruebas/PR-123-persistencia-multifuente.md) | 2026-11-05 | **Integrado** |
 | #127 | edelpinovs (con agente de código) | Listados de Divisiones y Departamentos (D-009, #109) | Sin revisar | Revisión independiente y visual (claro, oscuro, celular); página 2 con más de 10 filas; Editar y Eliminar desde una lista filtrada | [PR-127](pruebas/PR-127-listados-divisiones-departamentos.md) | 2026-11-06 | **Abierto, borrador** |
 
+| #132 | irybyron | RF-020 configuración cifrada institucional de Scopus (#129, D-117) | Sin revisión independiente | Migración ya aplicada; 570 pruebas, lint, tipos y build correctos; clave maestra en Vercel, clave real y revisión visual pendientes | [Issue-129](pruebas/ISSUE-129-configuracion-scopus.md) | 2026-11-06 | **Abierto, borrador** |
+
 Los PR de documentación, reglas e infraestructura de I1 (#1 a #48, #54, #56, #60, #64, #67, #68, #70, #71, #73, #75, #76, #78, #81 a #84, #86, #87 y #90) no se listan aquí.
 
 ## Pendientes del grupo
