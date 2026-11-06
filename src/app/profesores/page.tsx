@@ -159,8 +159,10 @@ export default async function ProfesoresPage({ searchParams }: PageProps<"/profe
                         { nombre: "cvu", etiqueta: "CVU", valor: p.cvu ?? "", maxLength: 20, ancho: "corto", opcional: true },
                         { nombre: "orcid", etiqueta: "ORCID", valor: p.orcid ?? "", maxLength: 20, ancho: "medio",
                           opcional: true, placeholder: "0000-0000-0000-0000" },
-                        { nombre: "scholarId", etiqueta: "Scholar ID", valor: p.scholarId ?? "", maxLength: 50, opcional: true },
-                        { nombre: "scopusId", etiqueta: "Scopus ID", valor: p.scopusId ?? "", maxLength: 20, ancho: "corto", opcional: true },
+                        { nombre: "scholarId", etiqueta: "Scholar ID", valor: p.scholarId ?? "", maxLength: 50, opcional: true,
+                          placeholder: "5 a 50 caracteres" },
+                        { nombre: "scopusId", etiqueta: "Scopus ID", valor: p.scopusId ?? "", maxLength: 20, ancho: "corto",
+                          opcional: true, placeholder: "4 a 20 dígitos" },
                       ]} />
                   );
                 })}
