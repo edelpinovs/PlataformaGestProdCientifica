@@ -128,7 +128,9 @@ function errorPrisma(e: unknown, valores: Record<string, string>): EstadoProfeso
   if (!(e instanceof Prisma.PrismaClientKnownRequestError)) return null;
   if (e.code === "P2002") {
     const duplicado = mensajeUnicidadPrisma(e.meta);
-    return { error: duplicado.mensaje, campo: duplicado.campo, valores };
+    return duplicado.campo
+      ? { error: duplicado.mensaje, campo: duplicado.campo, valores }
+      : { error: duplicado.mensaje, valores };
   }
   if (e.code === "P2003") return { error: CATALOGO_AUSENTE, valores };
   if (e.code === "P2025") return { error: NO_EXISTE };
