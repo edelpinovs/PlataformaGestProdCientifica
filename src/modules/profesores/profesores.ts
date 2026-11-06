@@ -201,9 +201,10 @@ function camposDeUnicidad(meta: unknown): string[] {
 }
 
 // P2002: otro alta tomó el identificador entre la consulta y el INSERT.
-export function mensajeUnicidadPrisma(meta: unknown): DuplicadoProfesor {
+// Si el índice no corresponde a un campo conocido, no se marca Código: el aviso es genérico.
+export function mensajeUnicidadPrisma(meta: unknown): { mensaje: string; campo?: DuplicadoProfesor["campo"] } {
   const campo = CAMPOS_UNICOS.find((c) => camposDeUnicidad(meta).includes(c));
-  if (!campo) return { campo: "codigo", mensaje: "Algunos de los identificadores ingresados ya están registrados." };
+  if (!campo) return { mensaje: "Algunos de los identificadores ingresados ya están registrados." };
   return { campo, mensaje: MENSAJE_UNICIDAD[campo] };
 }
 
