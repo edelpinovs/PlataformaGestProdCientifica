@@ -181,6 +181,22 @@ Todo listado ofrece *Editar* y *Eliminar* en cada fila a los roles que pueden re
 
 Edición y confirmación son subcomponentes que se montan de nuevo al abrirse, para no arrastrar errores anteriores. Tras guardar o eliminar, la acción redirige al listado con un aviso de éxito (`RedirectType.replace`). Nada de ventanas del navegador (`confirm()`).
 
+### Listados: paginación, búsqueda y orden
+
+Todo listado de registros sigue estas tres reglas (acuerdo D-009). El estado vive en la URL, así que se puede compartir y volver con el botón Atrás.
+
+| Regla | Qué hace | Parámetro |
+| --- | --- | --- |
+| Paginación | 10 filas por página; «Mostrando a–b de N» y navegación Anterior/Siguiente. Una página fuera de rango muestra la última | `pagina` |
+| Búsqueda | Un cuadro de texto libre que busca en cualquier campo que muestra el listado (sin distinguir mayúsculas); escapa `%`, `_` y `\`. Cambiarla vuelve a la página 1 | `q` |
+| Orden y filtro | Cada encabezado con datos es un enlace que ordena de forma ascendente o descendente (texto A–Z, números y fechas según su tipo) y lleva `aria-sort`. Las columnas de valores finitos (estado, tipo, división…) se filtran con una lista. Cambiarlos vuelve a la página 1 | `orden`, `dir` y un parámetro por filtro |
+
+- **Validación:** los parámetros se validan en el servidor con Zod; el nombre de la columna se acepta solo si está en una lista permitida y nunca se pasa directo a `orderBy`. Un valor inválido muestra un aviso en español y no cambia la consulta.
+- **Consulta:** `count` y `findMany` con `skip`/`take`, y desempate por `id` para que el orden sea estable.
+- **Celular:** si las columnas se apilan y el encabezado se oculta, el listado ofrece un selector «Ordenar por» con las mismas columnas.
+- **Reglas puras:** el esquema, el filtro, el orden y la paginación van en `src/modules/<módulo>/` con su prueba. Ejemplo: `src/modules/produccion/consulta.ts` (la paginación de 20/50/100 de Producción se alineará a 10, D-212).
+- **Excepción:** un listado pequeño y acotado por diseño puede omitir alguna regla si se justifica en su issue.
+
 ## 8. Antes de entregar una pantalla
 
 - [ ] Usa `Marco` (o `PantallaAcceso` si no hay sesión) y piezas de `@/components/ui`.
