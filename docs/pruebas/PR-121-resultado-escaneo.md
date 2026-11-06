@@ -135,3 +135,7 @@ describe("revisión PR #121: presentarResultadoEscaneo", () => {
 | fusión con `main` | Tras integrarse el #119 (y el #123, #124 y #125), el #121 quedó con conflicto en `SEGUIMIENTO.md`: se conservaron las filas y se actualizaron las de #119, #121 y #123. Se cambió la base del PR a `main` |
 
 Siguen abiertos los hallazgos menores 2 a 4 (mover su prueba fuera de `revision-pr63.test.ts`, indicar si el último escaneo fue manual o programado, y que el mensaje de clave faltante lo vea solo quien administra) y la revisión visual. El timeout de `revision-pr63.test.ts` ya se subió a 30 s en el #125.
+
+## 8. Integración
+
+El PR se integró el 6 de noviembre (commit de fusión `6785b13`) **sin revisión visual**. El issue #120 quedó cerrado. Siguen abiertos la revisión visual y los menores 2 a 4 de la sección 4.
