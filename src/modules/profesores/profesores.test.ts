@@ -186,10 +186,21 @@ describe("registrarProfesor (RF-004)", () => {
     const corto = registrarProfesor.safeParse({ ...datosValidos, scholarId: "ab" });
     expect(corto.success).toBe(false);
     if (!corto.success) {
-      expect(corto.error.issues[0].message).toBe(
-        "El Scholar ID solo admite letras, números, puntos, guiones y guiones bajos.",
-      );
+      expect(corto.error.issues[0].message).toBe("El Scholar ID debe tener al menos 5 caracteres.");
     }
+  });
+
+  it("el Scholar ID da un mensaje por cada problema: longitud mínima, longitud máxima y caracteres", () => {
+    const mensaje = (scholarId: string) => {
+      const r = registrarProfesor.safeParse({ ...datosValidos, scholarId });
+      return r.success ? null : r.error.issues[0].message;
+    };
+    expect(mensaje("abcd")).toBe("El Scholar ID debe tener al menos 5 caracteres.");
+    expect(mensaje("a".repeat(51))).toBe("El Scholar ID admite hasta 50 caracteres.");
+    expect(mensaje("abc$de")).toBe("El Scholar ID solo admite letras, números, puntos, guiones y guiones bajos.");
+    expect(mensaje("abc de")).toBe("El Scholar ID solo admite letras, números, puntos, guiones y guiones bajos.");
+    expect(mensaje("abcde")).toBeNull();
+    expect(mensaje("a".repeat(50))).toBeNull();
   });
 });
 
@@ -562,6 +573,15 @@ describe("eliminarProfesor", () => {
     const resultado = await eliminarProfesor({}, formulario({ id: "7" }));
     expect(resultado.error).toBe(
       "No se puede eliminar a «Ana María Pérez Ruiz»: tiene un perfil de acceso. Quita esas relaciones antes de eliminarlo.",
+    );
+  });
+
+  it("si el borrado falla por una relación que no se cuenta, no dice que el profesor ya no existe", async () => {
+    prismaFalso.profesor.deleteMany.mockRejectedValue(errorPrisma("P2003"));
+    const { eliminarProfesor } = await import("../../app/profesores/actions");
+    const resultado = await eliminarProfesor({}, formulario({ id: "7" }));
+    expect(resultado.error).toBe(
+      "No se puede eliminar a «Ana María Pérez Ruiz»: tiene otros registros relacionados. Quita esas relaciones antes de eliminarlo.",
     );
   });
 
