@@ -1,4 +1,4 @@
-﻿# Issue #122: persistencia multifuente e idempotencia
+# Issue #122: persistencia multifuente e idempotencia
 
 Prueba en src/app/produccion/integracion.test.ts. Se ejecutan conectores ORCID y OpenAlex, deduplicador, motor, repositorio y acciones de validación reales. HTTP, sesión y Prisma están simulados; no hay escrituras en Supabase ni consultas a APIs externas.
 
