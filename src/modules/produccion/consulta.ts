@@ -28,6 +28,7 @@ export type ConsultaPublicaciones = z.infer<typeof esquemaConsulta>;
 export type ParametrosConsulta = Record<string, string | string[] | undefined>;
 export type ErroresConsulta = Partial<Record<keyof ConsultaPublicaciones, string>>;
 export const CONSULTA_INICIAL: ConsultaPublicaciones = { texto: "", profesor: "", anio: "", tipo: "", fuente: "", estado: "", tamanio: "20", pagina: "1" };
+export const RUTA_PUBLICACIONES = "/produccion/publicaciones";
 
 export function analizarConsulta(parametros: ParametrosConsulta) {
   return esquemaConsulta.safeParse(parametros);
@@ -70,5 +71,33 @@ export function enlaceConsulta(consulta: ConsultaPublicaciones, pagina: number) 
   for (const [clave, valor] of Object.entries({ ...consulta, pagina: String(pagina) })) {
     if (valor && !(clave === "pagina" && valor === "1") && !(clave === "tamanio" && valor === "20")) parametros.set(clave, valor);
   }
-  return `/produccion${parametros.size ? `?${parametros}` : ""}#publicaciones`;
+  return `${RUTA_PUBLICACIONES}${parametros.size ? `?${parametros}` : ""}#publicaciones`;
+}
+
+/** Mantiene los enlaces antiguos de consulta y deja los parámetros repetidos
+ * intactos para que la nueva pantalla pueda validarlos y mostrar el error.
+ */
+export function redireccionConsultaAnterior(parametros: ParametrosConsulta): string | null {
+  const claves = Object.keys(CONSULTA_INICIAL);
+  if (!claves.some((clave) => parametros[clave] !== undefined)) return null;
+  const busqueda = new URLSearchParams();
+  for (const clave of claves) {
+    const valor = parametros[clave];
+    if (Array.isArray(valor)) valor.forEach((elemento) => busqueda.append(clave, elemento));
+    else if (valor !== undefined) busqueda.set(clave, valor);
+  }
+  return `${RUTA_PUBLICACIONES}?${busqueda}#publicaciones`;
+}
+
+export function paginasVisibles(pagina: number, totalPaginas: number): (number | "separador")[] {
+  if (totalPaginas <= 7) return Array.from({ length: totalPaginas }, (_, indice) => indice + 1);
+  const elegidas = new Set([1, totalPaginas]);
+  for (let numero = Math.max(1, pagina - 2); numero <= Math.min(totalPaginas, pagina + 2); numero++) elegidas.add(numero);
+  const ordenadas = [...elegidas].sort((a, b) => a - b);
+  const resultado: (number | "separador")[] = [];
+  ordenadas.forEach((numero, indice) => {
+    if (indice && numero - ordenadas[indice - 1] > 1) resultado.push("separador");
+    resultado.push(numero);
+  });
+  return resultado;
 }

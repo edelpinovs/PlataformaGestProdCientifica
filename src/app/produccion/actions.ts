@@ -14,6 +14,10 @@ export type EstadoEscaneo = {
   erroresCampos?: { profesorId?: string; anio?: string };
 };
 
+function actualizarPantallasProduccion() {
+  for (const ruta of ["/produccion", "/produccion/escaneo", "/produccion/publicaciones"]) revalidatePath(ruta);
+}
+
 export async function iniciarEscaneoAction(_: EstadoEscaneo, formData: FormData): Promise<EstadoEscaneo> {
   await requireModulo("produccion");
   try {
@@ -43,10 +47,13 @@ export async function iniciarEscaneoAction(_: EstadoEscaneo, formData: FormData)
     const pendiente = trabajo.estado === "PENDIENTE" || trabajo.estado === "EN_PROCESO";
     if (pendiente) {
       const id = trabajo.id;
-      after(async () => { await procesarSiguienteProfesor(id); });
+      after(async () => {
+        await procesarSiguienteProfesor(id);
+        actualizarPantallasProduccion();
+      });
     }
     const datos = datosLoteEsquema.safeParse(trabajo.datos);
-    revalidatePath("/produccion");
+    actualizarPantallasProduccion();
     return {
       jobId: trabajo.id, pendiente, avance: trabajo.avance, total: trabajo.total,
       resumen: datos.success ? {

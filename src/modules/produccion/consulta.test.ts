@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { analizarConsulta, CONSULTA_INICIAL, enlaceConsulta, filtroPublicaciones, paginarPublicaciones } from "./consulta";
+import { analizarConsulta, CONSULTA_INICIAL, enlaceConsulta, filtroPublicaciones, paginarPublicaciones, paginasVisibles, redireccionConsultaAnterior } from "./consulta";
 
 describe("RF-PC-01, RF-PC-09 y RF-PC-10: consulta de publicaciones", () => {
   it("sin parámetros empieza en la primera página con límite de 20", () => {
@@ -67,10 +67,32 @@ describe("RF-PC-01, RF-PC-09 y RF-PC-10: consulta de publicaciones", () => {
     const consulta = { ...CONSULTA_INICIAL, texto: "a & b/DOI", profesor: "7", anio: "2024", tamanio: "50" as const, estado: "PENDIENTE" as const };
     const enlace = new URL(enlaceConsulta(consulta, 3), "https://ejemplo.invalid");
     expect(enlace.hash).toBe("#publicaciones");
+    expect(enlace.pathname).toBe("/produccion/publicaciones");
     expect(enlace.searchParams.get("texto")).toBe(consulta.texto);
     expect(enlace.searchParams.get("profesor")).toBe("7");
     expect(enlace.searchParams.get("estado")).toBe("PENDIENTE");
     expect(enlace.searchParams.get("pagina")).toBe("3");
     expect(enlace.searchParams.get("tamanio")).toBe("50");
+  });
+
+  it("sin filtros antiguos la entrada del módulo permanece en el resumen", () => {
+    expect(redireccionConsultaAnterior({})).toBeNull();
+    expect(redireccionConsultaAnterior({ desconocido: "valor" })).toBeNull();
+  });
+
+  it("no elimina parámetros duplicados de enlaces antiguos que deben rechazarse", () => {
+    const ruta = redireccionConsultaAnterior({ profesor: ["1", "2"], tamanio: "50" });
+    const parametros = new URL(ruta!, "https://ejemplo.invalid").searchParams;
+    expect(parametros.getAll("profesor")).toEqual(["1", "2"]);
+    expect(analizarConsulta({ profesor: parametros.getAll("profesor") }).success).toBe(false);
+  });
+
+  it.each([
+    [1, 2, [1, 2]],
+    [1, 100, [1, 2, 3, "separador", 100]],
+    [50, 100, [1, "separador", 48, 49, 50, 51, 52, "separador", 100]],
+    [100, 100, [1, "separador", 98, 99, 100]],
+  ])("muestra números de página acotados para página %s de %s", (pagina, total, esperado) => {
+    expect(paginasVisibles(pagina as number, total as number)).toEqual(esperado);
   });
 });
