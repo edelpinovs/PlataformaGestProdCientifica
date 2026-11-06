@@ -128,11 +128,11 @@ export default async function ValidacionPage({
     }),
   ]);
 
-  // Traducción segura de mensajes desde códigos fijos en la URL
+  // Traducción segura de mensajes desde códigos fijos en la URL (evita prototype pollution)
   const { accion, error, editado, eliminado, confirmada, rechazada } = parametros;
   const codigoAccion = accion ?? (confirmada ? "confirmada" : rechazada ? "rechazada" : editado ? "editado" : eliminado ? "eliminado" : undefined);
-  const avisoAccion = codigoAccion ? AVISOS_URL[codigoAccion] : undefined;
-  const avisoError = typeof error === "string" ? AVISOS_URL[error] : undefined;
+  const avisoAccion = codigoAccion && Object.hasOwn(AVISOS_URL, codigoAccion) ? AVISOS_URL[codigoAccion] : undefined;
+  const avisoError = typeof error === "string" && Object.hasOwn(AVISOS_URL, error) ? AVISOS_URL[error] : undefined;
 
   // RF-025: Calcular métricas oficiales de producción validada
   const conteo = calcularConteoOficial(

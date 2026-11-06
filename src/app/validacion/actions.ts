@@ -101,7 +101,7 @@ export async function registrarPublicacionManual(
     },
   ];
   if (doiNorm) {
-    condicionesOr.push({ doi: doiNorm });
+    condicionesOr.push({ doi: { equals: doiNorm, mode: "insensitive" } });
   }
 
   const publicacionesExistentes = await prisma.publicacion.findMany({
@@ -230,7 +230,7 @@ export async function editarPublicacionManual(_: EstadoFila, formData: FormData)
     },
   ];
   if (doiNorm) {
-    condicionesOr.push({ doi: doiNorm });
+    condicionesOr.push({ doi: { equals: doiNorm, mode: "insensitive" } });
   }
 
   const publicacionesExistentes = await prisma.publicacion.findMany({
@@ -446,7 +446,7 @@ export async function editarMetadatosBandeja(_: EstadoFila, formData: FormData):
     },
   ];
   if (doiNorm) {
-    condicionesOr.push({ doi: doiNorm });
+    condicionesOr.push({ doi: { equals: doiNorm, mode: "insensitive" } });
   }
 
   const publicacionesExistentes = await prisma.publicacion.findMany({
