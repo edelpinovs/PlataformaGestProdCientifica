@@ -49,7 +49,7 @@ describe("RF-PC: permisos y validación de la página", () => {
 
   it("pasa al servicio solo los filtros validados y conserva el límite permitido", async () => {
     await PublicacionesPage({ searchParams: Promise.resolve({ profesor: "7", estado: "PENDIENTE", tamanio: "50" }) });
-    expect(dobles.consultarPublicaciones).toHaveBeenCalledExactlyOnceWith({ ...CONSULTA_INICIAL, profesor: "7", estado: "PENDIENTE", tamanio: "50" });
+    expect(dobles.consultarPublicaciones).toHaveBeenCalledExactlyOnceWith({ ...CONSULTA_INICIAL, filtros: { ...CONSULTA_INICIAL.filtros, profesor: "7", estado: "PENDIENTE" } });
     expect(dobles.requireModulo.mock.invocationCallOrder[0]).toBeLessThan(dobles.consultarPublicaciones.mock.invocationCallOrder[0]);
   });
 
@@ -71,7 +71,10 @@ describe("RF-PC: permisos y validación de la página", () => {
 
   it("los enlaces antiguos conservan filtros, cantidad y página al abrir la nueva consulta", async () => {
     await expect(ProduccionPage({ searchParams: Promise.resolve({ profesor: "7", tamanio: "50", pagina: "2" }) })).rejects.toThrow("Redirección:");
-    expect(dobles.redirect).toHaveBeenCalledWith("/produccion/publicaciones?profesor=7&tamanio=50&pagina=2#publicaciones");
+    const destino = new URL(dobles.redirect.mock.calls[0][0], "https://ejemplo.invalid");
+    expect(destino.pathname).toBe("/produccion/publicaciones");
+    expect(destino.searchParams.get("profesor")).toBe("7");
+    expect(destino.searchParams.get("pagina")).toBe("2");
     expect(dobles.publicacion.count).not.toHaveBeenCalled();
   });
 

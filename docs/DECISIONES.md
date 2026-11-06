@@ -39,6 +39,8 @@ Estados: `vigente`, `reemplazada`, `pendiente` (se propuso y falta acordar).
 | D-113 | 2026-11-05 | Convocatorias | El archivo oficial de una carga confirmada se protege en la base: la política de borrado de Storage exige que la ruta no pertenezca a una carga `CONFIRMADA` (`es_archivo_confirmado`), no solo la Server Action | Un Administrador o Coordinador podía llamar a Storage directamente y borrar el PDF oficial | PR #100; revisión del PR #77 | vigente al integrar el #100 |
 | D-114 | 2026-11-05 | Listados | La regla D-009 se aplica con **una pieza compartida** (funciones puras en `src/lib/` y componentes en `src/components/`, issue #108) y después un issue por módulo: Catálogos como piloto (#109), Profesores (#110), SNII (#111), Cuerpos académicos (#112), Convocatorias (#113), Producción (#114) y Validación (#115). Las tablas de integrantes y LGAC dentro del detalle de un cuerpo académico quedan exentas por estar acotadas | Evitar repetir el mismo código en siete módulos y validar la pieza con los listados más simples antes de repartirla | Sesión de I1; D-212 | vigente |
 
+| D-115 | 2026-11-05 | Pantallas de Producci?n | Separar resumen, escaneo y publicaciones; listado compartido de 10 elementos, cantidad visible y enlaces numerados seg?n D-009 | Reducir la acumulaci?n de formularios y resultados | Petici?n de I6; issue #114 | implementada; revisi?n visual pendiente |
+
 ## Pendientes de acordar
 
 | ID | Fecha | Tema | Propuesta o pregunta | Origen | Estado |

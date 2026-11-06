@@ -69,22 +69,14 @@ Las publicaciones extraídas de fuentes indizadas (Scopus, OpenAlex, ORCID) repr
 - El conector solicita 25 resultados por página y avanza mediante `start` hasta completar los resultados. Con esa configuración la consulta real respondió HTTP 200 y recuperó nueve obras históricas del identificador probado, sin persistencia.
 - Las pruebas de paginación simulan un servicio que rechaza páginas mayores de 25 y comprueban que se recuperan 150 obras en seis peticiones. La capacidad permitida depende de la vista y el acceso del cliente; véase [la documentación de Elsevier](https://dev.elsevier.com/api_key_settings.html).
 
-## Consulta de publicaciones (issue #97)
+## Consulta de publicaciones (issues #97 y #114)
 
-- `/produccion` muestra el resumen; `/produccion/escaneo` contiene el motor y `/produccion/publicaciones` la consulta GET. Las tres páginas usan `Marco` y exigen `requireModulo("produccion")` antes de leer datos. Los roles siguen siendo administración y coordinación.
-- Parámetros: `texto` (título, autores o DOI), `profesor` (ID), `anio`, `tipo`, `fuente`, `estado`, `tamanio` (20, 50 o 100) y `pagina`. El formulario de consulta no modifica el profesor seleccionado para escanear.
-- Las condiciones se combinan con Y lógico. Si se eligen profesor y estado, una misma autoría debe cumplir ambos. El listado de profesores de consulta incluye los no activos, para poder localizar su producción histórica; el motor sigue ofreciendo solo activos.
-- `consulta.ts` valida parámetros con Zod, crea las condiciones y calcula páginas y enlaces. Una URL inválida muestra errores en español y no ejecuta una consulta de publicaciones diferente de la solicitada. Cambiar filtros o tamaño reinicia la página; los enlaces de navegación conservan el resto de parámetros.
-- `consultas.ts` cuenta publicaciones, no autorías, y lee el total y las filas en un snapshot `RepeatableRead`. Ordena por creación e ID para que el orden sea determinista y limita cada lectura a 100 filas como máximo.
-- Si la página solicitada supera el resultado, se muestra la última página disponible. Sin resultados se muestra `0–0` y una explicación para limpiar filtros.
-- Las pruebas cubren validación, condiciones, paginación, conservación de filtros, autorización previa a lecturas y consulta coherente de total/filas. Una comprobación de solo lectura sobre datos DEMO devolvió 20 filas en la primera página y 10 en la segunda, sin repetir obras.
-- El alcance compartido con Reportes y Validación, los indicadores y los roles nuevos continúan pendientes de D-211. Esta entrega no modifica esos módulos, el esquema ni las dependencias.
-
-### Pantallas y controles de navegación
-
-- El resumen enlaza al escaneo y a las publicaciones; ya no acumula los dos formularios y el listado en una sola pantalla. Las subpáginas tienen navegación propia del módulo y un enlace para volver mediante `Marco`.
-- La consulta mantiene visible el buscador y agrupa las opciones adicionales en «Filtros avanzados», desplegables y abiertos automáticamente cuando tienen errores.
-- La cantidad de elementos por página se elige junto al total de resultados y se aplica al cambiar entre 20, 50 y 100. Conserva los filtros y vuelve a la primera página. Sin JavaScript dispone de un botón para aplicar la cantidad.
-- La paginación numerada aparece antes y después de la tabla, con primera/última página, páginas próximas y enlaces Anterior/Siguiente. Con muchos resultados se acota el número de enlaces.
-- Los enlaces antiguos `/produccion?...` redirigen a la consulta nueva conservando filtros y página. Los parámetros duplicados se conservan para que el servidor los rechace en lugar de ignorarlos.
-- La acción de escaneo invalida las tres pantallas al consultar el avance y después de procesar el lote, para refrescar el resumen y los resultados.
+- Pantallas independientes: /produccion (resumen), /produccion/escaneo (motor), /produccion/publicaciones (consulta). Todas requieren permisos antes de leer datos.
+- Buscador y filtros desplegables. Profesor y estado deben coincidir en una misma autor?a.
+- Pieza compartida de D-009: q, pagina, orden, dir y filtros validados; 10 elementos por p?gina, cantidad visible y paginaci?n numerada superior e inferior.
+- Orden por todos los encabezados: t?tulo, tipo, revista/editorial, cantidad de profesores vinculados y fuente; selector de orden en celular. ID como desempate; enumeraciones por etiqueta espa?ola.
+- B?squeda en t?tulo, autores, DOI, revista/editorial, nombres y c?digos de profesores y etiquetas de tipo, fuente y estado. Se escapan los caracteres de patr?n.
+- Snapshot RepeatableRead para contar obras ?nicas y leer como m?ximo 10 por p?gina, tambi?n al distribuir la lectura entre grupos de enumeraciones.
+- Las URL antiguas conservan sus par?metros al redirigir. texto se acepta como alias de q; tama?os antiguos v?lidos pasan al l?mite actual de 10.
+- El escaneo actualiza las tres pantallas. No cambia permisos, esquema, Validaci?n ni Reportes; D-211 sigue pendiente.
+- Evidencia: docs/pruebas/ISSUE-114-pantallas-produccion.md.

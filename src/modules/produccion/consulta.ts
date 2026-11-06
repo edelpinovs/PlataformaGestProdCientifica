@@ -1,84 +1,113 @@
 import { z } from "zod";
+import { analizarListado, condicionTexto, enlaceListado, ordenarPor, paginar, type ConsultaListado, type DefinicionListado, type ErroresListado, type ParametrosListado, type Sentido } from "@/lib/listados/consulta";
 import { tipoPublicacionEnum, fuentePublicacionEnum, estadoAutoriaEnum } from "./tipos";
+import { normalizarTitulo } from "./normalizacion";
 
-export const ETIQUETAS_TIPO = {
-  ARTICULO: "Artículo", LIBRO: "Libro", CAPITULO: "Capítulo", MEMORIA_CONGRESO: "Memoria de congreso",
-  REGISTRO_SOFTWARE: "Registro de software", PATENTE: "Patente", OTRO: "Otro",
-};
+export const ETIQUETAS_TIPO = { ARTICULO: "Artículo", LIBRO: "Libro", CAPITULO: "Capítulo", MEMORIA_CONGRESO: "Memoria de congreso", REGISTRO_SOFTWARE: "Registro de software", PATENTE: "Patente", OTRO: "Otro" };
 export const ETIQUETAS_FUENTE = { ORCID: "ORCID", SCOPUS: "Scopus", OPENALEX: "OpenAlex", GOOGLE_SCHOLAR: "Google Scholar", MANUAL: "Captura manual" };
 export const ETIQUETAS_ESTADO = { PENDIENTE: "Pendiente", VALIDADA: "Validada", RECHAZADA: "Rechazada" };
-
-const esquemaConsulta = z.object({
-  texto: z.string({ error: "Escribe un solo texto de búsqueda." }).trim().max(200, "La búsqueda admite hasta 200 caracteres.").default(""),
-  profesor: z.string({ error: "Selecciona un solo profesor." }).refine(
-    (valor) => valor === "" || (/^[1-9]\d*$/.test(valor) && Number(valor) <= 2147483647), "Selecciona un profesor válido.",
-  ).default(""),
-  anio: z.string({ error: "Indica un solo año." }).refine(
-    (valor) => valor === "" || (/^\d{4}$/.test(valor) && Number(valor) >= 1900 && Number(valor) <= 2100), "Indica un año entre 1900 y 2100.",
-  ).default(""),
-  tipo: z.enum(["", ...tipoPublicacionEnum.options], { error: "Selecciona un tipo de publicación válido." }).default(""),
-  fuente: z.enum(["", ...fuentePublicacionEnum.options], { error: "Selecciona una fuente válida." }).default(""),
-  estado: z.enum(["", ...estadoAutoriaEnum.options], { error: "Selecciona un estado de autoría válido." }).default(""),
-  tamanio: z.enum(["20", "50", "100"], { error: "Selecciona 20, 50 o 100 filas por página." }).default("20"),
-  pagina: z.string({ error: "Indica una sola página." }).refine(
-    (valor) => /^[1-9]\d*$/.test(valor) && Number(valor) <= 1_000_000, "La página debe ser un entero entre 1 y 1000000.",
-  ).default("1"),
-});
-export type ConsultaPublicaciones = z.infer<typeof esquemaConsulta>;
-export type ParametrosConsulta = Record<string, string | string[] | undefined>;
-export type ErroresConsulta = Partial<Record<keyof ConsultaPublicaciones, string>>;
-export const CONSULTA_INICIAL: ConsultaPublicaciones = { texto: "", profesor: "", anio: "", tipo: "", fuente: "", estado: "", tamanio: "20", pagina: "1" };
+export const COLUMNAS_PUBLICACIONES = [
+  { clave: "titulo", texto: "Título" }, { clave: "tipo", texto: "Tipo" },
+  { clave: "revista", texto: "Revista / editorial" }, { clave: "profesores", texto: "Cantidad de profesores vinculados" },
+  { clave: "fuente", texto: "Fuente" },
+];
+export const LISTADO_PUBLICACIONES: DefinicionListado = {
+  columnas: COLUMNAS_PUBLICACIONES.map((columna) => columna.clave),
+  ordenInicial: { columna: "titulo", dir: "asc" },
+  filtros: { tipo: tipoPublicacionEnum.options, fuente: fuentePublicacionEnum.options, estado: estadoAutoriaEnum.options },
+};
+export type ConsultaPublicaciones = ConsultaListado;
+export type ParametrosConsulta = ParametrosListado;
+export type ErroresConsulta = ErroresListado;
 export const RUTA_PUBLICACIONES = "/produccion/publicaciones";
+export const CONSULTA_INICIAL: ConsultaPublicaciones = {
+  pagina: 1, q: "", orden: "titulo", dir: "asc", filtros: { profesor: "", anio: "", tipo: "", fuente: "", estado: "" },
+};
+
+const profesorEsquema = z.string({ error: "Selecciona un solo profesor." }).refine(
+  (valor) => valor === "" || (/^[1-9]\d*$/.test(valor) && Number(valor) <= 2147483647), "Selecciona un profesor válido.",
+);
+const anioEsquema = z.string({ error: "Indica un solo año." }).refine(
+  (valor) => valor === "" || (/^\d{4}$/.test(valor) && Number(valor) >= 1900 && Number(valor) <= 2100), "Indica un año entre 1900 y 2100.",
+);
 
 export function analizarConsulta(parametros: ParametrosConsulta) {
-  return esquemaConsulta.safeParse(parametros);
+  // Los enlaces del #98 con `texto` siguen funcionando; las consultas nuevas usan q.
+  const { consulta, errores } = analizarListado(LISTADO_PUBLICACIONES, { ...parametros, q: parametros.q ?? parametros.texto });
+  for (const [clave, esquema] of [["profesor", profesorEsquema], ["anio", anioEsquema]] as const) {
+    const resultado = esquema.safeParse(parametros[clave] ?? "");
+    consulta.filtros[clave] = resultado.success ? resultado.data : "";
+    if (!resultado.success) errores[clave] = resultado.error.issues[0].message;
+  }
+  // Solo se reconocen los tamaños de enlaces antiguos: la lectura siempre es de 10.
+  if (parametros.tamanio !== undefined && !z.enum(["10", "20", "50", "100"]).safeParse(parametros.tamanio).success) {
+    errores.tamanio = "El listado muestra 10 elementos por página.";
+  }
+  if (Object.keys(errores).length) return {
+    success: false as const, data: consulta,
+    error: { issues: Object.entries(errores).map(([campo, message]) => ({ path: [campo], message })) },
+  };
+  return { success: true as const, data: consulta };
 }
 
-/** Un WHERE de publicación evita multiplicar obras por coautores. Profesor y
- * estado se evalúan juntos sobre una misma autoría (RF-PC-02 y RF-PC-06).
- */
 export function filtroPublicaciones(consulta: ConsultaPublicaciones) {
-  const texto = consulta.texto.replace(/[\\%_]/g, "\\$&");
+  const tipo = tipoPublicacionEnum.options.find((valor) => valor === consulta.filtros.tipo);
+  const fuente = fuentePublicacionEnum.options.find((valor) => valor === consulta.filtros.fuente);
+  const estado = estadoAutoriaEnum.options.find((valor) => valor === consulta.filtros.estado);
+  const normalizado = normalizarTitulo(consulta.q);
+  const tipos = tipoPublicacionEnum.options.filter((valor) => normalizado && normalizarTitulo(ETIQUETAS_TIPO[valor]).includes(normalizado));
+  const fuentes = fuentePublicacionEnum.options.filter((valor) => normalizado && normalizarTitulo(ETIQUETAS_FUENTE[valor]).includes(normalizado));
+  const estados = estadoAutoriaEnum.options.filter((valor) => normalizado && normalizarTitulo(ETIQUETAS_ESTADO[valor]).includes(normalizado));
   return {
-    ...(texto ? { OR: [
-      { titulo: { contains: texto, mode: "insensitive" as const } },
-      { autoresTexto: { contains: texto, mode: "insensitive" as const } },
-      { doi: { contains: texto, mode: "insensitive" as const } },
-    ] } : {}),
-    ...(consulta.tipo ? { tipo: consulta.tipo } : {}),
-    ...(consulta.fuente ? { fuente: consulta.fuente } : {}),
-    ...(consulta.anio ? { fechaPublicacion: {
-      gte: new Date(Date.UTC(Number(consulta.anio), 0, 1)),
-      lt: new Date(Date.UTC(Number(consulta.anio) + 1, 0, 1)),
+    ...condicionTexto(consulta.q, (contiene) => [
+      { titulo: contiene }, { autoresTexto: contiene }, { doi: contiene }, { revistaEditorial: contiene },
+      { tipo: { in: tipos } }, { fuente: { in: fuentes } },
+      { autorias: { some: { OR: [
+        { profesor: { nombres: contiene } }, { profesor: { apellidos: contiene } },
+        { profesor: { codigo: contiene } }, { estado: { in: estados } },
+      ] } } },
+    ]),
+    ...(tipo ? { tipo } : {}), ...(fuente ? { fuente } : {}),
+    ...(consulta.filtros.anio ? { fechaPublicacion: {
+      gte: new Date(Date.UTC(Number(consulta.filtros.anio), 0, 1)),
+      lt: new Date(Date.UTC(Number(consulta.filtros.anio) + 1, 0, 1)),
     } } : {}),
-    ...(consulta.profesor || consulta.estado ? { autorias: { some: {
-      ...(consulta.profesor ? { profesorId: Number(consulta.profesor) } : {}),
-      ...(consulta.estado ? { estado: consulta.estado } : {}),
+    ...(consulta.filtros.profesor || estado ? { autorias: { some: {
+      ...(consulta.filtros.profesor ? { profesorId: Number(consulta.filtros.profesor) } : {}), ...(estado ? { estado } : {}),
     } } } : {}),
   };
 }
 
-export function paginarPublicaciones(total: number, consulta: ConsultaPublicaciones) {
-  const tamanio = Number(consulta.tamanio);
-  const totalPaginas = Math.max(1, Math.ceil(total / tamanio));
-  const pagina = Math.min(Number(consulta.pagina), totalPaginas);
-  const salto = (pagina - 1) * tamanio;
-  return { pagina, tamanio, totalPaginas, salto, desde: total ? salto + 1 : 0, hasta: Math.min(salto + tamanio, total) };
+export function ordenPublicaciones(consulta: ConsultaPublicaciones) {
+  return ordenarPor(consulta, {
+    titulo: (dir) => ({ titulo: dir }), tipo: (dir) => ({ tipo: dir }),
+    revista: (dir) => ({ revistaEditorial: dir }), profesores: (dir) => ({ autorias: { _count: dir } }),
+    fuente: (dir) => ({ fuente: dir }),
+  });
 }
 
-export function enlaceConsulta(consulta: ConsultaPublicaciones, pagina: number) {
-  const parametros = new URLSearchParams();
-  for (const [clave, valor] of Object.entries({ ...consulta, pagina: String(pagina) })) {
-    if (valor && !(clave === "pagina" && valor === "1") && !(clave === "tamanio" && valor === "20")) parametros.set(clave, valor);
-  }
-  return `${RUTA_PUBLICACIONES}${parametros.size ? `?${parametros}` : ""}#publicaciones`;
-}
-
-/** Mantiene los enlaces antiguos de consulta y deja los parámetros repetidos
- * intactos para que la nueva pantalla pueda validarlos y mostrar el error.
+/** Los enums de PostgreSQL no siguen el alfabeto de sus etiquetas. Se seleccionan
+ * solo los tramos que caben en la página; no se cargan todas las obras en memoria.
  */
+export function tramosPorEtiqueta(grupos: { valor: string; total: number }[], etiquetas: Record<string, string>, dir: Sentido, salto: number, limite: number) {
+  const ordenados = [...grupos].sort((a, b) => (etiquetas[a.valor] ?? a.valor).localeCompare(etiquetas[b.valor] ?? b.valor, "es") * (dir === "asc" ? 1 : -1));
+  const tramos: { valor: string; salto: number; cantidad: number }[] = [];
+  for (const grupo of ordenados) {
+    if (salto >= grupo.total) { salto -= grupo.total; continue; }
+    const cantidad = Math.min(limite, grupo.total - salto);
+    if (cantidad > 0) tramos.push({ valor: grupo.valor, salto, cantidad });
+    limite -= cantidad;
+    salto = 0;
+    if (!limite) break;
+  }
+  return tramos;
+}
+
+export const paginarPublicaciones = (total: number, consulta: ConsultaPublicaciones) => paginar(total, consulta);
+export const enlaceConsulta = (consulta: ConsultaPublicaciones, pagina: number) => `${enlaceListado(RUTA_PUBLICACIONES, LISTADO_PUBLICACIONES, consulta, { pagina })}#publicaciones`;
+
 export function redireccionConsultaAnterior(parametros: ParametrosConsulta): string | null {
-  const claves = Object.keys(CONSULTA_INICIAL);
+  const claves = ["q", "texto", "pagina", "orden", "dir", "profesor", "anio", "tipo", "fuente", "estado", "tamanio"];
   if (!claves.some((clave) => parametros[clave] !== undefined)) return null;
   const busqueda = new URLSearchParams();
   for (const clave of claves) {
