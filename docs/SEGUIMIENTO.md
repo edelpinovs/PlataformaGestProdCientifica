@@ -36,6 +36,8 @@ Dictámenes: **Aprobado**, **Aprobado con comentarios**, **Solicitar cambios**, 
 | #127 | edelpinovs (con agente de código) | Listados de Divisiones y Departamentos (D-009, #109) | Sin revisar | Revisión independiente y visual (claro, oscuro, celular); página 2 con más de 10 filas; Editar y Eliminar desde una lista filtrada | [PR-127](pruebas/PR-127-listados-divisiones-departamentos.md) | 2026-11-06 | **Abierto, borrador** |
 | #128 | dpfuentes92 | RF-005 pendientes de la revisión del #69 | **Aprobable con comentarios** | Mensaje del Scholar ID corto (separar longitud y caracteres); descripción en español con `Refs #10`; revisión visual de la fila de edición | [PR-128](pruebas/PR-128-pendientes-profesores.md) | 2026-11-06 | **Abierto** |
 
+| #134 | irybyron | RF-020 historial inicial de ORCID y OpenAlex (#133) | Sin revisión independiente | 567 pruebas, lint, tipos y build correctos; revisión visual pendiente; no reinicia cortes existentes | [Issue-133](pruebas/ISSUE-133-historial-inicial.md) | 2026-11-06 | **Abierto, borrador** |
+
 Los PR de documentación, reglas e infraestructura de I1 (#1 a #48, #54, #56, #60, #64, #67, #68, #70, #71, #73, #75, #76, #78, #81 a #84, #86, #87 y #90) no se listan aquí.
 
 ## Pendientes del grupo

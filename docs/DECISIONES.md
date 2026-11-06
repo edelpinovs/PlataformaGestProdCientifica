@@ -42,6 +42,8 @@ Estados: `vigente`, `reemplazada`, `pendiente` (se propuso y falta acordar).
 | D-116 | 2026-11-05 | Resultado del escaneo | Mostrar resultados parciales si hay obras guardadas e incidencias; conservar FALLIDO en persistencia para los reintentos y presentar errores por lista permitida | Una fuente fallida ocultaba resultados válidos | Issue #120; PR #121 | vigente; integrada en el PR #121, revisión visual pendiente |
 | D-117 | 2026-11-06 | Profesores | El rol COORDINADOR puede registrar, editar y eliminar profesores igual que ADMINISTRADOR (con la misma protección en la página y en cada Server Action) | Se acordó en la revisión del #69 y el #128 lo conserva; no estaba en la bitácora | PR #69; PR #128; `src/modules/registry.ts` | vigente |
 
+| D-118 | 2026-11-06 | Historial inicial | Sin año ni corte, ORCID y OpenAlex recuperan el historial; después conservan el incremental. No se reinician cortes existentes ni cambia Scopus | Recuperar obras anteriores de profesores nuevos sin consultas por cada año | Sesión de I6; issue #133 y PR #134 | implementada; revisión pendiente |
+
 ## Pendientes de acordar
 
 | ID | Fecha | Tema | Propuesta o pregunta | Origen | Estado |
