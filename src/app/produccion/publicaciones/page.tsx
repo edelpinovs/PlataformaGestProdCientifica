@@ -24,7 +24,7 @@ export default async function PublicacionesPage({ searchParams }: { searchParams
     analisis.success ? consultarPublicaciones(consulta) : Promise.resolve(null),
   ]);
   return <Marco correo={perfil.correo} rol={perfil.rol} activo="produccion" titulo="Publicaciones"
-    subtitulo="Consulta las obras registradas y elige cuántas mostrar por página."
+    subtitulo="Consulta las obras registradas y filtra los resultados."
     volver={{ href: "/produccion", texto: "Producción científica" }}>
     <NavegacionProduccion actual="publicaciones" />
     <Panel titulo="Buscar publicaciones">
@@ -33,10 +33,9 @@ export default async function PublicacionesPage({ searchParams }: { searchParams
     <div id="publicaciones" className="min-w-0 scroll-mt-4">
       <Panel titulo="Resultados">
         <div className="flex min-w-0 flex-col gap-4">
-          <PaginacionPublicaciones consulta={consulta} resultado={resultado} superior />
           {resultado && (resultado.publicaciones.length ? <TablaPublicaciones publicaciones={resultado.publicaciones} consulta={consulta} /> :
             <EstadoVacio>No hay publicaciones con estos filtros. Prueba a limpiarlos o cambiar la búsqueda.</EstadoVacio>)}
-          {resultado && resultado.publicaciones.length > 0 && <PaginacionPublicaciones consulta={consulta} resultado={resultado} />}
+          <PaginacionPublicaciones consulta={consulta} resultado={resultado} />
         </div>
       </Panel>
     </div>

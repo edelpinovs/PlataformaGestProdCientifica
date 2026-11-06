@@ -2,7 +2,7 @@
 
 Rama: feat/M6-RF-PC-10-pantallas-produccion. Responsable: I6.
 
-Resumen, escaneo y publicaciones tienen rutas independientes, navegaci?n y permisos previos a cualquier lectura. B?squeda y filtros se despliegan a demanda. Listado compartido con 10 elementos por p?gina visibles, enlaces numerados arriba y abajo, orden por todos los encabezados y selector de orden en celular. Las URL anteriores conservan filtros al redirigir.
+Resumen, escaneo y publicaciones tienen rutas independientes, navegaci?n y permisos previos a cualquier lectura. B?squeda y filtros se despliegan a demanda. Listado compartido con 10 elementos por p?gina visibles, enlaces numerados solo debajo del listado, orden por todos los encabezados y selector de orden en celular. Las URL anteriores conservan filtros al redirigir.
 
 Se conserva la excepci?n de edici?n y eliminaci?n del issue #97: los resultados externos se gestionan mediante sus autor?as. No se modifican componentes compartidos, esquema, dependencias ni otros m?dulos.
 

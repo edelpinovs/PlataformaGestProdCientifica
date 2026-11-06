@@ -4,15 +4,15 @@ import { claseBotonSecundario } from "@/components/ui";
 import { TAMANIO_PAGINA, type Paginacion } from "@/lib/listados/consulta";
 import { enlaceConsulta, paginasVisibles, LISTADO_PUBLICACIONES, RUTA_PUBLICACIONES, type ConsultaPublicaciones } from "@/modules/produccion/consulta";
 
-export function PaginacionPublicaciones({ consulta, resultado, superior = false }: {
-  consulta: ConsultaPublicaciones; resultado: Paginacion | null; superior?: boolean;
+export function PaginacionPublicaciones({ consulta, resultado }: {
+  consulta: ConsultaPublicaciones; resultado: Paginacion | null;
 }) {
   if (!resultado) return <p className="text-sm text-texto-3">Corrige los filtros para consultar las publicaciones.</p>;
   const actual = { ...consulta, pagina: resultado.pagina };
   return <div className="flex flex-col gap-4">
-    {superior && <p className="text-right text-sm font-medium text-texto-2">{TAMANIO_PAGINA} elementos por página</p>}
+    <p className="text-right text-sm font-medium text-texto-2">{TAMANIO_PAGINA} elementos por página</p>
     <PaginacionListado base={RUTA_PUBLICACIONES} definicion={LISTADO_PUBLICACIONES} consulta={actual} paginacion={resultado} nombre="publicaciones" />
-    {resultado.totalPaginas > 1 && <nav aria-label={`Números de página ${superior ? "superiores" : "inferiores"}`} className="flex flex-wrap justify-center gap-1">
+    {resultado.totalPaginas > 1 && <nav aria-label="Paginación numerada" className="flex flex-wrap justify-center gap-1">
       {paginasVisibles(resultado.pagina, resultado.totalPaginas).map((pagina, indice) => pagina === "separador"
         ? <span key={`separador-${indice}`} aria-hidden="true" className="px-2 text-texto-3">…</span>
         : pagina === resultado.pagina

@@ -73,7 +73,7 @@ Las publicaciones extraídas de fuentes indizadas (Scopus, OpenAlex, ORCID) repr
 
 - Pantallas independientes: /produccion (resumen), /produccion/escaneo (motor), /produccion/publicaciones (consulta). Todas requieren permisos antes de leer datos.
 - Buscador y filtros desplegables. Profesor y estado deben coincidir en una misma autor?a.
-- Pieza compartida de D-009: q, pagina, orden, dir y filtros validados; 10 elementos por p?gina, cantidad visible y paginaci?n numerada superior e inferior.
+- Pieza compartida de D-009: q, pagina, orden, dir y filtros validados; 10 elementos por p?gina, cantidad visible y paginaci?n numerada solo debajo del listado.
 - Orden por todos los encabezados: t?tulo, tipo, revista/editorial, cantidad de profesores vinculados y fuente; selector de orden en celular. ID como desempate; enumeraciones por etiqueta espa?ola.
 - B?squeda en t?tulo, autores, DOI, revista/editorial, nombres y c?digos de profesores y etiquetas de tipo, fuente y estado. Se escapan los caracteres de patr?n.
 - Snapshot RepeatableRead para contar obras ?nicas y leer como m?ximo 10 por p?gina, tambi?n al distribuir la lectura entre grupos de enumeraciones.
