@@ -41,6 +41,8 @@ Estados: `vigente`, `reemplazada`, `pendiente` (se propuso y falta acordar).
 | D-115 | 2026-11-05 | Pantallas de Producción | Separar resumen, escaneo y publicaciones; listado compartido de 10 elementos, cantidad visible y enlaces numerados según D-009 | Reducir la acumulación de formularios y resultados | Petición de I6; issue #114 | vigente; integrada en el PR #119, revisión visual pendiente |
 | D-116 | 2026-11-05 | Resultado del escaneo | Mostrar resultados parciales si hay obras guardadas e incidencias; conservar FALLIDO en persistencia para los reintentos y presentar errores por lista permitida | Una fuente fallida ocultaba resultados válidos | Issue #120; PR #121 | vigente; integrada en el PR #121, revisión visual pendiente |
 
+| D-117 | 2026-11-06 | Configuración Scopus | I6 autoriza configuración institucional desde Producción, solo ADMINISTRADOR, cifrado AES-256-GCM con clave maestra de servidor bajo custodia de administración; esquema y migración aprobados; respaldo de entorno solo sin registro | Cambiar la cuenta del proveedor sin editar código; aprobación explícita tras explicar el alcance | Sesión de I6; [issue #129](https://github.com/edelpinovs/PlataformaGestProdCientifica/issues/129) | implementada; revisión pendiente |
+
 ## Pendientes de acordar
 
 | ID | Fecha | Tema | Propuesta o pregunta | Origen | Estado |
