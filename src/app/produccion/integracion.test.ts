@@ -87,6 +87,57 @@ describe("RF-021 y RF-022: integración simulada con Validación", () => {
   });
   afterEach(() => vi.unstubAllGlobals());
 
+  it("dos fuentes, reescaneos y coautorías conservan una obra y los estados revisados", async () => {
+    const fetchOrcid = vi.mocked(fetch).getMockImplementation()!;
+    const http = vi.fn(async (...argumentos: Parameters<typeof fetch>) => {
+      const url = new URL(String(argumentos[0]));
+      if (url.hostname === "api.openalex.org") return new Response(JSON.stringify({
+        meta: { next_cursor: null }, results: [{
+          title: "Obra ficticia para prueba de integración",
+          doi: "10.1000/integracion-ficticia", type: "article",
+          publication_year: 2026, publication_date: "2026-01-01",
+          authorships: [{ author: { display_name: "Persona Ficticia" } }],
+        }],
+      }), { status: 200, headers: { "content-type": "application/json" } });
+      if (url.hostname === "pub.orcid.org") return fetchOrcid(...argumentos);
+      throw new Error("Fuente no prevista en la prueba");
+    });
+    vi.stubGlobal("fetch", http);
+    const escanearMultifuente = (profesorId: number) => ejecutarEscaneo({
+      profesorId, fuentes: ["ORCID", "OPENALEX"], anio: 2026, enriquecerAutores: false,
+    }, repositorioPrisma);
+
+    const primero = await escanearMultifuente(1);
+    expect(primero).toMatchObject({ publicacionesEncontradas: 2, publicacionesGuardadas: 1, autoriasCreadas: 1, errores: [] });
+    expect(publicaciones).toHaveLength(1);
+    expect(autorias).toHaveLength(1);
+
+    const repetido = await escanearMultifuente(1);
+    expect(repetido).toMatchObject({ publicacionesEncontradas: 2, publicacionesGuardadas: 1, autoriasCreadas: 0, errores: [] });
+    expect(publicaciones).toHaveLength(1);
+    expect(autorias).toHaveLength(1);
+
+    const coautor = await escanearMultifuente(2);
+    expect(coautor).toMatchObject({ publicacionesGuardadas: 1, autoriasCreadas: 1, errores: [] });
+    expect(publicaciones).toHaveLength(1);
+    expect(autorias).toHaveLength(2);
+
+    await expect(confirmarAutoria(formulario(1))).rejects.toThrow("/validacion?accion=confirmada");
+    await expect(rechazarHomonimo(formulario(2))).rejects.toThrow("/validacion?accion=rechazada");
+    const fechasRevision = autorias.map((autoria) => autoria.revisadaEn?.getTime());
+    for (const profesorId of [1, 2]) {
+      expect(await escanearMultifuente(profesorId)).toMatchObject({ autoriasCreadas: 0, errores: [] });
+    }
+    expect(autorias.map((autoria) => autoria.estado)).toEqual(["VALIDADA", "RECHAZADA"]);
+    expect(autorias.map((autoria) => autoria.revisadaEn?.getTime())).toEqual(fechasRevision);
+    expect(publicaciones).toHaveLength(1);
+    expect(autorias).toHaveLength(2);
+    expect(dobles.prisma.publicacion.create).toHaveBeenCalledOnce();
+    expect(dobles.prisma.autoria.create).toHaveBeenCalledTimes(2);
+    expect(http.mock.calls.some(([url]) => String(url).includes("api.openalex.org"))).toBe(true);
+    expect(http.mock.calls.some(([url]) => String(url).includes("pub.orcid.org"))).toBe(true);
+  });
+
   it("dos lotes de profesores distintos reutilizan la misma obra y crean dos autorías pendientes", async () => {
     const primero = await escanear(1);
     const segundo = await escanear(2);

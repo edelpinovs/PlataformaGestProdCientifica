@@ -135,7 +135,9 @@ describe("Menor · ORCID con filtro de año", () => {
   });
 });
 
-describe("Notas 2 y 6 · Server Action iniciarEscaneoAction", () => {
+// El primer import dinámico de la acción transforma y carga varios módulos y, en una corrida
+// completa con muchos archivos en paralelo, puede pasar de los 5 s por omisión.
+describe("Notas 2 y 6 · Server Action iniciarEscaneoAction", { timeout: 30_000 }, () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetAllMocks();
