@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ejecutarEscaneo, type RepositorioProduccion } from "./escaneo";
 import { consultarScopus } from "./conectores/scopus";
 import { consultarOrcid } from "./conectores/orcid";
+import { consultarOpenAlex } from "./conectores/openalex";
 import type { PublicacionCandidata } from "./tipos";
 
 vi.mock("./conectores/scopus", () => ({ consultarScopus: vi.fn() }));
@@ -36,6 +37,7 @@ describe("RF-020: corte incremental recuperable", () => {
     vi.setSystemTime(inicio);
     vi.mocked(consultarScopus).mockResolvedValue({ publicaciones: [] });
     vi.mocked(consultarOrcid).mockResolvedValue({ publicaciones: [] });
+    vi.mocked(consultarOpenAlex).mockResolvedValue({ publicaciones: [] });
   });
   afterEach(() => vi.useRealTimers());
 
@@ -60,10 +62,29 @@ describe("RF-020: corte incremental recuperable", () => {
     expect(repo.registrarCorte).toHaveBeenCalledWith(1, "ORCID", inicio);
   });
 
-  it("sin corte comienza por el año actual", async () => {
+  it.each(["ORCID", "OPENALEX"] as const)("sin corte recupera el historial de %s y después usa el corte incremental", async (fuente) => {
     const repo = crearRepositorio();
-    await ejecutarEscaneo({ fuentes: ["ORCID"] }, repo);
-    expect(consultarOrcid).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ id: 1 }), 2026);
+    const consultar = vi.mocked(fuente === "ORCID" ? consultarOrcid : consultarOpenAlex);
+    consultar.mockResolvedValue({ publicaciones: [{ ...obra, anio: 2001, fuente }] });
+    const resultado = await ejecutarEscaneo({ fuentes: [fuente] }, repo);
+    expect(consultar).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ id: 1 }));
+    expect(resultado.publicacionesGuardadas).toBe(1);
+    expect(repo.registrarCorte).toHaveBeenCalledWith(1, fuente, inicio);
+    consultar.mockClear();
+    repo.obtenerUltimoCorte.mockResolvedValue(inicio);
+    await ejecutarEscaneo({ fuentes: [fuente] }, repo);
+    expect(consultar.mock.calls.map((llamada) => llamada[1])).toEqual([2025, 2026]);
+  });
+
+  it.each(["ORCID", "OPENALEX"] as const)("un fallo inicial en %s conserva el corte para reintentar el historial", async (fuente) => {
+    const repo = crearRepositorio();
+    const consultar = vi.mocked(fuente === "ORCID" ? consultarOrcid : consultarOpenAlex);
+    consultar.mockResolvedValueOnce({ publicaciones: [], error: "HTTP_503" });
+    expect((await ejecutarEscaneo({ fuentes: [fuente] }, repo)).errores).toHaveLength(1);
+    expect(repo.registrarCorte).not.toHaveBeenCalled();
+    expect(repo.persistirOActualizar).not.toHaveBeenCalled();
+    await ejecutarEscaneo({ fuentes: [fuente] }, repo);
+    expect(consultar.mock.calls.every((llamada) => llamada[1] === undefined)).toBe(true);
   });
 
   it("guarda publicaciones y autorías antes de avanzar el corte", async () => {

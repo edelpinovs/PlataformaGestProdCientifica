@@ -144,7 +144,6 @@ export async function consultarOpenAlex(
     });
 
     if (!resp.data) {
-      if (publicaciones.length > 0) break;
       return { publicaciones: [], error: resp.error || `HTTP_${resp.status}` };
     }
 
