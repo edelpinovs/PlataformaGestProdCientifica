@@ -44,6 +44,8 @@ Estados: `vigente`, `reemplazada`, `pendiente` (se propuso y falta acordar).
 
 | D-118 | 2026-11-06 | Historial inicial | Sin año ni corte, ORCID y OpenAlex recuperan el historial; después conservan el incremental. No se reinician cortes existentes ni cambia Scopus | Recuperar obras anteriores de profesores nuevos sin consultas por cada año | Sesión de I6; issue #133 y PR #134 | implementada; revisión pendiente |
 
+| D-119 | 2026-11-06 | Demostración de Producción | Simular fuentes y persistencia en memoria, solo en development con bandera explícita y acceso al módulo; no escribir en la base ni ejecutar Validación | Probar el historial con datos ficticios sin depender de perfiles externos | Aprobación de I6 en sesión; issue #139 | implementada; revisión visual pendiente |
+
 ## Pendientes de acordar
 
 | ID | Fecha | Tema | Propuesta o pregunta | Origen | Estado |

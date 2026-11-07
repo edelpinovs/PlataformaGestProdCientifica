@@ -7,6 +7,9 @@ import { NavegacionProduccion } from "../navegacion-produccion";
 import { obtenerTrabajoPendiente } from "../trabajos";
 import { presentarResultadoEscaneo } from "@/modules/produccion/resultado-escaneo";
 import { ResultadoEscaneo } from "../resultado-escaneo";
+import Link from "next/link";
+import { demoHabilitada } from "@/modules/produccion/demostracion";
+import { claseBotonSecundario } from "@/components/ui";
 
 export const maxDuration = 300;
 
@@ -22,6 +25,9 @@ export default async function EscaneoPage() {
     subtitulo="Extracción desde ORCID, Scopus y OpenAlex con deduplicación y vinculación de autorías."
     volver={{ href: "/produccion", texto: "Producción científica" }}>
     <NavegacionProduccion actual="escaneo" />
+    {demoHabilitada(process.env.NODE_ENV, process.env.PRODUCCION_DEMO) && <Panel titulo="Prueba con datos ficticios">
+      <Link href="/produccion/demostracion" className={claseBotonSecundario}>Abrir demostración sin base de datos</Link>
+    </Panel>}
     <Panel titulo="Escanear producción científica" descripcion="Elige un profesor activo o inicia el escaneo de todos. El avance se guarda por profesor.">
       <FormularioEscaneo profesores={profesores} trabajoPendiente={pendiente?.id} />
     </Panel>
