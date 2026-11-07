@@ -1,4 +1,4 @@
-﻿# Issue #133: historial inicial de ORCID y OpenAlex
+# Issue #133: historial inicial de ORCID y OpenAlex
 
 Sin corte previo y sin año explícito, el motor consulta los conectores sin filtro anual. No itera año por año: utiliza el historial y la paginación del proveedor. Con corte previo conserva la ventana incremental y con año explícito respeta ese año sin mover el corte. Scopus conserva su comportamiento actual.
 
