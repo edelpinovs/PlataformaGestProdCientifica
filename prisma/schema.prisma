@@ -357,6 +357,13 @@ enum EstadoJob {
   FALLIDO
 }
 
+// Secreto institucional cifrado; sin acceso desde la Data API de Supabase.
+model ConfiguracionScopus {
+  id            String   @id
+  claveCifrada  String
+  actualizadaEn DateTime @updatedAt
+}
+
 model Job {
   id            Int       @id @default(autoincrement())
   tipo          String // p. ej. "escaneo", "carga-resultados"

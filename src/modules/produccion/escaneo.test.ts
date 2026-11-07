@@ -41,6 +41,19 @@ describe("RF-020: corte incremental recuperable", () => {
   });
   afterEach(() => vi.useRealTimers());
 
+  it("resuelve e inyecta la clave institucional en cada escaneo sin perder otras fuentes ante un fallo", async () => {
+    const obtenerClaveScopus = vi.fn().mockResolvedValue("institucional-ficticia");
+    const repo = { ...crearRepositorio(), obtenerClaveScopus };
+    await ejecutarEscaneo({ fuentes: ["SCOPUS"] }, repo);
+    expect(consultarScopus).toHaveBeenCalledWith(expect.objectContaining({ id: 1 }), 2026, "institucional-ficticia");
+    obtenerClaveScopus.mockRejectedValue(new Error("Configuración no disponible"));
+    vi.mocked(consultarOrcid).mockResolvedValue({ publicaciones: [obra] });
+    const resultado = await ejecutarEscaneo({ fuentes: ["SCOPUS", "ORCID"] }, repo);
+    expect(resultado.publicacionesGuardadas).toBe(1);
+    expect(resultado.errores).toHaveLength(1);
+    expect(resultado.errores[0]).toContain("Scopus");
+  });
+
   it("recupera diciembre al cambiar de año y todos los años desde el corte", async () => {
     const repo = crearRepositorio();
     repo.obtenerUltimoCorte.mockResolvedValue(new Date("2025-01-01T00:00:00Z"));
