@@ -38,6 +38,8 @@ Dictámenes: **Aprobado**, **Aprobado con comentarios**, **Solicitar cambios**, 
 
 | #134 | irybyron | RF-020 historial inicial de ORCID y OpenAlex (#133) | Sin revisión independiente | 567 pruebas, lint, tipos y build correctos; revisión visual pendiente; no reinicia cortes existentes | [Issue-133](pruebas/ISSUE-133-historial-inicial.md) | 2026-11-06 | **Abierto, borrador** |
 
+| #140 | irybyron | RF-020 demostración local aislada (#139) | Sin revisión independiente | Depende de #134; 577 pruebas, lint, tipos y build correctos; sin HTTP ni base; revisión visual pendiente | [Issue-139](pruebas/ISSUE-139-demostracion-escaneo.md) | 2026-11-06 | **Abierto, borrador** |
+
 Los PR de documentación, reglas e infraestructura de I1 (#1 a #48, #54, #56, #60, #64, #67, #68, #70, #71, #73, #75, #76, #78, #81 a #84, #86, #87 y #90) no se listan aquí.
 
 ## Pendientes del grupo
