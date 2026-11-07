@@ -109,6 +109,7 @@ async function consultarPeriodo(
 export async function ejecutarEscaneo(
   opciones?: OpcionesEscaneo,
   repo?: RepositorioProduccion,
+  conectores = { consultarScopus, consultarOpenAlex, consultarOrcid },
 ): Promise<ResumenEscaneo> {
   const resumen: ResumenEscaneo = {
     profesoresProcesados: 0,
@@ -171,7 +172,7 @@ export async function ejecutarEscaneo(
         }
 
         const clave = await repo.obtenerClaveScopus?.();
-        const res = await consultarPeriodo((profesor, anio) => consultarScopus(profesor, anio, clave), prof, anioScopus, opciones?.anio, inicioEscaneo);
+        const res = await consultarPeriodo((profesor, anio) => conectores.consultarScopus(profesor, anio, clave), prof, anioScopus, opciones?.anio, inicioEscaneo);
         if (res.error) {
           resumen.errores.push(`Scopus (Prof. ${prof.id}): ${res.error}`);
           huboErrorEnProfesor = true;
@@ -199,8 +200,8 @@ export async function ejecutarEscaneo(
         }
 
         const res = anioOA === undefined
-          ? await consultarOpenAlex(prof)
-          : await consultarPeriodo(consultarOpenAlex, prof, anioOA, opciones?.anio, inicioEscaneo);
+          ? await conectores.consultarOpenAlex(prof)
+          : await consultarPeriodo(conectores.consultarOpenAlex, prof, anioOA, opciones?.anio, inicioEscaneo);
         if (res.error) {
           resumen.errores.push(`OpenAlex (Prof. ${prof.id}): ${res.error}`);
           huboErrorEnProfesor = true;
@@ -228,8 +229,8 @@ export async function ejecutarEscaneo(
         }
 
         const res = anioOrcid === undefined
-          ? await consultarOrcid(prof)
-          : await consultarPeriodo(consultarOrcid, prof, anioOrcid, opciones?.anio, inicioEscaneo);
+          ? await conectores.consultarOrcid(prof)
+          : await consultarPeriodo(conectores.consultarOrcid, prof, anioOrcid, opciones?.anio, inicioEscaneo);
         if (res.error) {
           resumen.errores.push(`ORCID (Prof. ${prof.id}): ${res.error}`);
           huboErrorEnProfesor = true;
