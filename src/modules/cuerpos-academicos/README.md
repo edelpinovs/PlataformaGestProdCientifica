@@ -25,3 +25,7 @@ Designar a un único integrante como líder. `CuerpoAcademico.liderId` impide m�
 ## RF-015 · CU-009
 
 Registrar LGAC asociadas a un CA. El nombre no se duplica en el mismo cuerpo; los profesores de la línea deben ser integrantes. Editar y eliminar siguen #59. Si se quita a un integrante, se desvincula de las LGAC de ese CA.
+
+## Listado (D-009 · #112)
+
+`/cuerpos-academicos` pagina de 10 en 10, busca en los campos visibles y ordena por cada columna. Filtros: nivel y departamento. Las tablas de integrantes y LGAC del detalle quedan acotadas por cuerpo y no se paginan.
