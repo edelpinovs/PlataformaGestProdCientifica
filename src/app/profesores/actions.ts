@@ -128,7 +128,9 @@ function errorPrisma(e: unknown, valores: Record<string, string>): EstadoProfeso
   if (!(e instanceof Prisma.PrismaClientKnownRequestError)) return null;
   if (e.code === "P2002") {
     const duplicado = mensajeUnicidadPrisma(e.meta);
-    return { error: duplicado.mensaje, campo: duplicado.campo, valores };
+    return duplicado.campo
+      ? { error: duplicado.mensaje, campo: duplicado.campo, valores }
+      : { error: duplicado.mensaje, valores };
   }
   if (e.code === "P2003") return { error: CATALOGO_AUSENTE, valores };
   if (e.code === "P2025") return { error: NO_EXISTE };
@@ -236,9 +238,11 @@ export async function eliminarProfesor(_: EstadoFila, formData: FormData): Promi
       where: { id },
       select: { perfil: { select: { id: true } }, _count: { select: seleccionUso } },
     });
+    if (!ahora) return { error: NO_EXISTE };
     return {
       error:
-        (ahora && motivoProfesorNoEliminable(nombre, usoDeConteo(Boolean(ahora.perfil), ahora._count))) || NO_EXISTE,
+        motivoProfesorNoEliminable(nombre, usoDeConteo(Boolean(ahora.perfil), ahora._count)) ??
+        `No se puede eliminar a «${nombre}»: tiene otros registros relacionados. Quita esas relaciones antes de eliminarlo.`,
     };
   }
 

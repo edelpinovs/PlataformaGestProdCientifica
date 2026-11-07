@@ -18,7 +18,7 @@ export function FormularioProfesor({ grados, departamentos }: Props) {
   const err = (campo: string) => estado.campo === campo;
 
   return (
-    <form key={estado.registrado ?? "formulario"} action={accion} className="flex flex-col gap-6">
+    <form key={estado.registrado ?? "formulario"} action={accion} className="flex flex-col gap-5">
       {/* ── Datos personales ───────────────────────────────── */}
       <fieldset className="flex flex-col gap-4">
         <legend className="mb-2 text-sm font-semibold text-texto-2">Datos personales</legend>
@@ -57,7 +57,7 @@ export function FormularioProfesor({ grados, departamentos }: Props) {
           <span className={claseEtiqueta}>
             Género <span aria-hidden className="text-peligro">*</span>
           </span>
-          <div className="flex gap-6">
+          <div className="flex gap-4">
             {(
               [
                 { valor: "M", texto: "Masculino" },
@@ -237,7 +237,7 @@ export function FormularioProfesor({ grados, departamentos }: Props) {
               id="scholarId"
               name="scholarId"
               maxLength={50}
-              placeholder="Ej. abc123XYZ"
+              placeholder="5 a 50 caracteres"
               defaultValue={v.scholarId}
               aria-invalid={err("scholarId")}
               className={claseCampo(err("scholarId"))}
@@ -250,7 +250,7 @@ export function FormularioProfesor({ grados, departamentos }: Props) {
               id="scopusId"
               name="scopusId"
               maxLength={20}
-              placeholder="57204190023"
+              placeholder="4 a 20 dígitos"
               defaultValue={v.scopusId}
               aria-invalid={err("scopusId")}
               className={claseCampo(err("scopusId"))}

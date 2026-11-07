@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { redirect } from "next/navigation";
 import { Prisma } from "../../generated/prisma/client";
 import {
   asignacionLaboral,
@@ -12,7 +13,7 @@ import {
 } from "./profesores";
 
 const prismaFalso = vi.hoisted(() => ({
-  profesor: { findMany: vi.fn(), create: vi.fn() },
+  profesor: { findMany: vi.fn(), findUnique: vi.fn(), create: vi.fn(), update: vi.fn(), deleteMany: vi.fn() },
 }));
 const sesionFalsa = vi.hoisted(() => ({
   requireModulo: vi.fn(async () => ({ rol: "ADMINISTRADOR" })),
@@ -179,9 +180,27 @@ describe("registrarProfesor (RF-004)", () => {
     expect(registrarProfesor.safeParse({ ...datosValidos, scopusId: "scopus456" }).success).toBe(false);
   });
 
-  it("acepta un Scholar ID con letras y números y rechaza uno muy corto", () => {
+  it("acepta un Scholar ID con letras, números, puntos, guiones y guiones bajos", () => {
     expect(registrarProfesor.safeParse({ ...datosValidos, scholarId: "abc123def" }).success).toBe(true);
-    expect(registrarProfesor.safeParse({ ...datosValidos, scholarId: "ab" }).success).toBe(false);
+    expect(registrarProfesor.safeParse({ ...datosValidos, scholarId: "ab_c.d-1" }).success).toBe(true);
+    const corto = registrarProfesor.safeParse({ ...datosValidos, scholarId: "ab" });
+    expect(corto.success).toBe(false);
+    if (!corto.success) {
+      expect(corto.error.issues[0].message).toBe("El Scholar ID debe tener al menos 5 caracteres.");
+    }
+  });
+
+  it("el Scholar ID da un mensaje por cada problema: longitud mínima, longitud máxima y caracteres", () => {
+    const mensaje = (scholarId: string) => {
+      const r = registrarProfesor.safeParse({ ...datosValidos, scholarId });
+      return r.success ? null : r.error.issues[0].message;
+    };
+    expect(mensaje("abcd")).toBe("El Scholar ID debe tener al menos 5 caracteres.");
+    expect(mensaje("a".repeat(51))).toBe("El Scholar ID admite hasta 50 caracteres.");
+    expect(mensaje("abc$de")).toBe("El Scholar ID solo admite letras, números, puntos, guiones y guiones bajos.");
+    expect(mensaje("abc de")).toBe("El Scholar ID solo admite letras, números, puntos, guiones y guiones bajos.");
+    expect(mensaje("abcde")).toBeNull();
+    expect(mensaje("a".repeat(50))).toBeNull();
   });
 });
 
@@ -275,11 +294,11 @@ describe("mensajeUnicidadPrisma (RF-005)", () => {
     });
   });
 
-  it("da un mensaje genérico si no reconoce el campo", () => {
+  it("da un mensaje genérico y no marca Código si no reconoce el campo", () => {
     expect(mensajeUnicidadPrisma(["otro"])).toEqual({
-      campo: "codigo",
       mensaje: "Algunos de los identificadores ingresados ya están registrados.",
     });
+    expect(mensajeUnicidadPrisma(["otro"])).not.toHaveProperty("campo");
   });
 
   it("R1: lee el índice del adaptador pg cuando no llega target", () => {
@@ -445,5 +464,132 @@ describe("crearProfesor", () => {
     expect(resultado).toMatchObject({
       error: "El departamento o el grado elegido ya no existe. Recarga la página.",
     });
+  });
+
+  it("un P2002 de un campo desconocido no marca Código", async () => {
+    prismaFalso.profesor.create.mockRejectedValue(errorPrisma("P2002", { target: ["otro"] }));
+    const { crearProfesor } = await import("../../app/profesores/actions");
+    const resultado = await crearProfesor({}, formulario(altaValida));
+    expect(resultado.error).toBe("Algunos de los identificadores ingresados ya están registrados.");
+    expect(resultado).not.toHaveProperty("campo");
+  });
+});
+
+const conteoVacio = {
+  reconocimientosSnii: 0,
+  reconocimientosProdep: 0,
+  cuerposAcademicos: 0,
+  cuerposLiderados: 0,
+  lgacs: 0,
+  participaciones: 0,
+  autorias: 0,
+  cortesEscaneo: 0,
+  programas: 0,
+};
+
+describe("editarProfesor", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    prismaFalso.profesor.findUnique.mockResolvedValue({ id: 7 });
+    prismaFalso.profesor.findMany.mockResolvedValue([]);
+    prismaFalso.profesor.update.mockResolvedValue({ id: 7 });
+  });
+
+  it("exige el permiso del módulo", async () => {
+    const { editarProfesor } = await import("../../app/profesores/actions");
+    await editarProfesor({}, formulario({ ...altaValida, id: "7" }));
+    expect(sesionFalsa.requireModulo).toHaveBeenCalledWith("profesores");
+  });
+
+  it("guarda los cambios de un profesor que existe", async () => {
+    const { editarProfesor } = await import("../../app/profesores/actions");
+    await editarProfesor({}, formulario({ ...altaValida, id: "7" }));
+    expect(prismaFalso.profesor.update).toHaveBeenCalledOnce();
+    expect(redirect).toHaveBeenCalledWith(
+      `/profesores?editado=${encodeURIComponent("Ana María Pérez Ruiz")}`,
+      "replace",
+    );
+  });
+
+  it("no actualiza si el profesor ya no existe", async () => {
+    prismaFalso.profesor.findUnique.mockResolvedValue(null);
+    const { editarProfesor } = await import("../../app/profesores/actions");
+    const resultado = await editarProfesor({}, formulario({ ...altaValida, id: "7" }));
+    expect(resultado.error).toBe("Ese profesor ya no existe en el directorio. Recarga la página.");
+    expect(prismaFalso.profesor.update).not.toHaveBeenCalled();
+  });
+});
+
+describe("eliminarProfesor", () => {
+  const libre = {
+    nombres: "Ana María",
+    apellidos: "Pérez Ruiz",
+    perfil: null,
+    _count: conteoVacio,
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    prismaFalso.profesor.findUnique.mockResolvedValue(libre);
+    prismaFalso.profesor.deleteMany.mockResolvedValue({ count: 1 });
+  });
+
+  it("exige el permiso del módulo", async () => {
+    const { eliminarProfesor } = await import("../../app/profesores/actions");
+    await eliminarProfesor({}, formulario({ id: "7" }));
+    expect(sesionFalsa.requireModulo).toHaveBeenCalledWith("profesores");
+  });
+
+  it("borra solo si no tiene relaciones", async () => {
+    const { eliminarProfesor } = await import("../../app/profesores/actions");
+    await eliminarProfesor({}, formulario({ id: "7" }));
+    expect(prismaFalso.profesor.deleteMany).toHaveBeenCalledWith({
+      where: {
+        id: 7,
+        perfil: { is: null },
+        reconocimientosSnii: { none: {} },
+        reconocimientosProdep: { none: {} },
+        cuerposAcademicos: { none: {} },
+        cuerposLiderados: { none: {} },
+        lgacs: { none: {} },
+        participaciones: { none: {} },
+        autorias: { none: {} },
+        cortesEscaneo: { none: {} },
+        programas: { none: {} },
+      },
+    });
+    expect(redirect).toHaveBeenCalledWith(
+      `/profesores?eliminado=${encodeURIComponent("Ana María Pérez Ruiz")}`,
+      "replace",
+    );
+  });
+
+  it("explica el motivo si el borrado no elimina ninguna fila", async () => {
+    prismaFalso.profesor.deleteMany.mockResolvedValue({ count: 0 });
+    prismaFalso.profesor.findUnique
+      .mockResolvedValueOnce(libre)
+      .mockResolvedValueOnce({ perfil: { id: 1 }, _count: conteoVacio });
+    const { eliminarProfesor } = await import("../../app/profesores/actions");
+    const resultado = await eliminarProfesor({}, formulario({ id: "7" }));
+    expect(resultado.error).toBe(
+      "No se puede eliminar a «Ana María Pérez Ruiz»: tiene un perfil de acceso. Quita esas relaciones antes de eliminarlo.",
+    );
+  });
+
+  it("si el borrado falla por una relación que no se cuenta, no dice que el profesor ya no existe", async () => {
+    prismaFalso.profesor.deleteMany.mockRejectedValue(errorPrisma("P2003"));
+    const { eliminarProfesor } = await import("../../app/profesores/actions");
+    const resultado = await eliminarProfesor({}, formulario({ id: "7" }));
+    expect(resultado.error).toBe(
+      "No se puede eliminar a «Ana María Pérez Ruiz»: tiene otros registros relacionados. Quita esas relaciones antes de eliminarlo.",
+    );
+  });
+
+  it("avisa si el profesor desapareció durante el borrado", async () => {
+    prismaFalso.profesor.deleteMany.mockResolvedValue({ count: 0 });
+    prismaFalso.profesor.findUnique.mockResolvedValueOnce(libre).mockResolvedValueOnce(null);
+    const { eliminarProfesor } = await import("../../app/profesores/actions");
+    const resultado = await eliminarProfesor({}, formulario({ id: "7" }));
+    expect(resultado.error).toBe("Ese profesor ya no existe en el directorio. Recarga la página.");
   });
 });
