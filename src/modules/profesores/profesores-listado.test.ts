@@ -25,31 +25,50 @@ describe("listado de profesores", () => {
     expect(errores.orden).toBe("Ordena por una columna válida.");
   });
 
-  it("la búsqueda cubre código, nombre, apellidos, correo, departamento y grado", () => {
-    const donde = filtroProfesores(analizar({ q: "ana" }).consulta) as { OR: object[] };
-    expect(donde.OR).toEqual([
-      { codigo: { contains: "ana", mode: "insensitive" } },
-      { nombres: { contains: "ana", mode: "insensitive" } },
-      { apellidos: { contains: "ana", mode: "insensitive" } },
-      { correo: { contains: "ana", mode: "insensitive" } },
-      { departamento: { nombre: { contains: "ana", mode: "insensitive" } } },
-      { grado: { nombre: { contains: "ana", mode: "insensitive" } } },
-      { grado: { nomenclatura: { contains: "ana", mode: "insensitive" } } },
+  const campos = (palabra: string) => [
+    { codigo: { contains: palabra, mode: "insensitive" } },
+    { nombres: { contains: palabra, mode: "insensitive" } },
+    { apellidos: { contains: palabra, mode: "insensitive" } },
+    { correo: { contains: palabra, mode: "insensitive" } },
+    { departamento: { nombre: { contains: palabra, mode: "insensitive" } } },
+    { grado: { nombre: { contains: palabra, mode: "insensitive" } } },
+    { grado: { nomenclatura: { contains: palabra, mode: "insensitive" } } },
+  ];
+
+  it("la búsqueda cubre código, nombre, apellidos, correo, departamento, grado, contratación y estatus", () => {
+    const donde = filtroProfesores(analizar({ q: "ana" }).consulta) as { AND: { OR: object[] }[] };
+    expect(donde.AND).toHaveLength(1);
+    expect(donde.AND[0].OR.slice(0, 7)).toEqual(campos("ana"));
+    expect(donde.AND[0].OR.slice(7)).toEqual([
+      { tipoContratacion: { in: [] } },
+      { estatusLaboral: { in: [] } },
     ]);
     expect(filtroProfesores(analizar().consulta)).toEqual({});
   });
 
-  it("escapa los comodines de la búsqueda", () => {
-    const donde = filtroProfesores(analizar({ q: "100%_a\\b" }).consulta) as {
-      OR: { codigo: { contains: string } }[];
-    };
-    expect(donde.OR[0].codigo.contains).toBe("100\\%\\_a\\\\b");
+  it("cada palabra debe aparecer en algún campo: un nombre completo encuentra al profesor", () => {
+    const donde = filtroProfesores(analizar({ q: "Ana  Pérez" }).consulta) as { AND: { OR: object[] }[] };
+    expect(donde.AND).toHaveLength(2);
+    expect(donde.AND[0].OR.slice(0, 7)).toEqual(campos("Ana"));
+    expect(donde.AND[1].OR.slice(0, 7)).toEqual(campos("Pérez"));
   });
 
-  it("combina la búsqueda con los filtros", () => {
-    const donde = filtroProfesores(analizar({ q: "ana", estatus: "ACTIVO", departamento: "4", grado: "2" }).consulta);
-    expect(donde).toMatchObject({ estatusLaboral: "ACTIVO", departamentoId: 4, gradoId: 2 });
-    expect(donde).toHaveProperty("OR");
+  it("busca también por las etiquetas visibles de contratación y estatus, sin acentos ni mayúsculas", () => {
+    const completo = filtroProfesores(analizar({ q: "TIEMPO" }).consulta) as { AND: { OR: object[] }[] };
+    expect(completo.AND[0].OR).toContainEqual({ tipoContratacion: { in: ["TIEMPO_COMPLETO"] } });
+    const baja = filtroProfesores(analizar({ q: "baja" }).consulta) as { AND: { OR: object[] }[] };
+    expect(baja.AND[0].OR).toContainEqual({ estatusLaboral: { in: ["BAJA_TEMPORAL", "BAJA_POSDOCTORAL"] } });
+    const sinAcento = filtroProfesores(analizar({ q: "asignatura" }).consulta) as { AND: { OR: object[] }[] };
+    expect(sinAcento.AND[0].OR).toContainEqual({ tipoContratacion: { in: ["ASIGNATURA"] } });
+  });
+
+  it("limita la búsqueda a las primeras cinco palabras", () => {
+    const donde = filtroProfesores(analizar({ q: "a b c d e f g" }).consulta) as { AND: object[] };
+    expect(donde.AND).toHaveLength(5);
+  });
+
+  it("un texto de solo espacios no filtra", () => {
+    expect(filtroProfesores(analizar({ q: "   " }).consulta)).toEqual({});
   });
 
   it("por omisión ordena por apellidos y nombres, con desempate por id", () => {

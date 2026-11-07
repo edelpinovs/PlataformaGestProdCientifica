@@ -1,5 +1,5 @@
 import { condicionTexto, ordenarPor, type ConsultaListado, type DefinicionListado } from "@/lib/listados/consulta";
-import { ESTATUS_LABORALES } from "./profesores";
+import { ESTATUS_LABORALES, ETIQUETA_CONTRATACION, ETIQUETA_ESTATUS } from "./profesores";
 
 // Listado del directorio: búsqueda, filtros, orden y paginación (D-009, issue #110).
 
@@ -23,13 +23,27 @@ export const COLUMNAS_PROFESORES = [
   { clave: "estatus", texto: "Estatus" },
 ];
 
+const MAX_PALABRAS = 5;
+
+function sinAcentos(texto: string) {
+  return texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+}
+
+/** Valores del enum cuya etiqueta visible contiene la palabra, sin distinguir acentos ni mayúsculas. */
+function valoresPorEtiqueta<T extends string>(etiquetas: Record<T, string>, palabra: string): T[] {
+  const buscado = sinAcentos(palabra);
+  return (Object.keys(etiquetas) as T[]).filter((valor) => sinAcentos(etiquetas[valor]).includes(buscado));
+}
+
 /**
- * La búsqueda libre cubre lo que muestra la fila: código, nombre, apellidos, correo,
- * departamento y grado (nombre y nomenclatura).
+ * La búsqueda libre cubre lo que muestra la fila: código, nombre, apellidos, correo, departamento,
+ * grado (nombre y nomenclatura), tipo de contratación y estatus. El texto se divide en palabras y
+ * cada una debe aparecer en algún campo, así «Ana Pérez» encuentra a Ana María Pérez Ruiz.
  */
 export function filtroProfesores(consulta: ConsultaListado) {
-  return {
-    ...condicionTexto(consulta.q, (contiene) => [
+  const palabras = consulta.q.split(/\s+/).filter(Boolean).slice(0, MAX_PALABRAS);
+  const porPalabra = palabras.map((palabra) =>
+    condicionTexto(palabra, (contiene) => [
       { codigo: contiene },
       { nombres: contiene },
       { apellidos: contiene },
@@ -37,7 +51,12 @@ export function filtroProfesores(consulta: ConsultaListado) {
       { departamento: { nombre: contiene } },
       { grado: { nombre: contiene } },
       { grado: { nomenclatura: contiene } },
+      { tipoContratacion: { in: valoresPorEtiqueta(ETIQUETA_CONTRATACION, palabra) } },
+      { estatusLaboral: { in: valoresPorEtiqueta(ETIQUETA_ESTATUS, palabra) } },
     ]),
+  );
+  return {
+    ...(porPalabra.length ? { AND: porPalabra } : {}),
     ...(consulta.filtros.estatus
       ? { estatusLaboral: consulta.filtros.estatus as (typeof ESTATUS_LABORALES)[number] }
       : {}),

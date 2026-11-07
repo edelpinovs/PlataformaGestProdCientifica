@@ -68,7 +68,7 @@ export default async function ProfesoresPage({ searchParams }: PageProps<"/profe
     },
   });
   const contexto = { base: BASE, definicion, consulta: { ...consulta, pagina: paginacion.pagina } };
-  const sinResultados = hayFiltrosActivos(consulta);
+  const hayFiltros = hayFiltrosActivos(consulta);
 
   return (
     <Marco correo={perfil.correo} rol={perfil.rol} activo="profesores" titulo="Directorio de profesores">
@@ -86,11 +86,11 @@ export default async function ProfesoresPage({ searchParams }: PageProps<"/profe
           {profesores.length === 0 ? (
             <div className="flex flex-col items-center gap-4 py-4">
               <EstadoVacio>
-                {sinResultados
+                {hayFiltros
                   ? "No hay profesores con esta búsqueda. Prueba con otro texto o limpia los filtros."
                   : "Aún no hay profesores registrados en el directorio."}
               </EstadoVacio>
-              {!sinResultados && (
+              {!hayFiltros && (
                 <Link href="/profesores/nuevo" className={claseBoton}>Registrar el primer profesor</Link>
               )}
             </div>
