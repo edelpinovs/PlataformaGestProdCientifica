@@ -1,4 +1,4 @@
-﻿# Issue #139: demostración del escaneo en desarrollo
+# Issue #139: demostración del escaneo en desarrollo
 
 ## Activación local
 
