@@ -41,5 +41,8 @@ export default async function ProduccionPage({ searchParams }: { searchParams: P
         <Link className={`${claseBoton} inline-block`} href="/produccion/escaneo">Ir al escaneo</Link>
       </Panel>
     </div>
+    {perfil.rol === "ADMINISTRADOR" && <Panel titulo="Configuración de Scopus">
+      <Link className={`${claseBoton} inline-block`} href="/produccion/configuracion">Administrar conexión</Link>
+    </Panel>}
   </Marco>;
 }

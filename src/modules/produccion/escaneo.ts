@@ -31,6 +31,7 @@ export type PublicacionExistente = {
 };
 
 export type RepositorioProduccion = {
+  obtenerClaveScopus?: () => Promise<string | undefined>;
   obtenerProfesores: (filtro: {
     profesorId?: number;
     limite?: number;
@@ -169,7 +170,8 @@ export async function ejecutarEscaneo(
           }
         }
 
-        const res = await consultarPeriodo(consultarScopus, prof, anioScopus, opciones?.anio, inicioEscaneo);
+        const clave = await repo.obtenerClaveScopus?.();
+        const res = await consultarPeriodo((profesor, anio) => consultarScopus(profesor, anio, clave), prof, anioScopus, opciones?.anio, inicioEscaneo);
         if (res.error) {
           resumen.errores.push(`Scopus (Prof. ${prof.id}): ${res.error}`);
           huboErrorEnProfesor = true;

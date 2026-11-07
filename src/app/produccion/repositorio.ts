@@ -8,12 +8,14 @@ import type {
 import type { RepositorioProduccion } from "@/modules/produccion/escaneo";
 import { sonDuplicadosPorTitulo } from "@/modules/produccion/deduplicacion";
 import { limpiarDoi } from "@/modules/produccion/normalizacion";
+import { obtenerClaveScopus } from "./configuracion-scopus";
 
 function esErrorUnicidad(error: unknown): boolean {
   return typeof error === "object" && error !== null && "code" in error && error.code === "P2002";
 }
 
 export const repositorioPrisma: RepositorioProduccion = {
+  obtenerClaveScopus,
   async obtenerProfesores(filtro) {
     const where = filtro.profesorId
       ? { id: filtro.profesorId }
