@@ -1,4 +1,4 @@
-﻿# Issue #129: configuración institucional de Scopus
+# Issue #129: configuración institucional de Scopus
 
 Aprobación explícita de I6 en sesión del 6 de noviembre de 2026, después de explicar el cambio de esquema. La configuración pertenece a Producción y solo ADMINISTRADOR accede a la página y su Server Action.
 
