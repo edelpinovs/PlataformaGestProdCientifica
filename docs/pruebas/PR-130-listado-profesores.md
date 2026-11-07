@@ -39,8 +39,8 @@ Código en la sección 7.
 | T6 | Orden: apellidos → nombres → id; otras columnas solo desempatan por id |
 | T7 | Toda columna ordenable tiene texto y orden definido; una ajena se rechaza |
 | T8 | 54 profesores: `pagina=99` muestra 51–54; los enlaces conservan el estado |
-| T9 | Buscar un nombre completo no coincide con ningún campo (**confirma la limitación**) |
-| T10 | La búsqueda no cubre tipo de contratación ni etiqueta de estatus (**confirma la limitación**) |
+| T9 | Buscar un nombre completo no coincide con ningún campo (**confirmaba la limitación**; corregida en `501359a`: ahora la búsqueda es por palabras) |
+| T10 | La búsqueda no cubre tipo de contratación ni etiqueta de estatus (**confirmaba la limitación**; corregida en `501359a`) |
 
 ## 5. Lectura real de la base (solo lectura), 54 profesores
 
@@ -155,3 +155,16 @@ describe("revisión PR #130", () => {
 ```
 
 </details>
+
+## 8. Seguimiento: cambios aplicados por I1
+
+Con el visto bueno de I1 para avanzar, se aplicaron los cambios de la revisión en la rama de la autora y se avisó en un comentario del PR.
+
+| Commit | Qué se hizo |
+|---|---|
+| `18aa230` | Conflicto con `main` resuelto (sección 2) |
+| `501359a` | Hallazgo 1: la búsqueda se divide en palabras y cada una debe aparecer en algún campo (máximo cinco). Hallazgo 3: también se busca por la etiqueta visible de tipo de contratación y estatus, sin distinguir acentos ni mayúsculas. Hallazgo 4: `sinResultados` pasó a `hayFiltros`. La descripción del PR se reescribió en español (hallazgo 5) |
+
+Chequeos: pruebas de Profesores 66 pasan, lint y `next typegen` + `tsc --noEmit` sin errores. **Lectura real de la base (solo lectura):** el nombre completo de un profesor existente pasó de 0 a 1 resultado, y también funciona «Apellido Nombre»; `tiempo completo` 38, `asignatura` 16, `baja` 2, `demo` 50, `_` y `%` literales 0.
+
+Quedan abiertos: los acentos en nombres propios (hallazgo 2, ahora D-213, pendiente de acordar porque exige la extensión `unaccent` con una migración) y la revisión visual en tema oscuro y celular (hallazgo 6).
