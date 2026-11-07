@@ -114,7 +114,9 @@ describe("Reporte Unificado de Producción Científica (RF-020, RF-026)", () => 
     });
   });
 
-  describe("generarReporteUnificadoExcel", () => {
+  // Cargar ExcelJS y armar el libro tarda varios segundos con muchos archivos en paralelo
+  // (5.4 s medidos con límite de 5 s), así que este grupo tiene más margen.
+  describe("generarReporteUnificadoExcel", { timeout: 30_000 }, () => {
     it("produce un archivo Excel válido con las 3 hojas idénticas a Python", async () => {
       const datos = convertirConsolidadasAReporte(publicacionesEjemplo, catalogoProfesores);
       const buffer = await generarReporteUnificadoExcel(datos);

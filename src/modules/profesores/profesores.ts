@@ -95,8 +95,9 @@ export const registrarProfesor = asignacionLaboral.extend({
     (s) => (typeof s === "string" && s.trim() !== "" ? limpiar(s) : undefined),
     z
       .string()
+      .min(5, "El Scholar ID debe tener al menos 5 caracteres.")
       .max(50, "El Scholar ID admite hasta 50 caracteres.")
-      .regex(/^[\p{L}\d._-]{5,50}$/u, "El Scholar ID solo admite letras, números, puntos, guiones y guiones bajos.")
+      .regex(/^[\p{L}\d._-]+$/u, "El Scholar ID solo admite letras, números, puntos, guiones y guiones bajos.")
       .optional(),
   ),
   scopusId: z.preprocess(
