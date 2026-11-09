@@ -52,7 +52,7 @@ export async function procesarSiguienteProfesor(jobId: number) {
       where: condicionReserva,
       data: {
         estado: terminado ? (siguientes.resumen.errores.length ? "FALLIDO" : "COMPLETADO") : "PENDIENTE",
-        avance: siguientes.indice, datos: siguientes,
+        avance: siguientes.indice, datos: terminado ? { ...siguientes, finalizadoEn: new Date().toISOString() } : siguientes,
         error: siguientes.resumen.errores.length ? "Algunas consultas no se completaron. Puedes iniciar un nuevo escaneo para reintentarlas." : null,
       },
     });
