@@ -1,6 +1,7 @@
 import { Prisma } from "@/generated/prisma/client";
 import { z } from "zod";
 import { escaparBusqueda, type ConsultaListado, type DefinicionListado } from "@/lib/listados/consulta";
+import { FUENTES_ESCANEO } from "./fuentes";
 
 export const ESTADOS_HISTORIAL = { PENDIENTE: "Pendiente", EN_PROCESO: "En proceso", COMPLETADO: "Completado", FALLIDO: "Con incidencias" };
 export const COLUMNAS_HISTORIAL = [{ clave: "inicio", texto: "Inicio" }, { clave: "estado", texto: "Estado" }, { clave: "tipo", texto: "Tipo" }, { clave: "alcance", texto: "Alcance" }, { clave: "fuentes", texto: "Fuentes" }, { clave: "avance", texto: "Avance" }, { clave: "actualizacion", texto: "Última actualización" }];
@@ -9,7 +10,7 @@ export const LISTADO_HISTORIAL: DefinicionListado = {
   filtros: { estado: Object.keys(ESTADOS_HISTORIAL), tipo: ["escaneo-manual", "escaneo-diario"] },
 };
 export const idRegistroHistorial = z.string({ error: "Selecciona una sola búsqueda." }).regex(/^[1-9]\d*$/, "Selecciona una búsqueda válida.").transform(Number).pipe(z.number({ error: "Selecciona una búsqueda válida." }).int().max(Number.MAX_SAFE_INTEGER, "Selecciona una búsqueda válida."));
-export const FUENTES_CONTINUIDAD = ["ORCID", "OPENALEX", "SCOPUS"] as const;
+export const FUENTES_CONTINUIDAD = FUENTES_ESCANEO;
 export const COLUMNAS_CONTINUIDAD = [{ clave: "profesor", texto: "Profesor" }, { clave: "fuente", texto: "Fuente" }, { clave: "corte", texto: "Último corte válido" }, { clave: "periodo", texto: "Próxima consulta" }];
 export const LISTADO_CONTINUIDAD: DefinicionListado = {
   columnas: COLUMNAS_CONTINUIDAD.map(c => c.clave), ordenInicial: { columna: "profesor", dir: "asc" }, filtros: { fuente: FUENTES_CONTINUIDAD },
@@ -54,7 +55,7 @@ export function sqlHistorial(consulta: ConsultaListado) {
 export function sqlContinuidad(consulta: ConsultaListado) {
   const fuentes = Prisma.join(FUENTES_CONTINUIDAD.map(f => Prisma.sql`(${f}::text)`));
   const base = Prisma.sql`SELECT p.id "profesorId", p.apellidos || ', ' || p.nombres || ' · ' || p.codigo profesor, f.fuente,
-    c."ultimaFecha" corte, CASE f.fuente WHEN 'OPENALEX' THEN 'OpenAlex' WHEN 'SCOPUS' THEN 'Scopus' ELSE f.fuente END "fuenteTexto",
+    c."ultimaFecha" corte, CASE f.fuente WHEN 'OPENALEX' THEN 'OpenAlex' WHEN 'SCOPUS' THEN 'Scopus' WHEN 'CROSSREF' THEN 'Crossref' WHEN 'GOOGLE_SCHOLAR' THEN 'Google Scholar' ELSE f.fuente END "fuenteTexto",
     COALESCE(to_char(c."ultimaFecha" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Mexico_City', 'YYYY-MM-DD HH24:MI'), 'Sin búsqueda previa completada') "corteTexto",
     CASE WHEN c."ultimaFecha" IS NULL AND f.fuente <> 'SCOPUS' THEN 'Historial inicial completo' ELSE
       CASE WHEN c."ultimaFecha" IS NULL THEN EXTRACT(YEAR FROM CURRENT_TIMESTAMP AT TIME ZONE 'UTC')::text || ' (inicio según la fuente)'

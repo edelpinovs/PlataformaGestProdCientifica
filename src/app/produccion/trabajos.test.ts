@@ -43,7 +43,7 @@ describe("RF-020: cola persistida de escaneo", () => {
     expect(Number.isFinite(new Date(trabajo.datos.finalizadoEn!).getTime())).toBe(true);
     expect(trabajo.datos.resumen.publicacionesGuardadas).toBe(54);
     expect(dobles.ejecutarEscaneo.mock.calls.map(([opciones]) => opciones.profesorId)).toEqual(trabajo.datos.profesoresIds);
-    expect(dobles.ejecutarEscaneo).toHaveBeenLastCalledWith({ profesorId: 27, anio: undefined, limiteProfesores: 1 }, {});
+    expect(dobles.ejecutarEscaneo).toHaveBeenLastCalledWith({ profesorId: 27, anio: undefined, fuentes: ["SCOPUS","OPENALEX","ORCID"], limiteProfesores: 1 }, {});
   });
 
   it("dos peticiones simultáneas no procesan el mismo profesor dos veces", async () => {
@@ -109,5 +109,12 @@ describe("RF-020: cola persistida de escaneo", () => {
     dobles.prisma.profesor.findMany.mockResolvedValue([]);
     await crearTrabajoEscaneo("escaneo-diario");
     expect(dobles.prisma.job.create).toHaveBeenCalledWith({ data: expect.objectContaining({ estado: "COMPLETADO", total: 0 }) });
+  });
+
+  it("una reanudación consulta solo las fuentes guardadas en el trabajo", async () => {
+    trabajo.datos.fuentes = ["ORCID"];
+    await procesarSiguienteProfesor(7);
+    expect(dobles.ejecutarEscaneo).toHaveBeenCalledWith(expect.objectContaining({ fuentes: ["ORCID"] }), {});
+    expect(trabajo.datos.fuentes).toEqual(["ORCID"]);
   });
 });

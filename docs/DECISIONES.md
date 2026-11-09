@@ -50,6 +50,8 @@ Estados: `vigente`, `reemplazada`, `pendiente` (se propuso y falta acordar).
 
 | D-123 | 2026-11-09 | Historial de Producción | Mostrar trabajos y cortes por profesor/fuente con avance real, fecha de inicio y finalización solo cuando se haya registrado; explicar la consulta incremental y su solapamiento sin confundirlos con la fecha de publicación | Saber por dónde continuar sin reiniciar búsquedas ni prometer una cobertura no registrada | Respuesta del profesor comunicada por @irybyron; [#169](https://github.com/edelpinovs/PlataformaGestProdCientifica/issues/169) | vigente; implementación en revisión |
 
+| D-124 | 2026-11-09 | Fuentes de Producción | Elegir una, varias o todas entre ORCID, OpenAlex, Scopus, Crossref y Google Scholar; no consultar fuentes desmarcadas, conservar selección y procedencia por trabajo. Scholar usa SerpAPI con cuenta inicialmente gratuita; se autoriza añadir CROSSREF al enum y su etiqueta en Validación | Consultas controladas y trazables, con fuente complementaria Crossref y un proveedor definido para Scholar; resuelve el alcance de fuentes de D-210 | Respuestas del profesor y autorización de @irybyron en sesión; [#167](https://github.com/edelpinovs/PlataformaGestProdCientifica/issues/167) | vigente; implementación y migración en revisión |
+
 ## Pendientes de acordar
 
 | ID | Fecha | Tema | Propuesta o pregunta | Origen | Estado |

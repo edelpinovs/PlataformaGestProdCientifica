@@ -2,6 +2,18 @@
 
 Reglas de negocio, servicios y esquemas Zod para la extracción multifuente, normalización, deduplicación, cuartiles y consolidación de la producción científica.
 
+## Selección de fuentes (#167)
+
+- Fuentes disponibles: ORCID, OpenAlex, Scopus, Crossref y Google Scholar. El formulario permite una, varias o todas; sin selección, la Server Action no crea trabajos. La selección se normaliza con Zod y se guarda en `Job.datos.fuentes`; continuar usa ese dato del servidor, no nuevos valores del navegador.
+- Cada profesor deja un estado por fuente: no seleccionada, sin resultados, completada o con incidencia. Fuentes no seleccionadas no se consultan ni adelantan cortes; el enriquecimiento de autores de Crossref también exige haber seleccionado Crossref.
+- Los cortes se guardan después de persistir resultados. Los fallos conservan el último corte; otra fuente seleccionada puede completar y guardar sus obras. La procedencia multifuente se conserva por identificador de publicación en los datos del trabajo y se acumula entre lotes.
+- Crossref consulta por ORCID cuando existe; sin él, usa nombre/apellidos y contrasta los autores devueltos. Un ORCID distinto explícito no se sustituye por nombre. Las coincidencias por nombre crean candidatas pendientes para Validación, nunca autorías validadas automáticamente.
+- Google Scholar usa SerpAPI por `scholarId`, con paginación de hasta 100 resultados por consulta. Solo se llama al endpoint fijo; no se siguen enlaces del proveedor con la clave. Un 429 o un fallo de paginación deja la fuente pendiente de reintento, sin fingir cobertura completa. Cuando el proveedor no identifica el tipo, se usa «Otro» para revisión.
+- Para conservar el año en el campo de fecha existente, un año sin mes/día usa el primero de enero, como fecha de precisión anual; no representa una fecha de publicación completa confirmada.
+- Configuración solo en servidor: `SERPAPI_API_KEY` y, opcionalmente, `CROSSREF_MAILTO`; `.env.example` contiene únicamente nombres y valores vacíos. No se creó cuenta ni se realizaron consultas reales a SerpAPI en las pruebas. El plan gratuito y su cuota deben comprobarse en la cuenta del proveedor antes de uso institucional.
+- La migración de Crossref solo añade un valor al enum. El generador detectó además una tabla de Convocatorias presente en la base compartida y ausente del esquema local: se excluyeron esas sentencias ajenas y destructivas. La migración queda sin aplicar hasta revisar el PR; no se modificó esa tabla.
+- Referencias de implementación: [Crossref, filtros](https://www.crossref.org/documentation/retrieve-metadata/rest-api/rest-api-filters/) y [consultas por autor](https://github.com/CrossRef/rest-api-doc#field-queries); [SerpAPI, perfil de autor](https://serpapi.com/google-scholar-author-api) y [planes](https://serpapi.com/pricing).
+
 ## Arquitectura de capas (Regla del equipo)
 
 1. **`src/modules/produccion/` (Lógica de dominio pura):**

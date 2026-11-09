@@ -1,5 +1,6 @@
 import { Marco } from "@/components/marco";
-import { Panel } from "@/components/ui";
+import { Aviso, Panel } from "@/components/ui";
+import { datosLoteEsquema } from "@/modules/produccion/lotes";
 import { requireModulo } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { FormularioEscaneo } from "../formulario-escaneo";
@@ -21,8 +22,9 @@ export default async function EscaneoPage() {
     prisma.job.findFirst({ where: { tipo: { in: ["escaneo-manual", "escaneo-diario"] } }, orderBy: { creadoEn: "desc" } }),
     obtenerTrabajoPendiente(),
   ]);
+  const datosPendientes = datosLoteEsquema.safeParse(pendiente?.datos);
   return <Marco correo={perfil.correo} rol={perfil.rol} activo="produccion" titulo="Escanear producción"
-    subtitulo="Extracción desde ORCID, Scopus y OpenAlex con deduplicación y vinculación de autorías."
+    subtitulo="Consulta una, varias o todas las fuentes: ORCID, OpenAlex, Scopus, Crossref y Google Scholar."
     volver={{ href: "/produccion", texto: "Producción científica" }}>
     <NavegacionProduccion actual="escaneo" />
     <Panel titulo="Antes de volver a buscar" descripcion="Consulta el avance guardado y el periodo que se volverá a revisar por indexaciones tardías.">
@@ -32,7 +34,7 @@ export default async function EscaneoPage() {
       <Link href="/produccion/demostracion" className={claseBotonSecundario}>Abrir demostración sin base de datos</Link>
     </Panel>}
     <Panel titulo="Escanear producción científica" descripcion="Elige un profesor activo o inicia el escaneo de todos. El avance se guarda por profesor.">
-      <FormularioEscaneo profesores={profesores} trabajoPendiente={pendiente?.id} />
+      {perfil.rol === "COORDINADOR" ? <FormularioEscaneo profesores={profesores} trabajoPendiente={pendiente?.id} fuentesTrabajo={datosPendientes.data?.fuentes} profesorTrabajo={datosPendientes.data?.profesoresIds.length === 1 ? String(datosPendientes.data.profesoresIds[0]) : "todos"} anioTrabajo={datosPendientes.data?.anio} /> : <Aviso tipo="aviso">Solo Coordinación puede iniciar, reintentar o continuar búsquedas. Puedes consultar los resultados registrados.</Aviso>}
     </Panel>
     <Panel titulo="Último escaneo registrado">
       {ultimoJob && <ResultadoEscaneo resultado={presentarResultadoEscaneo(ultimoJob.estado, ultimoJob.datos)} />}

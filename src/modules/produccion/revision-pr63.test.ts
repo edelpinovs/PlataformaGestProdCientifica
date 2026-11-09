@@ -12,7 +12,7 @@ const prismaFalso = vi.hoisted(() => ({
 const trabajosFalsos = vi.hoisted(() => ({ crearTrabajoEscaneo: vi.fn(), procesarSiguienteProfesor: vi.fn(), TIPOS_ESCANEO: ["escaneo-manual", "escaneo-diario"] }));
 
 vi.mock("@/lib/prisma", () => ({ prisma: prismaFalso }));
-vi.mock("@/lib/auth/session", () => ({ requireModulo: vi.fn(async () => ({ rol: "ADMINISTRADOR" })) }));
+vi.mock("@/lib/auth/session", () => ({ requireRol: vi.fn(async () => ({ rol: "ADMINISTRADOR" })) }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/app/produccion/trabajos", () => trabajosFalsos);
 vi.mock("next/server", () => ({ after: vi.fn() }));
@@ -32,6 +32,7 @@ function respuestaJson(cuerpo: unknown) {
 function formulario(campos: Record<string, string>) {
   const fd = new FormData();
   for (const [k, v] of Object.entries(campos)) fd.set(k, v);
+  if (!campos.jobId) { for (const fuente of ["ORCID", "OPENALEX", "SCOPUS"]) fd.append("fuentes", fuente); }
   return fd;
 }
 
@@ -203,18 +204,18 @@ describe("Notas 2 y 6 · Server Action iniciarEscaneoAction", { timeout: 30_000 
 
   it("cada consulta de progreso exige permiso del módulo y restringe el tipo de Job", async () => {
     const { iniciarEscaneoAction } = await import("@/app/produccion/actions");
-    const { requireModulo } = await import("@/lib/auth/session");
+    const { requireRol } = await import("@/lib/auth/session");
     prismaFalso.job.findFirst.mockResolvedValue({ id: 7, estado: "COMPLETADO", avance: 2, total: 2 });
     const resultado = await iniciarEscaneoAction({}, formulario({ jobId: "7" }));
-    expect(requireModulo).toHaveBeenCalledWith("produccion");
+    expect(requireRol).toHaveBeenCalledWith(["COORDINADOR"]);
     expect(prismaFalso.job.findFirst).toHaveBeenCalledWith({ where: { id: 7, tipo: { in: ["escaneo-manual", "escaneo-diario"] } } });
     expect(resultado.exito).toBe(true);
   });
 
   it("no agenda trabajo si se deniega el permiso", async () => {
     const { iniciarEscaneoAction } = await import("@/app/produccion/actions");
-    const { requireModulo } = await import("@/lib/auth/session");
-    vi.mocked(requireModulo).mockRejectedValueOnce(new Error("Sin permiso"));
+    const { requireRol } = await import("@/lib/auth/session");
+    vi.mocked(requireRol).mockRejectedValueOnce(new Error("Sin permiso"));
     await expect(iniciarEscaneoAction({}, formulario({ profesorId: "todos", anio: "" }))).rejects.toThrow("Sin permiso");
     expect(trabajosFalsos.crearTrabajoEscaneo).not.toHaveBeenCalled();
   });

@@ -3,6 +3,9 @@
 
 import { consultarOpenAlex } from "./conectores/openalex";
 import { consultarOrcid } from "./conectores/orcid";
+import { consultarCrossref } from "./conectores/crossref-busqueda";
+import { consultarGoogleScholar } from "./conectores/google-scholar";
+import { FUENTES_ANTERIORES, FUENTES_ESCANEO, NOMBRES_FUENTE, seleccionFuentesEsquema, type ConsultaFuente, type FuenteEscaneo } from "./fuentes";
 import { consultarScopus } from "./conectores/scopus";
 import { enriquecerLoteConCrossref } from "./conectores/crossref";
 import { deduplicarLote } from "./deduplicacion";
@@ -58,9 +61,9 @@ export type RepositorioProduccion = {
 export type OpcionesEscaneo = {
   profesorId?: number;
   anio?: number;
-  fuentes?: ("SCOPUS" | "OPENALEX" | "ORCID")[];
+  fuentes?: FuenteEscaneo[];
   jobId?: number;
-  /** Si es true, enriquece los autores con Crossref cuando Scopus solo entrega el primer autor (vista estándar). Activo por defecto. */
+  /** Enriquece autores solo si Crossref está seleccionado. Se puede desactivar para pruebas o consultas concretas. */
   enriquecerAutores?: boolean;
   /** Límite de profesores a procesar en una sola ejecución para cumplir con el timeout de Vercel (Hallazgo 2a) */
   limiteProfesores?: number;
@@ -75,6 +78,8 @@ export type ResumenEscaneo = {
   autoriasCreadas: number;
   coautoriasDetectadas: number;
   errores: string[];
+  consultasFuentes?: ConsultaFuente[];
+  procedencia?: { publicacionId: number; fuentes: FuentePublicacion[] }[];
 };
 
 /** Reconsulta desde el año anterior al corte para recuperar indexaciones tardías.
@@ -109,7 +114,7 @@ async function consultarPeriodo(
 export async function ejecutarEscaneo(
   opciones?: OpcionesEscaneo,
   repo?: RepositorioProduccion,
-  conectores = { consultarScopus, consultarOpenAlex, consultarOrcid },
+  conectores: { consultarScopus: typeof consultarScopus; consultarOpenAlex: typeof consultarOpenAlex; consultarOrcid: typeof consultarOrcid; consultarCrossref?: typeof consultarCrossref; consultarGoogleScholar?: typeof consultarGoogleScholar } = { consultarScopus, consultarOpenAlex, consultarOrcid, consultarCrossref, consultarGoogleScholar },
 ): Promise<ResumenEscaneo> {
   const resumen: ResumenEscaneo = {
     profesoresProcesados: 0,
@@ -118,13 +123,17 @@ export async function ejecutarEscaneo(
     autoriasCreadas: 0,
     coautoriasDetectadas: 0,
     errores: [],
+    consultasFuentes: [],
+    procedencia: [],
   };
 
   if (!repo) {
     return resumen;
   }
 
-  const fuentesPermitidas = opciones?.fuentes ?? ["SCOPUS", "OPENALEX", "ORCID"];
+  const seleccion = seleccionFuentesEsquema.safeParse(opciones?.fuentes ?? FUENTES_ANTERIORES);
+  if (!seleccion.success) { resumen.errores.push(seleccion.error.issues[0].message); return resumen; }
+  const fuentesPermitidas = seleccion.data;
 
   // 1. Obtener los profesores a escanear (soporta lotes para cumplir con Vercel timeout - Hallazgo 2a)
   const profesores = await repo.obtenerProfesores({
@@ -151,120 +160,63 @@ export async function ejecutarEscaneo(
   const inicioEscaneo = new Date();
   const profesoresConFalloPersistencia = new Set<number>();
 
-  // 2. Extraer publicaciones de fuentes externas por cada profesor
+  // Se registra también lo no seleccionado, sin consultar el proveedor ni su corte.
   for (const prof of profesores) {
     let huboErrorEnProfesor = false;
-
-    // Escaneo desde Scopus (incremental por CorteEscaneo - Hallazgo 3c)
-    if (fuentesPermitidas.includes("SCOPUS") && (prof.scopusId || prof.orcid)) {
+    for (const fuente of FUENTES_ESCANEO) {
+      if (!fuentesPermitidas.includes(fuente)) {
+        resumen.consultasFuentes!.push({ profesorId: prof.id, fuente, estado: "NO_SELECCIONADA", cantidad: 0 });
+        continue;
+      }
       try {
-        let anioScopus = opciones?.anio;
-        if (!anioScopus) {
-          if (repo.obtenerUltimoCorte) {
-            const ultimoCorte = await repo.obtenerUltimoCorte(prof.id, "SCOPUS");
-            if (ultimoCorte) {
-              anioScopus = Math.max(1900, ultimoCorte.getUTCFullYear() - 1);
-            }
-          }
-          if (!anioScopus) {
-            anioScopus = inicioEscaneo.getUTCFullYear();
+        const sinIdentificador = (fuente === "ORCID" || fuente === "OPENALEX") ? !prof.orcid
+          : fuente === "SCOPUS" ? !(prof.scopusId || prof.orcid)
+          : fuente === "GOOGLE_SCHOLAR" ? !prof.scholarId : !(prof.orcid || (prof.nombres && prof.apellidos));
+        let res: { publicaciones: PublicacionCandidata[]; error?: string };
+        if (sinIdentificador) res = { publicaciones: [], error: "FALTA_IDENTIFICADOR" };
+        else {
+          const corte = !opciones?.anio ? await repo.obtenerUltimoCorte?.(prof.id,fuente) : null;
+          const desde = opciones?.anio ?? (corte ? Math.max(1900,corte.getUTCFullYear()-1) : fuente === "SCOPUS" ? inicioEscaneo.getUTCFullYear() : undefined);
+          if (fuente === "CROSSREF") res = await (conectores.consultarCrossref ?? consultarCrossref)(prof,desde,opciones?.anio ?? inicioEscaneo.getUTCFullYear());
+          else if (fuente === "GOOGLE_SCHOLAR") res = await (conectores.consultarGoogleScholar ?? consultarGoogleScholar)(prof,desde,opciones?.anio ?? inicioEscaneo.getUTCFullYear());
+          else if (fuente === "SCOPUS") {
+            const clave = await repo.obtenerClaveScopus?.();
+            res = await consultarPeriodo((profesor,anio) => conectores.consultarScopus(profesor,anio,clave),prof,desde!,opciones?.anio,inicioEscaneo);
+          } else {
+            const consultar = fuente === "ORCID" ? conectores.consultarOrcid : conectores.consultarOpenAlex;
+            res = desde === undefined ? await consultar(prof) : await consultarPeriodo(consultar,prof,desde,opciones?.anio,inicioEscaneo);
           }
         }
-
-        const clave = await repo.obtenerClaveScopus?.();
-        const res = await consultarPeriodo((profesor, anio) => conectores.consultarScopus(profesor, anio, clave), prof, anioScopus, opciones?.anio, inicioEscaneo);
         if (res.error) {
-          resumen.errores.push(`Scopus (Prof. ${prof.id}): ${res.error}`);
           huboErrorEnProfesor = true;
+          resumen.errores.push(`${NOMBRES_FUENTE[fuente]} (Prof. ${prof.id}): ${res.error}`);
+          resumen.consultasFuentes!.push({ profesorId: prof.id, fuente, estado: "INCIDENCIA", cantidad: 0 });
         } else {
           todasCandidatas.push(...res.publicaciones);
-          cortesPendientes.push({ profesorId: prof.id, fuente: "SCOPUS" });
+          cortesPendientes.push({ profesorId: prof.id, fuente });
+          resumen.consultasFuentes!.push({ profesorId: prof.id, fuente, estado: res.publicaciones.length ? "COMPLETADA" : "SIN_RESULTADOS", cantidad: res.publicaciones.length });
         }
-      } catch (err: unknown) {
-        resumen.errores.push(`Scopus (Prof. ${prof.id}): ${err instanceof Error ? err.message : String(err)}`);
+      } catch {
         huboErrorEnProfesor = true;
+        resumen.errores.push(`${NOMBRES_FUENTE[fuente]} (Prof. ${prof.id}): CONSULTA_FALLIDA`);
+        resumen.consultasFuentes!.push({ profesorId: prof.id, fuente, estado: "INCIDENCIA", cantidad: 0 });
       }
     }
-
-    // Escaneo desde OpenAlex (incremental por CorteEscaneo - Hallazgo 3c)
-    if (fuentesPermitidas.includes("OPENALEX") && prof.orcid) {
-      try {
-        let anioOA = opciones?.anio;
-        if (!anioOA) {
-          if (repo.obtenerUltimoCorte) {
-            const ultimoCorte = await repo.obtenerUltimoCorte(prof.id, "OPENALEX");
-            if (ultimoCorte) {
-              anioOA = Math.max(1900, ultimoCorte.getUTCFullYear() - 1);
-            }
-          }
-        }
-
-        const res = anioOA === undefined
-          ? await conectores.consultarOpenAlex(prof)
-          : await consultarPeriodo(conectores.consultarOpenAlex, prof, anioOA, opciones?.anio, inicioEscaneo);
-        if (res.error) {
-          resumen.errores.push(`OpenAlex (Prof. ${prof.id}): ${res.error}`);
-          huboErrorEnProfesor = true;
-        } else {
-          todasCandidatas.push(...res.publicaciones);
-          cortesPendientes.push({ profesorId: prof.id, fuente: "OPENALEX" });
-        }
-      } catch (err: unknown) {
-        resumen.errores.push(`OpenAlex (Prof. ${prof.id}): ${err instanceof Error ? err.message : String(err)}`);
-        huboErrorEnProfesor = true;
-      }
-    }
-
-    // Escaneo desde ORCID (incremental por CorteEscaneo - Hallazgo 3c)
-    if (fuentesPermitidas.includes("ORCID") && prof.orcid) {
-      try {
-        let anioOrcid = opciones?.anio;
-        if (!anioOrcid) {
-          if (repo.obtenerUltimoCorte) {
-            const ultimoCorte = await repo.obtenerUltimoCorte(prof.id, "ORCID");
-            if (ultimoCorte) {
-              anioOrcid = Math.max(1900, ultimoCorte.getUTCFullYear() - 1);
-            }
-          }
-        }
-
-        const res = anioOrcid === undefined
-          ? await conectores.consultarOrcid(prof)
-          : await consultarPeriodo(conectores.consultarOrcid, prof, anioOrcid, opciones?.anio, inicioEscaneo);
-        if (res.error) {
-          resumen.errores.push(`ORCID (Prof. ${prof.id}): ${res.error}`);
-          huboErrorEnProfesor = true;
-        } else {
-          todasCandidatas.push(...res.publicaciones);
-          cortesPendientes.push({ profesorId: prof.id, fuente: "ORCID" });
-        }
-      } catch (err: unknown) {
-        resumen.errores.push(`ORCID (Prof. ${prof.id}): ${err instanceof Error ? err.message : String(err)}`);
-        huboErrorEnProfesor = true;
-      }
-    }
-
-    if (!huboErrorEnProfesor || todasCandidatas.some((publicacion) => publicacion.profesorId === prof.id)) {
-      resumen.profesoresProcesados++;
-    }
-
-    if (opciones?.jobId && repo.actualizarJob) {
-      await repo.actualizarJob(opciones.jobId, {
-        avance: resumen.profesoresProcesados,
-      });
-    }
+    if (!huboErrorEnProfesor || todasCandidatas.some(p => p.profesorId === prof.id)) resumen.profesoresProcesados++;
+    if (opciones?.jobId && repo.actualizarJob) await repo.actualizarJob(opciones.jobId,{avance:resumen.profesoresProcesados});
   }
+
 
   resumen.publicacionesEncontradas = todasCandidatas.length;
 
   // 3. Enriquecer autores con Crossref para publicaciones con DOI y autores incompletos (RF-020)
   //    Esto replica la lógica de autores_por_doi() en scripts/reporte_unificado.py
-  if (opciones?.enriquecerAutores !== false) {
+  if (fuentesPermitidas.includes("CROSSREF") && opciones?.enriquecerAutores !== false) {
     try {
       await enriquecerLoteConCrossref(todasCandidatas);
-    } catch (err: unknown) {
+    } catch {
       // Si Crossref falla no bloqueamos el escaneo: continuamos con los autores disponibles
-      console.warn("Aviso: enriquecimiento de autores con Crossref omitido:", err);
+      resumen.errores.push("Crossref: ENRIQUECIMIENTO_FALLIDO");
     }
   }
 
@@ -279,6 +231,7 @@ export async function ejecutarEscaneo(
 
     try {
       const publicacionId = await repo.persistirOActualizar(consolidada);
+      resumen.procedencia!.push({ publicacionId, fuentes: consolidada.fuentesDetectadas });
 
       // Registrar autoría para cada profesor vinculado (RF-022)
       for (const profId of consolidada.profesoresIds) {

@@ -15,11 +15,12 @@ import type {
   ResultadoCoincidencia,
 } from "./tipos";
 
-// Prioridad de fuentes para determinar metadatos principales (Scopus > OpenAlex > ORCID > Google Scholar > Manual)
+// Scopus > OpenAlex > ORCID > Crossref > Google Scholar > Manual.
 const PRIORIDAD_FUENTES: Record<FuentePublicacion, number> = {
-  SCOPUS: 5,
-  OPENALEX: 4,
-  ORCID: 3,
+  SCOPUS: 6,
+  OPENALEX: 5,
+  ORCID: 4,
+  CROSSREF: 3,
   GOOGLE_SCHOLAR: 2,
   MANUAL: 1,
 };
