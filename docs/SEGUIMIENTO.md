@@ -58,6 +58,7 @@ Cosas que no pertenecen a un solo PR.
 | Cuerpos académicos | Completar la descripción del #89 y acordar el `@@unique` de la LGAC (D-209); los conflictos y los arreglos de código ya los aplicó I1 | marisleidysvazquez8293-arch | en curso |
 | Producción | Revisión visual de `/produccion`, `/produccion/escaneo` y `/produccion/publicaciones` en claro, oscuro y celular: **hecha por I1 el 2026-11-08**. Sigue sin acordarse el alcance de Crossref, cuartiles y `reportes/unificado.ts` (D-210) y de las consultas RF-PC (D-211), aunque ya se integraron con el #63 | irybyron | en curso |
 | Convocatorias | Probar el borrado real contra Storage con una carga confirmada demo antes de aprobar el #100 | Grillo-de-Alambre | pendiente |
+| Convocatorias | RF-017 (#22): probar la lectura con un listado oficial real fuera de la base compartida (solo conteos), medir el tiempo completo en Vercel y acordar D-214, D-215 y D-216; detalle en [ISSUE-022](pruebas/ISSUE-022-extraccion-resultados.md) | Grillo-de-Alambre, con quien revise el PR | pendiente |
 | Autenticación | Evaluar subir la vigencia del código de un solo uso (OTP) de Supabase a 24 horas | I1 | opcional |
 | Tablero | Que todo el equipo vea el GitHub Project | I1 | pendiente |
 | Acceso | Confirmar el acceso de colaborador de un integrante que aún no lo tiene | I1 | pendiente |
