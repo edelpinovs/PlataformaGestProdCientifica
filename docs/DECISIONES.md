@@ -48,6 +48,8 @@ Estados: `vigente`, `reemplazada`, `pendiente` (se propuso y falta acordar).
 | D-119 | 2026-11-06 | Demostración de Producción | Simular fuentes y persistencia en memoria, solo en development con bandera explícita y acceso al módulo; no escribir en la base ni ejecutar Validación | Probar el historial con datos ficticios sin depender de perfiles externos | Aprobación de I6 en sesión; issue #139 | vigente; integrada en el PR #140; revisión visual hecha el 2026-11-08 |
 | D-120 | 2026-11-06 | Configuración Scopus | I6 autoriza configuración institucional desde Producción, solo ADMINISTRADOR, cifrado AES-256-GCM con clave maestra de servidor bajo custodia de administración; esquema y migración aprobados; respaldo de entorno solo sin registro | Cambiar la cuenta del proveedor sin editar código; aprobación explícita tras explicar el alcance | Sesión de I6; [issue #129](https://github.com/edelpinovs/PlataformaGestProdCientifica/issues/129) | vigente; integrada en el PR #132; falta definir `SCOPUS_CLAVE_MAESTRA` en Vercel |
 
+| D-122 | 2026-11-09 | Exclusiones en Producción | Un escaneo omite como candidata la combinación profesor–publicación previamente RECHAZADA, aunque llegue desde otra fuente; conserva el rechazo, permite otras autorías y muestra las exclusiones separadas de las nuevas | Evitar revisar de nuevo una autoría ya rechazada sin excluir globalmente una obra compartida | Respuesta del profesor comunicada por @irybyron; [#168](https://github.com/edelpinovs/PlataformaGestProdCientifica/issues/168) | vigente; implementación en revisión |
+
 ## Pendientes de acordar
 
 | ID | Fecha | Tema | Propuesta o pregunta | Origen | Estado |

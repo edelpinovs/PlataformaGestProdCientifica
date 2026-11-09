@@ -40,7 +40,7 @@ export type RepositorioProduccion = {
   buscarPorDoi: (doi: string) => Promise<PublicacionExistente | null>;
   buscarSimilares: (titulo: string, tituloNormalizado: string) => Promise<PublicacionExistente[]>;
   persistirOActualizar: (item: PublicacionConsolidada) => Promise<number>;
-  vincularAutoria: (publicacionId: number, profesorId: number) => Promise<boolean>;
+  vincularAutoria: (publicacionId: number, profesorId: number) => Promise<boolean | "RECHAZADA">;
   actualizarJob?: (
     jobId: number,
     datos: {
@@ -74,6 +74,7 @@ export type ResumenEscaneo = {
   publicacionesGuardadas: number;
   autoriasCreadas: number;
   coautoriasDetectadas: number;
+  autoriasRechazadasOmitidas?: number;
   errores: string[];
 };
 
@@ -117,6 +118,7 @@ export async function ejecutarEscaneo(
     publicacionesGuardadas: 0,
     autoriasCreadas: 0,
     coautoriasDetectadas: 0,
+    autoriasRechazadasOmitidas: 0,
     errores: [],
   };
 
@@ -273,21 +275,24 @@ export async function ejecutarEscaneo(
 
   // 5. Persistir o actualizar en la base de datos mediante el repositorio
   for (const consolidada of consolidadas) {
-    if (consolidada.profesoresIds.length > 1) {
-      resumen.coautoriasDetectadas++;
-    }
-
     try {
       const publicacionId = await repo.persistirOActualizar(consolidada);
-
+      let autoriasPermitidas = 0;
       // Registrar autoría para cada profesor vinculado (RF-022)
       for (const profId of consolidada.profesoresIds) {
         const creada = await repo.vincularAutoria(publicacionId, profId);
-        if (creada) {
+        if (creada === "RECHAZADA") {
+          resumen.autoriasRechazadasOmitidas = (resumen.autoriasRechazadasOmitidas ?? 0) + 1;
+          continue;
+        }
+        autoriasPermitidas++;
+        if (creada === true) {
           resumen.autoriasCreadas++;
         }
       }
-      resumen.publicacionesGuardadas++;
+      // Una exclusión no es una nueva candidata ni una coautoría confirmada.
+      if (autoriasPermitidas > 0) resumen.publicacionesGuardadas++;
+      if (autoriasPermitidas > 1) resumen.coautoriasDetectadas++;
     } catch (e: unknown) {
       for (const profesorId of consolidada.profesoresIds) {
         profesoresConFalloPersistencia.add(profesorId);
