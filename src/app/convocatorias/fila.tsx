@@ -72,13 +72,16 @@ export function FilaCarga({ carga }: { carga: Carga }) {
       </td>
       <td className={`${claseTabla.celda} hidden text-xs text-texto-3 sm:table-cell`}>{carga.fecha}</td>
       <td className={`${claseTabla.celda} pr-0 text-right whitespace-nowrap`}>
-        {carga.volverALeer && <VolverALeer carga={carga} />}
-        {carga.estado !== "CONFIRMADA" && (
-          <button type="button" onClick={() => setConfirmando(true)} className={claseAccionFila(true)}
-            aria-label={`Eliminar ${carga.programa} ${carga.anio} ${carga.nombre}`}>
-            Eliminar
-          </button>
-        )}
+        {/* En celular las acciones se apilan para que la tabla no se salga del panel. */}
+        <div className="flex flex-col items-end gap-1 sm:flex-row sm:items-center sm:justify-end">
+          {carga.volverALeer && <VolverALeer carga={carga} />}
+          {carga.estado !== "CONFIRMADA" && (
+            <button type="button" onClick={() => setConfirmando(true)} className={claseAccionFila(true)}
+              aria-label={`Eliminar ${carga.programa} ${carga.anio} ${carga.nombre}`}>
+              Eliminar
+            </button>
+          )}
+        </div>
       </td>
     </tr>
   );
@@ -100,7 +103,7 @@ function ResultadoLectura({ carga }: { carga: Carga }) {
 function VolverALeer({ carga }: { carga: Carga }) {
   const [estado, accion, leyendo] = useActionState<EstadoFila, FormData>(volverALeer, {});
   return (
-    <form action={accion} className="inline">
+    <form action={accion}>
       <input type="hidden" name="id" value={carga.id} />
       <button type="submit" disabled={leyendo} className={claseAccionFila()}
         aria-label={`Volver a leer ${carga.programa} ${carga.anio} ${carga.nombre}`}>
