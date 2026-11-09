@@ -230,6 +230,16 @@ describe("interpretarListado con un listado PRODEP (RF-017)", () => {
     expect(resumen.avisos[0].mensaje).toBe("Renglón 2: la vigencia «pronto» no es válida; se guardó sin vigencia.");
   });
 
+  it("no descarta a una persona con la celda de vigencia vacía", () => {
+    const { renglones, resumen } = leer(
+      [["NOMBRE COMPLETO", "VIGENCIA"], ["Ana Núñez", "16/12/2024 a 15/12/2027"], ["Luis Mar", ""]],
+      prodep,
+    );
+    expect(renglones.map((r) => r.nombres)).toEqual(["Ana Núñez", "Luis Mar"]);
+    expect(renglones[1]).toMatchObject({ vigenciaInicio: null, vigenciaFin: null });
+    expect(resumen.totalAvisos).toBe(0);
+  });
+
   it("guarda el nivel de PRODEP tal como viene si el archivo lo trae", () => {
     const { renglones } = leer([["NOMBRE", "NIVEL"], ["Ana Núñez", "Perfil deseable"]], prodep);
     expect(renglones[0]).toMatchObject({ nivel: null, nivelTexto: "Perfil deseable" });

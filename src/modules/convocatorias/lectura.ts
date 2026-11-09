@@ -151,11 +151,9 @@ export function interpretarListado(filas: string[][], programa: Programa): Resul
   if (programa === "SNII" && columnas.nivel === undefined) return { ok: false, error: sinColumnas };
 
   // En los PDF, la dirección y otras líneas sueltas caen en alguna columna: si el listado tiene
-  // columnas que identifican a la persona (CVU, código, nivel o vigencia), un renglón que no trae
-  // ninguna de ellas no es una persona.
-  const columnasDePersona = [columnas.cvu, columnas.codigo, columnas.nivel, columnas.vigencia, columnas.inicio].filter(
-    (c) => c !== undefined,
-  );
+  // columnas que identifican a la persona (CVU, código o nivel), un renglón que no trae ninguna
+  // de ellas no es una persona. La vigencia no cuenta: una persona puede venir sin ella.
+  const columnasDePersona = [columnas.cvu, columnas.codigo, columnas.nivel].filter((c) => c !== undefined);
 
   const renglones: RenglonLeido[] = [];
   const avisos: AvisoLectura[] = [];
