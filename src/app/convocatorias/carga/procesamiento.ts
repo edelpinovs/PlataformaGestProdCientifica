@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { BUCKET, extension } from "@/modules/convocatorias/carga";
+import { BUCKET, extension, TIEMPO_ATASCO_MS } from "@/modules/convocatorias/carga";
 import { filasDeExcel } from "@/modules/convocatorias/lector-excel";
 import { fragmentosDePdf } from "@/modules/convocatorias/lector-pdf";
 import { interpretarListado } from "@/modules/convocatorias/lectura";
@@ -11,8 +11,7 @@ import { agruparEnFilas } from "@/modules/convocatorias/pdf-filas";
 // que ya revisaron el permiso, y recibe el cliente de Storage con la sesión de esa persona.
 
 export const TIPO_TAREA = "carga-resultados";
-// Una lectura sin avance en 10 minutos se da por cortada y se puede retomar.
-export const TIEMPO_ATASCO_MS = 10 * 60 * 1000;
+export { TIEMPO_ATASCO_MS };
 const TAMANO_BLOQUE = 1000;
 
 const SIN_CARGA = "Esa carga ya no existe.";

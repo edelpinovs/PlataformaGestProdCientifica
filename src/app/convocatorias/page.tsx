@@ -9,6 +9,10 @@ import { FilaCarga } from "./fila";
 
 const numero = new Intl.NumberFormat("es-MX");
 
+// RF-017: las Server Actions de esta página lanzan la lectura del archivo con after(); un listado
+// de ~270 páginas tarda unos segundos y la lectura sigue con el tiempo máximo de la página.
+export const maxDuration = 300;
+
 const ICONO_CARGA = "M4 16v1a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-1m-4-8-4-4m0 0L8 8m4-4v12";
 const ICONO_CONVOCATORIA = "M7 3v3M17 3v3M4 8h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z";
 const ICONO_CHECK = "M5 13l4 4L19 7";
