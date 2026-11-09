@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { BarraListado, EncabezadoOrdenable, PaginacionListado } from "@/components/listado";
 import { enlaceListado, paginar, type ParametrosListado } from "@/lib/listados/consulta";
-import { COLUMNAS, consultarVista, filtroAutorias, ordenAutorias, type FilaResumen } from "@/modules/validacion/listados";
+import { COLUMNAS, consultarVista, filtroAutorias, type FilaResumen } from "@/modules/validacion/listados";
+import { consultarAutorias } from "@/modules/validacion/consultar-autorias";
 import { consultaResumen } from "@/modules/validacion/resumen-listado";
 import { ETIQUETA_ESTADO_AUTORIA, ETIQUETA_FUENTE, ESTADOS_AUTORIA, FUENTES_PUBLICACION } from "@/modules/validacion/bandeja";
 import { FilaEditable } from "@/components/fila-editable";
@@ -72,10 +73,7 @@ export default async function ValidacionPage({
       select: { id: true, nombres: true, apellidos: true, codigo: true, departamentoId: true, departamento: { select: { id: true, nombre: true, nomenclatura: true } } },
     }),
     prisma.autoria.findMany({ where: profesorPermitido !== undefined ? { profesorId: profesorPermitido } : {}, select: { estado: true, profesorId: true, profesor: { select: { departamentoId: true } } } }),
-    vista === "bandeja" || vista === "manuales" ? prisma.autoria.findMany({
-      where: filtro, orderBy: ordenAutorias(consulta), skip: paginacion.salto, take: paginacion.tamanio,
-      include: { publicacion: true, profesor: { select: { id: true, nombres: true, apellidos: true, codigo: true } } },
-    }) : Promise.resolve([]),
+    vista === "bandeja" || vista === "manuales" ? consultarAutorias(filtro, consulta, paginacion) : Promise.resolve([]),
   ]);
   const autoriasPendientes = filas;
   const publicacionesManuales = filas.map(a => ({ ...a.publicacion, autorias: [a] }));

@@ -87,3 +87,25 @@ export function retornoValidacion(valor: unknown, aviso: string) {
 }
 
 export type FilaResumen = { id: number; nombre: string; codigo?: string; departamento?: string; nomenclatura?: string; validadas: number };
+
+/** Los enums de PostgreSQL tienen orden de declaración; la interfaz ordena sus etiquetas. */
+export function gruposEnumerados(consulta: ConsultaListado) {
+  const etiquetas: Record<string, Record<string, string>> = { fuente: ETIQUETA_FUENTE, tipo: ETIQUETAS_TIPO, estado: ETIQUETA_ESTADO_AUTORIA };
+  const mapa = etiquetas[consulta.orden];
+  if (!mapa) return [];
+  return Object.keys(mapa).sort((a,b) => mapa[a].localeCompare(mapa[b], "es") * (consulta.dir === "asc" ? 1 : -1));
+}
+
+export function distribuirPagina(grupos: { valor: string; total: number }[], salto: number, tamanio: number) {
+  const partes: { valor: string; salto: number; tamanio: number }[] = [];
+  let restantes = tamanio;
+  for (const grupo of grupos) {
+    if (restantes <= 0) break;
+    if (salto >= grupo.total) { salto -= grupo.total; continue; }
+    const tomar = Math.min(restantes, grupo.total - salto);
+    partes.push({ valor: grupo.valor, salto, tamanio: tomar });
+    restantes -= tomar;
+    salto = 0;
+  }
+  return partes;
+}

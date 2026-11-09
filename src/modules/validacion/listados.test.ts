@@ -1,8 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { consultarVista, filtroAutorias, ordenAutorias, retornoValidacion } from "./listados";
+import { consultarVista, distribuirPagina, gruposEnumerados, filtroAutorias, ordenAutorias, retornoValidacion } from "./listados";
 import { consultaResumen } from "./resumen-listado";
 
 describe("consulta de Validación (#115)", () => {
+  it("ordena por etiquetas españolas y pagina entre grupos sin saltar o repetir filas", () => {
+    const { consulta } = consultarVista({ orden: "fuente" });
+    expect(gruposEnumerados(consulta)).toEqual(["MANUAL", "GOOGLE_SCHOLAR", "OPENALEX", "ORCID", "SCOPUS"]);
+    expect(gruposEnumerados({ ...consulta, dir: "desc" })).toEqual(["SCOPUS", "ORCID", "OPENALEX", "GOOGLE_SCHOLAR", "MANUAL"]);
+    expect(distribuirPagina([{ valor: "A", total: 12 }, { valor: "B", total: 0 }, { valor: "C", total: 11 }], 10, 10)).toEqual([{ valor: "A", salto: 10, tamanio: 2 }, { valor: "C", salto: 0, tamanio: 8 }]);
+    expect(distribuirPagina([{ valor: "A", total: 0 }], 0, 10)).toEqual([]);
+  });
   it("abre pendientes, valida la vista y rechaza columnas y filtros manipulados en español", () => {
     const resultado = consultarVista({ vista: "externa", orden: "DROP", tipo: "INVALIDO", pagina: "NaN" });
     expect(resultado.vista).toBe("bandeja");
