@@ -12,7 +12,7 @@ const prismaFalso = vi.hoisted(() => ({
 const trabajosFalsos = vi.hoisted(() => ({ crearTrabajoEscaneo: vi.fn(), procesarSiguienteProfesor: vi.fn(), TIPOS_ESCANEO: ["escaneo-manual", "escaneo-diario"] }));
 
 vi.mock("@/lib/prisma", () => ({ prisma: prismaFalso }));
-vi.mock("@/lib/auth/session", () => ({ requireRol: vi.fn(async () => ({ rol: "ADMINISTRADOR" })) }));
+vi.mock("@/lib/auth/session", () => ({ requireRol: vi.fn(async () => ({ rol: "COORDINADOR" })) }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/app/produccion/trabajos", () => trabajosFalsos);
 vi.mock("next/server", () => ({ after: vi.fn() }));
@@ -202,7 +202,7 @@ describe("Notas 2 y 6 · Server Action iniciarEscaneoAction", { timeout: 30_000 
     expect(trabajosFalsos.crearTrabajoEscaneo).not.toHaveBeenCalled();
   });
 
-  it("cada consulta de progreso exige permiso del módulo y restringe el tipo de Job", async () => {
+  it("cada consulta de progreso exige Coordinación y restringe el tipo de Job", async () => {
     const { iniciarEscaneoAction } = await import("@/app/produccion/actions");
     const { requireRol } = await import("@/lib/auth/session");
     prismaFalso.job.findFirst.mockResolvedValue({ id: 7, estado: "COMPLETADO", avance: 2, total: 2 });

@@ -8,7 +8,7 @@ Se añaden selección validada en servidor, conservación por trabajo, las consu
 
 | Control | Resultado |
 | --- | --- |
-| `npm test` | 702 pruebas, 58 archivos; pasan antes de combinar las ramas dependientes |
+| `npm test` | 712 pruebas, 60 archivos; pasan con las cuatro ramas combinadas |
 | `npm run lint` | Pasa |
 | `npm run typecheck` | Pasa |
 | `npm run build` | Pasa |
@@ -27,3 +27,7 @@ El alcance fue autorizado por @irybyron: añadir `CROSSREF` a `FuentePublicacion
 El SQL generado incluía un DROP de `RenglonResultado`, ajeno a Producción, porque esa tabla existe en la base compartida y no en el esquema local. Se retiraron el DROP de tabla y de su clave foránea; la migración revisada contiene exclusivamente `ALTER TYPE "FuentePublicacion" ADD VALUE 'CROSSREF'`. No se ejecutó `db:migrar` ni se alteró la base compartida. El PR debe revisarse antes de aplicar la migración.
 
 Pendientes de operación: revisión independiente, aplicación de la migración aprobada, creación/configuración segura de la cuenta gratuita de SerpAPI y comprobación con datos de demostración en el despliegue. Las capturas usan acciones simuladas; no prueban la cuota ni el rendimiento de los proveedores reales.
+
+## Compatibilidad entre PR
+
+Se comprobaron conjuntamente #170, #168, #169 y #167. Los PR se presentan en ese orden de dependencia, sin integrar main. Pasan 712 pruebas, lint, typecheck y build. Se repitieron las pruebas de Chrome para selecci?n de fuentes, continuaci?n manual, historial y continuidad en claro, oscuro y celular con acciones y registros ficticios. Las pruebas de permisos incluyen inicio y continuaci?n; los trabajos antiguos conservan sus fuentes originales.

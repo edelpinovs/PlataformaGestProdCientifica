@@ -4,6 +4,7 @@ import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { requireRol } from "@/lib/auth/session";
 import { FUENTES_ANTERIORES, type FuenteEscaneo } from "@/modules/produccion/fuentes";
+import { TrabajoEscaneoPendiente } from "@/modules/produccion/fechas-escaneo";
 import { prisma } from "@/lib/prisma";
 import { datosLoteEsquema, solicitudEscaneoEsquema } from "@/modules/produccion/lotes";
 import type { ResumenEscaneo } from "@/modules/produccion/escaneo";
@@ -74,7 +75,8 @@ export async function iniciarEscaneoAction(_: EstadoEscaneo, formData: FormData)
       mensaje: pendiente ? `Escaneo en curso: ${trabajo.avance} de ${trabajo.total} profesores revisados.` :
         trabajo.estado === "COMPLETADO" ? "Escaneo finalizado." : undefined,
     };
-  } catch {
+  } catch (error) {
+    if (error instanceof TrabajoEscaneoPendiente) return { error: error.message, jobId: error.trabajoId, continuar: true };
     return { error: "No se pudo consultar o iniciar el escaneo. Inténtalo de nuevo más tarde." };
   }
 }

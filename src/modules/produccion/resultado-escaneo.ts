@@ -30,7 +30,7 @@ export function presentarResultadoEscaneo(estado: string, datos: unknown) {
   if (estado === "FALLIDO" && !incidencias.length) incidencias.push("El trabajo no pudo completarse. Puedes reintentar el escaneo.");
   return {
     tipo: parcial ? "aviso" as const : conIncidencias ? "error" as const : "exito" as const,
-    mensaje: `${parcial ? "Escaneo con resultados parciales." : conIncidencias ? "Escaneo con incidencias." : "Escaneo finalizado."} Publicaciones encontradas: ${resumen.publicacionesEncontradas}. Guardadas o actualizadas: ${resumen.publicacionesGuardadas}. Autorías nuevas: ${resumen.autoriasCreadas}.${!conIncidencias && !resumen.publicacionesEncontradas ? " No se encontraron publicaciones para el periodo consultado." : ""}`,
+    mensaje: `${parcial ? "Escaneo con resultados parciales." : conIncidencias ? "Escaneo con incidencias." : "Escaneo finalizado."} Publicaciones encontradas: ${resumen.publicacionesEncontradas}. Guardadas o actualizadas: ${resumen.publicacionesGuardadas}. Autorías nuevas: ${resumen.autoriasCreadas}.${resumen.autoriasRechazadasOmitidas ? ` Autorías omitidas por rechazo previo: ${resumen.autoriasRechazadasOmitidas}. No se volvieron a proponer para revisión.` : ""}${!conIncidencias && !resumen.publicacionesEncontradas ? " No se encontraron publicaciones para el periodo consultado." : ""}`,
     incidencias: [...fuentes,...incidencias],
   };
 }
