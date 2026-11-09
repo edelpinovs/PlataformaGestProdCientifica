@@ -30,4 +30,4 @@ Pendientes de operación: revisión independiente, aplicación de la migración 
 
 ## Compatibilidad entre PR
 
-Se comprobaron conjuntamente #170, #168, #169 y #167. Los PR se presentan en ese orden de dependencia, sin integrar main. Pasan 712 pruebas, lint, typecheck y build. Se repitieron las pruebas de Chrome para selecci?n de fuentes, continuaci?n manual, historial y continuidad en claro, oscuro y celular con acciones y registros ficticios. Las pruebas de permisos incluyen inicio y continuaci?n; los trabajos antiguos conservan sus fuentes originales.
+Se comprobaron conjuntamente #170, #168, #169 y #167. Los PR se presentan en ese orden de dependencia, sin integrar main. Pasan 712 pruebas, lint, typecheck y build. Se repitieron las pruebas de Chrome para selección de fuentes, continuación manual, historial y continuidad en claro, oscuro y celular con acciones y registros ficticios. Las pruebas de permisos incluyen inicio y continuación; los trabajos antiguos conservan sus fuentes originales.
