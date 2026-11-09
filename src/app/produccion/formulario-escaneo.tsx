@@ -6,11 +6,11 @@ import { Aviso, claseBoton, claseCampo, claseEtiqueta } from "@/components/ui";
 import { iniciarEscaneoAction, type EstadoEscaneo } from "./actions";
 import { ResultadoEscaneo } from "./resultado-escaneo";
 
-function BotonEscanear({ enCurso }: { enCurso: boolean }) {
+function BotonEscanear({ enCurso, continuar }: { enCurso: boolean; continuar: boolean }) {
   const { pending } = useFormStatus();
   return (
     <button type="submit" disabled={pending || enCurso} className={claseBoton}>
-      {pending || enCurso ? "Escaneo en curso..." : "Escanear ahora"}
+      {pending || enCurso ? "Escaneo en curso…" : continuar ? "Continuar búsqueda pendiente" : "Buscar novedades"}
     </button>
   );
 }
@@ -24,7 +24,7 @@ export function FormularioEscaneo({
 }) {
   const [estado, formAction] = useActionState<EstadoEscaneo, FormData>(
     iniciarEscaneoAction,
-    trabajoPendiente ? { jobId: trabajoPendiente, pendiente: true } : {},
+    trabajoPendiente ? { jobId: trabajoPendiente, continuar: true } : {},
   );
 
   useEffect(() => {
@@ -39,10 +39,11 @@ export function FormularioEscaneo({
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
+      {(estado.pendiente || estado.continuar) && estado.jobId && <input type="hidden" name="jobId" value={estado.jobId} />}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <label className={claseEtiqueta}>
           Profesor
-          <select name="profesorId" defaultValue="todos" disabled={estado.pendiente}
+          <select name="profesorId" defaultValue="todos" disabled={estado.pendiente || estado.continuar}
             aria-invalid={Boolean(estado.erroresCampos?.profesorId)}
             className={claseCampo(Boolean(estado.erroresCampos?.profesorId))}>
             <option value="todos">Todos los profesores activos</option>
@@ -61,7 +62,7 @@ export function FormularioEscaneo({
             name="anio"
             min="1990"
             max={new Date().getUTCFullYear() + 1}
-            disabled={estado.pendiente}
+            disabled={estado.pendiente || estado.continuar}
             aria-invalid={Boolean(estado.erroresCampos?.anio)}
             placeholder="Vacío para historial inicial o actualización"
             className={claseCampo(Boolean(estado.erroresCampos?.anio))}
@@ -81,7 +82,7 @@ export function FormularioEscaneo({
       )}
 
       <div className="flex justify-end pt-2">
-        <BotonEscanear enCurso={Boolean(estado.pendiente)} />
+        <BotonEscanear enCurso={Boolean(estado.pendiente)} continuar={Boolean(estado.continuar)} />
       </div>
     </form>
   );

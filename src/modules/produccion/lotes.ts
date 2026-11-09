@@ -1,9 +1,9 @@
 import { z } from "zod";
 import type { ResumenEscaneo } from "./escaneo";
 
-export function resumenVacio(): ResumenEscaneo {
+export function resumenVacio(): ResumenEscaneo & { autoriasRechazadasOmitidas: number } {
   return { profesoresProcesados: 0, publicacionesEncontradas: 0, publicacionesGuardadas: 0,
-    autoriasCreadas: 0, coautoriasDetectadas: 0, errores: [] };
+    autoriasCreadas: 0, coautoriasDetectadas: 0, autoriasRechazadasOmitidas: 0, errores: [] };
 }
 
 const entero = z.number({ error: "El avance del escaneo no es válido." }).int().nonnegative();
@@ -14,6 +14,7 @@ export const datosLoteEsquema = z.object({
   resumen: z.object({
     profesoresProcesados: entero, publicacionesEncontradas: entero, publicacionesGuardadas: entero,
     autoriasCreadas: entero, coautoriasDetectadas: entero, errores: z.array(z.string()),
+    autoriasRechazadasOmitidas: entero.optional().default(0),
   }),
 }).refine((datos) => datos.indice <= datos.profesoresIds.length, {
   error: "El avance supera la cantidad de profesores del escaneo.",
@@ -41,6 +42,7 @@ export function avanzarLote(datos: DatosLote, resultado: ResumenEscaneo): DatosL
   resumen.publicacionesGuardadas += resultado.publicacionesGuardadas;
   resumen.autoriasCreadas += resultado.autoriasCreadas;
   resumen.coautoriasDetectadas += resultado.coautoriasDetectadas;
+  resumen.autoriasRechazadasOmitidas = (resumen.autoriasRechazadasOmitidas ?? 0) + (resultado.autoriasRechazadasOmitidas ?? 0);
   // Limita el JSON guardado cuando las fuentes fallan repetidamente.
   resumen.errores = [...resumen.errores, ...resultado.errores].slice(0, 50);
   return { ...datos, indice: datos.indice + 1, resumen };
