@@ -243,6 +243,19 @@ El listado es la pantalla principal de gestión: encabezado con título, descrip
 - **Excepciones:** escaneo, carga de archivos, revisión y generación de reportes conservan su flujo propio y no se convierten en modales. Inicio y acceso tampoco son listados.
 - **Fuera de alcance:** este patrón no cambia reglas de negocio, esquema ni permisos. No agrega exportaciones.
 
+#### Contrato de `ModalAlta` (#161)
+
+La pieza está en `src/components/modal-alta.tsx`; su lógica comprobable está en `modal-alta-logica.ts`. Se incorpora por PR separado y no migra las pantallas existentes. El piloto sigue siendo un requisito antes de extender el patrón.
+
+- Se compone desde un **componente cliente**. Recibe `titulo`, `textoBoton`, `descripcion` opcional, una Server Action `accion` y una función hija que dibuja los campos. No pases esa función desde una página servidor.
+- La pieza contiene el `<form>`, `useActionState`, Cancelar y Guardar. La función hija no agrega otro formulario. Recibe `estado`, `enviando`, `valor(nombre, inicial)` y `marcarCambios()` para controles propios.
+- La acción devuelve `EstadoAlta`: `error`, `campo` y `valores` cuando no se guarda, o `exito` con el mensaje confirmado por el servidor. Un resultado vacío o con error nunca cierra el modal. Los valores múltiples se conservan en `estado.valores` como listas.
+- Cada acción del módulo empieza por `requireModulo`/`requireRol`, valida con Zod y actualiza su ruta con `revalidatePath`. No redirige al guardar: devuelve `exito`. El modal llama a `router.refresh()` y conserva la URL completa del listado.
+- Usa `valor()` en los valores iniciales de los campos y `aria-invalid` según `estado.campo`. Los errores remontan el formulario con sus valores conservados; cada apertura nueva lo monta limpio. Las cargas de archivos conservan su flujo independiente.
+- El diálogo nativo contiene el foco, con control explícito de Tab y Mayús+Tab. Escape respeta el envío y la confirmación de cambios; pulsar el fondo no cierra. Cancelar devuelve el foco al disparador después de desmontar el diálogo.
+
+Prueba aislada reproducible: `node src/components/modal-alta.navegador.mjs`. Usa el Chrome instalado (configurable con `CHROME_BIN`), un perfil temporal y acciones ficticias; no consulta la base ni la sesión de la persona. Comprueba teclado real, cancelación, errores, envío único, éxito y contenido desplazable en claro, oscuro y a 390 píxeles.
+
 ### Selector de profesor (D-215)
 
 Para elegir un profesor en un formulario (por ejemplo, integrantes de un cuerpo académico) se usa un selector con búsqueda, no una lista larga.
