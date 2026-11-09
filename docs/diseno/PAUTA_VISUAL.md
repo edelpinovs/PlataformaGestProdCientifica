@@ -46,6 +46,8 @@ Un color nuevo se agrega en `globals.css` con su valor claro y oscuro, se compru
 
 Los colores de los niveles SNII de la dona (`src/lib/inicio.ts`) son datos de una serie, no de interfaz, y se quedan ahí.
 
+Los archivos de marca de `docs/diseno/marca/` (SVG y PNG de SIGeC, D-217) conservan sus colores originales. Es una excepción limitada a esos activos: no se copian a `.tsx` ni a `globals.css`, y los colores de interfaz siguen yendo por nombre.
+
 ## 3. Tema oscuro
 
 - Predeterminado: claro. La persona cambia con el botón *Tema oscuro* del menú lateral, y su elección se guarda un año en la cookie `tema`.
