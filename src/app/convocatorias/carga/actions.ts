@@ -16,6 +16,7 @@ import {
   registroCarga,
   rutaArchivo,
   TAMANO_MAXIMO,
+  TIEMPO_ATASCO_MS,
   tipoMime,
 } from "@/modules/convocatorias/carga";
 import { procesarCarga } from "./procesamiento";
@@ -163,6 +164,10 @@ export async function eliminarCarga(_: EstadoFila, formData: FormData): Promise<
   redirect(`/convocatorias?eliminado=${encodeURIComponent(texto)}`, RedirectType.replace);
 }
 
+const LEYENDO = "La carga se está leyendo. Espera unos minutos.";
+const CARGA_CAMBIO = "Esa carga ya cambió. Recarga la página.";
+class CambioDeEstado extends Error {}
+
 // RF-017: vuelve a leer una carga fallida, o una cuya lectura se cortó (sin avance en 10 min).
 export async function volverALeer(_: EstadoFila, formData: FormData): Promise<EstadoFila> {
   await requireModulo("convocatorias");
@@ -178,18 +183,39 @@ export async function volverALeer(_: EstadoFila, formData: FormData): Promise<Es
   const tareas = { tipo: "carga-resultados", datos: { path: ["cargaId"], equals: id } };
   const tarea = await prisma.job.findFirst({ where: tareas, orderBy: { id: "desc" }, select: { id: true, actualizadoEn: true } });
   if (!puedeVolverALeer(carga.estado, tarea?.actualizadoEn ?? null, new Date())) {
-    return { error: "La carga se está leyendo. Espera unos minutos." };
+    return { error: LEYENDO };
   }
 
-  const jobId = await prisma.$transaction(async (tx) => {
-    await tx.cargaResultados.update({ where: { id }, data: { estado: "PROCESANDO" } });
-    if (tarea) {
-      await tx.job.update({ where: { id: tarea.id }, data: { estado: "PENDIENTE", error: null, avance: 0 } });
+  // Los dos cambios son condicionados: si la carga cambió (otra lectura terminó, se borró) o
+  // otra pestaña acaba de empezar a leerla, no se toca nada y se explica por qué.
+  let jobId: number;
+  try {
+    jobId = await prisma.$transaction(async (tx) => {
+      const { count } = await tx.cargaResultados.updateMany({
+        where: { id, estado: { in: ["FALLIDA", "PROCESANDO"] } },
+        data: { estado: "PROCESANDO" },
+      });
+      if (!count) throw new CambioDeEstado(CARGA_CAMBIO);
+      if (!tarea) {
+        const nueva = await tx.job.create({ data: { tipo: "carga-resultados", total: 1, datos: { cargaId: id } } });
+        return nueva.id;
+      }
+      const reiniciada = await tx.job.updateMany({
+        where: {
+          id: tarea.id,
+          OR: [
+            { estado: { not: "EN_PROCESO" } },
+            { actualizadoEn: { lt: new Date(Date.now() - TIEMPO_ATASCO_MS) } },
+          ],
+        },
+        data: { estado: "PENDIENTE", error: null, avance: 0 },
+      });
+      if (!reiniciada.count) throw new CambioDeEstado(LEYENDO);
       return tarea.id;
-    }
-    const nueva = await tx.job.create({ data: { tipo: "carga-resultados", total: 1, datos: { cargaId: id } } });
-    return nueva.id;
-  });
+    });
+  } catch (error) {
+    return { error: error instanceof CambioDeEstado ? error.message : "No se pudo volver a leer la carga. Inténtalo de nuevo." };
+  }
 
   const supabase = await createClient();
   after(() => procesarCarga(jobId, supabase));

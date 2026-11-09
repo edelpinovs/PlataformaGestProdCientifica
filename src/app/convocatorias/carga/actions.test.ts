@@ -15,9 +15,9 @@ const dobles = vi.hoisted(() => ({
     },
   },
   prisma: {
-    cargaResultados: { findFirst: vi.fn(), findUnique: vi.fn(), create: vi.fn(), update: vi.fn() },
+    cargaResultados: { findFirst: vi.fn(), findUnique: vi.fn(), create: vi.fn(), updateMany: vi.fn() },
     convocatoria: { upsert: vi.fn() },
-    job: { create: vi.fn(), findFirst: vi.fn(), update: vi.fn() },
+    job: { create: vi.fn(), findFirst: vi.fn(), updateMany: vi.fn() },
     $transaction: vi.fn(),
   },
 }));
@@ -73,6 +73,8 @@ describe("volverALeer (RF-017)", () => {
     dobles.requireModulo.mockResolvedValue({ id: "00000000-0000-0000-0000-000000000001" });
     dobles.prisma.cargaResultados.findUnique.mockResolvedValue({ id: 3, estado: "FALLIDA" });
     dobles.prisma.job.findFirst.mockResolvedValue({ id: 7, actualizadoEn: hace(1) });
+    dobles.prisma.cargaResultados.updateMany.mockResolvedValue({ count: 1 });
+    dobles.prisma.job.updateMany.mockResolvedValue({ count: 1 });
     dobles.prisma.$transaction.mockImplementation(async (fn) => fn(dobles.prisma));
   });
 
@@ -102,13 +104,28 @@ describe("volverALeer (RF-017)", () => {
 
   it("reinicia la tarea de una carga fallida y la vuelve a leer", async () => {
     await volverALeer({}, formulario("3"));
-    expect(dobles.prisma.job.update).toHaveBeenCalledWith({
-      where: { id: 7 },
-      data: { estado: "PENDIENTE", error: null, avance: 0 },
+    expect(dobles.prisma.cargaResultados.updateMany).toHaveBeenCalledWith({
+      where: { id: 3, estado: { in: ["FALLIDA", "PROCESANDO"] } },
+      data: { estado: "PROCESANDO" },
     });
-    expect(dobles.prisma.cargaResultados.update).toHaveBeenCalledWith({ where: { id: 3 }, data: { estado: "PROCESANDO" } });
+    const [{ where, data }] = dobles.prisma.job.updateMany.mock.calls[0];
+    expect(where.id).toBe(7);
+    expect(where.OR[0]).toEqual({ estado: { not: "EN_PROCESO" } });
+    expect(data).toEqual({ estado: "PENDIENTE", error: null, avance: 0 });
     await correrAfter();
     expect(dobles.procesarCarga).toHaveBeenCalledWith(7, dobles.supabase);
     expect(dobles.redirect).toHaveBeenCalledWith("/convocatorias", "replace");
+  });
+
+  it("no regresa el estado si la carga cambió mientras se pedía volver a leer", async () => {
+    dobles.prisma.cargaResultados.updateMany.mockResolvedValue({ count: 0 });
+    expect(await volverALeer({}, formulario("3"))).toEqual({ error: "Esa carga ya cambió. Recarga la página." });
+    expect(dobles.after).not.toHaveBeenCalled();
+  });
+
+  it("no reinicia una lectura que otra pestaña acaba de empezar", async () => {
+    dobles.prisma.job.updateMany.mockResolvedValue({ count: 0 });
+    expect(await volverALeer({}, formulario("3"))).toEqual({ error: "La carga se está leyendo. Espera unos minutos." });
+    expect(dobles.after).not.toHaveBeenCalled();
   });
 });
