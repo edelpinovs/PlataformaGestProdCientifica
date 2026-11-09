@@ -1,5 +1,6 @@
 import { Marco } from "@/components/marco";
-import { Panel } from "@/components/ui";
+import { Aviso, Panel } from "@/components/ui";
+import { fechaEscaneo, ZONA_FECHAS_ESCANEO } from "@/modules/produccion/fechas-escaneo";
 import { requireModulo } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { FormularioEscaneo } from "../formulario-escaneo";
@@ -28,11 +29,15 @@ export default async function EscaneoPage() {
     {demoHabilitada(process.env.NODE_ENV, process.env.PRODUCCION_DEMO) && <Panel titulo="Prueba con datos ficticios">
       <Link href="/produccion/demostracion" className={claseBotonSecundario}>Abrir demostración sin base de datos</Link>
     </Panel>}
-    <Panel titulo="Escanear producción científica" descripcion="Elige un profesor activo o inicia el escaneo de todos. El avance se guarda por profesor.">
-      <FormularioEscaneo profesores={profesores} trabajoPendiente={pendiente?.id} />
+    <Panel titulo="Escanear producción científica" descripcion="Búsqueda manual bajo demanda de Coordinación. El avance se guarda por profesor.">
+      {perfil.rol === "COORDINADOR" ? <FormularioEscaneo profesores={profesores} trabajoPendiente={pendiente?.id} /> : <Aviso tipo="aviso">Solo Coordinación puede iniciar, reintentar o continuar búsquedas. Puedes consultar los resultados registrados.</Aviso>}
     </Panel>
     <Panel titulo="Último escaneo registrado">
       {ultimoJob && <ResultadoEscaneo resultado={presentarResultadoEscaneo(ultimoJob.estado, ultimoJob.datos)} />}
+      {ultimoJob && <div className="flex flex-col gap-4 text-sm text-texto-3">
+        <p>Inicio: {fechaEscaneo(ultimoJob.creadoEn)}.</p>
+        <p>Última actualización de avance: {fechaEscaneo(ultimoJob.actualizadoEn)}. Zona horaria: {ZONA_FECHAS_ESCANEO}.</p>
+      </div>}
       <p className="text-sm text-texto-2">{ultimoJob ? `${ultimoJob.avance} de ${ultimoJob.total} profesores revisados` : "Todavía no hay escaneos registrados."}</p>
     </Panel>
   </Marco>;

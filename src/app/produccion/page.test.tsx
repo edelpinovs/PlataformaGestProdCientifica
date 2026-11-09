@@ -4,6 +4,7 @@ import PublicacionesPage from "./publicaciones/page";
 import ProduccionPage from "./page";
 import EscaneoPage from "./escaneo/page";
 import { CONSULTA_INICIAL } from "@/modules/produccion/consulta";
+import { FormularioEscaneo } from "./formulario-escaneo";
 
 const dobles = vi.hoisted(() => ({
   redirect: vi.fn(),
@@ -82,5 +83,16 @@ describe("RF-PC: permisos y validación de la página", () => {
     await EscaneoPage();
     expect(dobles.profesor.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { estatusLaboral: "ACTIVO" } }));
     expect(dobles.consultarPublicaciones).not.toHaveBeenCalled();
+  });
+
+  it.each(["ADMINISTRADOR", "COORDINADOR"])("solo incluye el formulario ejecutable para Coordinación (%s)", async rol => {
+    dobles.requireModulo.mockResolvedValue({ rol, correo: "perfil@demo.invalid" });
+    const pagina = await EscaneoPage();
+    function contieneFormulario(nodo: React.ReactNode): boolean {
+      if (Array.isArray(nodo)) return nodo.some(contieneFormulario);
+      if (!React.isValidElement<{ children?: React.ReactNode }>(nodo)) return false;
+      return nodo.type === FormularioEscaneo || contieneFormulario(nodo.props.children);
+    }
+    expect(contieneFormulario(pagina)).toBe(rol === "COORDINADOR");
   });
 });
