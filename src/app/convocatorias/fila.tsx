@@ -10,7 +10,7 @@ import {
   EtiquetaEstado,
   Icono,
 } from "@/components/ui";
-import { eliminarCarga, type EstadoFila } from "./carga/actions";
+import { eliminarCarga, volverALeer, type EstadoFila } from "./carga/actions";
 
 const ETIQUETA_ESTADO = {
   CONFIRMADA: { tipo: "exito" as const, texto: "Confirmada" },
@@ -28,7 +28,15 @@ export type Carga = {
   nombre: string;
   estado: keyof typeof ETIQUETA_ESTADO;
   fecha: string;
+  // RF-017: resultado de la lectura del archivo.
+  renglones?: number;
+  totalAvisos?: number;
+  motivo?: string;
+  volverALeer: boolean;
 };
+
+const cifra = new Intl.NumberFormat("es-MX");
+const plural = (n: number, uno: string, varios: string) => `${cifra.format(n)} ${n === 1 ? uno : varios}`;
 
 // #59: fila del historial de cargas con Eliminar. No hay Editar: el archivo es el documento
 // oficial publicado; si se cargó en la convocatoria equivocada, se elimina y se vuelve a subir.
@@ -49,6 +57,7 @@ export function FilaCarga({ carga }: { carga: Carga }) {
         <span className="mt-2 block sm:hidden">
           <EtiquetaEstado tipo={estado.tipo}>{estado.texto}</EtiquetaEstado>
         </span>
+        <ResultadoLectura carga={carga} />
       </td>
       <td className={`${claseTabla.celda} hidden sm:table-cell`}>
         <span className="flex items-center gap-1.5 font-mono text-xs text-texto-2">
@@ -63,6 +72,7 @@ export function FilaCarga({ carga }: { carga: Carga }) {
       </td>
       <td className={`${claseTabla.celda} hidden text-xs text-texto-3 sm:table-cell`}>{carga.fecha}</td>
       <td className={`${claseTabla.celda} pr-0 text-right whitespace-nowrap`}>
+        {carga.volverALeer && <VolverALeer carga={carga} />}
         {carga.estado !== "CONFIRMADA" && (
           <button type="button" onClick={() => setConfirmando(true)} className={claseAccionFila(true)}
             aria-label={`Eliminar ${carga.programa} ${carga.anio} ${carga.nombre}`}>
@@ -71,6 +81,37 @@ export function FilaCarga({ carga }: { carga: Carga }) {
         )}
       </td>
     </tr>
+  );
+}
+
+// RF-017: cuántos renglones se leyeron y cuántos avisos dejó la lectura, o por qué falló.
+function ResultadoLectura({ carga }: { carga: Carga }) {
+  if (carga.renglones !== undefined) {
+    return (
+      <span className="mt-1 block text-xs text-texto-3">
+        {plural(carga.renglones, "renglón", "renglones")} · {plural(carga.totalAvisos ?? 0, "aviso", "avisos")}
+      </span>
+    );
+  }
+  if (carga.motivo) return <span className="mt-1 block max-w-xs text-xs whitespace-normal text-peligro">{carga.motivo}</span>;
+  return null;
+}
+
+function VolverALeer({ carga }: { carga: Carga }) {
+  const [estado, accion, leyendo] = useActionState<EstadoFila, FormData>(volverALeer, {});
+  return (
+    <form action={accion} className="inline">
+      <input type="hidden" name="id" value={carga.id} />
+      <button type="submit" disabled={leyendo} className={claseAccionFila()}
+        aria-label={`Volver a leer ${carga.programa} ${carga.anio} ${carga.nombre}`}>
+        {leyendo ? "Leyendo…" : "Volver a leer"}
+      </button>
+      {estado.error && (
+        <span className="mt-2 block text-left whitespace-normal">
+          <Aviso tipo="error">{estado.error}</Aviso>
+        </span>
+      )}
+    </form>
   );
 }
 
