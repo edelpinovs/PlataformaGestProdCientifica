@@ -224,6 +224,36 @@ const filas = await prisma.x.findMany({ where, orderBy: orden(consulta), skip: p
 
 - **Excepción:** un listado pequeño y acotado por diseño puede omitir alguna regla si se justifica en su issue.
 
+### Altas en modal (D-214)
+
+> **Estado:** acordada (D-214), pero la pieza `<ModalAlta>` aún no existe en `src/components/`. Mientras no esté en `main`, el alta en panel de la plantilla de arriba sigue siendo la válida. No migres una pantalla sin su issue y sin esperar al piloto de Profesores (D-216).
+
+El listado es la pantalla principal de gestión: encabezado con título, descripción, total de registros y la acción principal; debajo, un panel con búsqueda, filtros, tabla y paginación (D-009). El botón «Registrar…» abre el alta en un modal. *Editar* y *Eliminar* no cambian: siguen en la fila con `<FilaEditable>`.
+
+| Momento | Qué hace el modal |
+| --- | --- |
+| Abrir | Título según la entidad y foco dentro. El formulario siempre se muestra limpio |
+| Navegar | Tab y Mayús+Tab no salen del modal. En celular se adapta al espacio, con contenido desplazable y controles alcanzables |
+| Cerrar sin guardar | Escape y *Cancelar* cierran si no hay un envío en curso; con cambios sin guardar piden confirmación accesible (nada de `confirm()`). Pulsar el fondo no cierra. Al cerrar, el foco vuelve al botón que lo abrió y no se escribe nada |
+| Guardar | Server Action con `useActionState`, permisos (`requireModulo`/`requireRol`) y Zod en el servidor. Mientras se envía, muestra «Guardando…», impide envíos repetidos y no deja cerrar |
+| Error | El modal sigue abierto, conserva los valores, marca los campos con `aria-invalid` y muestra el mensaje en español con `<Aviso tipo="error">` |
+| Éxito | Solo tras confirmar el guardado en el servidor: cierra, actualiza el listado y muestra un aviso anunciado a tecnologías de asistencia («Profesor registrado correctamente») |
+
+- **Estado del listado:** se conservan búsqueda, filtros, orden y página. Si el registro nuevo no coincide con los filtros o queda en otra página, el aviso dice que se guardó aunque no aparezca en la vista actual.
+- **Excepciones:** escaneo, carga de archivos, revisión y generación de reportes conservan su flujo propio y no se convierten en modales. Inicio y acceso tampoco son listados.
+- **Fuera de alcance:** este patrón no cambia reglas de negocio, esquema ni permisos. No agrega exportaciones.
+
+### Selector de profesor (D-215)
+
+Para elegir un profesor en un formulario (por ejemplo, integrantes de un cuerpo académico) se usa un selector con búsqueda, no una lista larga.
+
+- Se escribe nombre, apellidos o código y muestra las coincidencias **dentro de las opciones permitidas para esa operación**.
+- Se elige con teclado. Sin coincidencias muestra «No se encontraron profesores».
+- Buscar no borra la selección existente: solo lo hace una acción explícita.
+- El servidor vuelve a validar al profesor y su elegibilidad; ocultar opciones no es seguridad (RNF-005).
+- No crea profesores ni cambia su estatus.
+- La pieza es compartida (`src/components/`): se acuerda con el equipo antes de tocarla y su lógica pura lleva prueba en `src/modules/`.
+
 ## 8. Antes de entregar una pantalla
 
 - [ ] Usa `Marco` (o `PantallaAcceso` si no hay sesión) y piezas de `@/components/ui`.
@@ -232,3 +262,5 @@ const filas = await prisma.x.findMany({ where, orderBy: orden(consulta), skip: p
 - [ ] Vista de celular: columnas apiladas, sin desplazamiento horizontal.
 - [ ] Campos dentro de su `<label>`, con `aria-invalid` cuando tienen error.
 - [ ] Si es un listado: cada fila tiene *Editar* y *Eliminar* para los roles que registran, y eliminar no deja registros relacionados sin referencia.
+- [ ] Si el alta es en modal (D-214, cuando exista `<ModalAlta>`): se completa y cancela solo con teclado, un envío inválido conserva los datos sin cerrar, y no se puede enviar dos veces.
+- [ ] Si elige un profesor: usa el selector con búsqueda y el servidor vuelve a validar su elegibilidad.
