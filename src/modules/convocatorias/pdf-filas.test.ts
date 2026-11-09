@@ -134,6 +134,75 @@ describe("agruparEnFilas (RF-017)", () => {
     ]);
   });
 
+  // Hallazgos de la revisión de la rama: formatos posibles en otros años.
+  it("reconoce un encabezado con una celda de dos líneas centrada respecto a las demás", () => {
+    const filas = agruparEnFilas([
+      ...linea(1, 606, [[590, 40, "NIVEL"]]),
+      ...linea(1, 600, [
+        [140, 20, "CVU"],
+        [200, 90, "APELLIDO PATERNO"],
+        [320, 90, "APELLIDO MATERNO"],
+        [460, 55, "NOMBRES"],
+      ]),
+      ...linea(1, 594, [[585, 50, "OTORGADO"]]),
+      ...persona(1, 570, ["900001", "ACEVES", "AVILA", "CARLA", "Candidato"]),
+    ]);
+    expect(filas).toEqual([ENCABEZADO, ["900001", "ACEVES", "AVILA", "CARLA", "Candidato"]]);
+  });
+
+  it("no mete a la primera persona en un encabezado de una línea con filas compactas", () => {
+    const filas = agruparEnFilas([
+      ...linea(1, 600, [
+        [140, 20, "CVU"],
+        [200, 90, "APELLIDO PATERNO"],
+        [320, 90, "APELLIDO MATERNO"],
+        [460, 55, "NOMBRES"],
+        [590, 95, "NIVEL OTORGADO"],
+      ]),
+      ...persona(1, 588, ["900001", "ACEVES", "AVILA", "CARLA", "Candidato"]),
+      ...persona(1, 576, ["900002", "ROBLES", "DIAZ", "ANA", "Candidato"]),
+    ]);
+    expect(filas).toEqual([
+      ENCABEZADO,
+      ["900001", "ACEVES", "AVILA", "CARLA", "Candidato"],
+      ["900002", "ROBLES", "DIAZ", "ANA", "Candidato"],
+    ]);
+  });
+
+  it("no pega a la última persona un pie de página cercano", () => {
+    const filas = agruparEnFilas([
+      ...encabezado(1, 600),
+      ...persona(1, 570, ["900001", "ACEVES", "AVILA", "CARLA", "Candidato"]),
+      ...persona(1, 550, ["900002", "ROBLES", "DIAZ", "ANA", "Candidato"]),
+      ...linea(1, 525, [[427, 80, "Ciudad de Mexico, 2025"]]),
+    ]);
+    expect(filas.at(-1)).toEqual(["900002", "ROBLES", "DIAZ", "ANA", "Candidato"]);
+  });
+
+  it("conserva como persona propia un renglón con CVU inválido y nivel desconocido", () => {
+    const filas = agruparEnFilas([
+      ...encabezado(1, 600),
+      ...persona(1, 570, ["900001", "ACEVES", "AVILA", "CARLA", "Candidato"]),
+      ...persona(1, 550, ["12A4", "DIAZ", "", "LUIS", "Nivel IV"]),
+      ...persona(1, 530, ["900003", "ROBLES", "DIAZ", "ANA", "Candidato"]),
+    ]);
+    expect(filas.slice(1)).toEqual([
+      ["900001", "ACEVES", "AVILA", "CARLA", "Candidato"],
+      ["12A4", "DIAZ", "", "LUIS", "Nivel IV"],
+      ["900003", "ROBLES", "DIAZ", "ANA", "Candidato"],
+    ]);
+  });
+
+  it("no pierde a las personas que siguen tras un hueco grande a media página", () => {
+    const filas = agruparEnFilas([
+      ...encabezado(1, 600),
+      ...persona(1, 570, ["900001", "ACEVES", "AVILA", "CARLA", "Candidato"]),
+      ...persona(1, 550, ["900002", "ROBLES", "DIAZ", "ANA", "Candidato"]),
+      ...persona(1, 400, ["900003", "LUNA", "SOL", "MAR", "Candidato"]),
+    ]);
+    expect(filas.map((f) => f[0])).toEqual(["CVU", "900001", "900002", "900003"]);
+  });
+
   it("no devuelve filas si no hay texto o no hay encabezado", () => {
     expect(agruparEnFilas([])).toEqual([]);
     expect(agruparEnFilas(linea(1, 700, [[100, 300, "Un documento sin tabla"]]))).toEqual([]);

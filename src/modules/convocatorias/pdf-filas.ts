@@ -12,6 +12,10 @@ const TOLERANCIA_LINEA = 2;
 const ALTO_ENCABEZADO = 14;
 // Si una página tiene una sola fila, no hay de dónde medir la altura típica.
 const ALTURA_FILA_POR_DEFECTO = 20;
+// Un texto de encabezado es corto; un párrafo encima de la tabla no lo es.
+const LARGO_ENCABEZADO = 30;
+// Fuera de las personas de la tabla, solo se pega lo que está a menos de media fila.
+const MEDIA_FILA = 0.6;
 
 type Linea = { y: number; fragmentos: Fragmento[] };
 type Columna = { inicio: number; fin: number; partes: { y: number; texto: string }[] };
@@ -28,6 +32,14 @@ function agruparEnLineas(fragmentos: Fragmento[]): Linea[] {
   }
   for (const linea of lineas) linea.fragmentos.sort((a, b) => a.x - b.x);
   return lineas;
+}
+
+// Una línea con un CVU o un nivel reconocible es un renglón de datos, no parte del encabezado.
+function pareceDato(linea: Linea): boolean {
+  return linea.fragmentos.some((f) => {
+    const cvu = limpiarCvu(f.texto);
+    return (cvu !== null && cvu !== "invalido") || traducirNivel(f.texto) !== null;
+  });
 }
 
 function esLineaDeEncabezado(linea: Linea): boolean {
@@ -87,64 +99,82 @@ export function agruparEnFilas(fragmentos: Fragmento[]): string[][] {
   for (const pagina of paginas) {
     let lineas = agruparEnLineas(fragmentos.filter((f) => f.pagina === pagina && f.texto.trim()));
 
-    // Banda de encabezado: lo de arriba (membrete, párrafo) se descarta.
+    // Banda de encabezado: la línea con CVU, NOMBRE o APELLIDO y las que están a 14 pt o menos,
+    // arriba o abajo (una celda de dos líneas puede ir centrada respecto a las demás). No entra
+    // una línea que parezca dato, ni arriba un texto largo (el párrafo del membrete).
     const inicioBanda = lineas.findIndex(esLineaDeEncabezado);
     let finDeBanda: number | null = null;
     if (inicioBanda >= 0) {
       const yBanda = lineas[inicioBanda].y;
-      const banda = lineas.slice(inicioBanda).filter((l) => yBanda - l.y <= ALTO_ENCABEZADO);
+      const banda = lineas.filter(
+        (l) =>
+          Math.abs(yBanda - l.y) <= ALTO_ENCABEZADO &&
+          !pareceDato(l) &&
+          (l.y <= yBanda || l.fragmentos.every((f) => f.texto.trim().length <= LARGO_ENCABEZADO)),
+      );
       columnas = columnasDeEncabezado(banda);
-      finDeBanda = banda.at(-1)!.y;
-      lineas = lineas.slice(inicioBanda + banda.length);
+      finDeBanda = Math.min(...banda.map((l) => l.y));
+      const techo = Math.max(...banda.map((l) => l.y));
+      lineas = lineas.filter((l) => l.y < techo && !banda.includes(l));
       filas.push(columnas.map(textoDeColumna));
     }
     if (!columnas) continue;
     const cols: Columna[] = columnas;
 
-    // Las líneas «ancla» son una por persona; las demás (un nombre partido en dos renglones) se
-    // pegan a la ancla más cercana. Con columna de CVU, ancla es la que trae un CVU válido o un
-    // nivel reconocible: así el pie de página («…www.secihti.mx») bajo la columna del nivel no
-    // cuenta como persona. Sin CVU, basta con que traiga nivel; sin ninguna, cada línea es ancla.
+    // Una línea «ancla» es una persona. Firme: trae un CVU válido o un nivel reconocible (o, si el
+    // listado no tiene CVU, cualquier nivel; sin CVU ni nivel, toda línea lo es). Dudosa: trae
+    // algo en la columna del CVU o del nivel que no se reconoce; cuenta como persona si queda
+    // antes de la última firme o pegada a la anterior, para que interpretarListado la avise en
+    // vez de perderla. Así el pie de página («…www.secihti.mx») no se vuelve persona.
     const claves = cols.map((c) => claveEncabezado(textoDeColumna(c)));
     const iCvu = claves.findIndex((c) => c.includes("CVU"));
     const iNivel = claves.findIndex((c) => c.includes("NIVEL") || c.includes("DISTINCION"));
-    const esAncla = (celdas: string[][]) => {
+    const tipoDeLinea = (celdas: string[][]): "firme" | "dudosa" | "otra" => {
       const nivel = iNivel >= 0 ? unir(celdas[iNivel]) : "";
-      if (iCvu < 0) return iNivel < 0 || nivel !== "";
-      const cvu = limpiarCvu(unir(celdas[iCvu]));
-      return (cvu !== null && cvu !== "invalido") || traducirNivel(nivel) !== null;
+      if (iCvu < 0) return iNivel < 0 || nivel !== "" ? "firme" : "otra";
+      const textoCvu = unir(celdas[iCvu]);
+      const cvu = limpiarCvu(textoCvu);
+      if ((cvu !== null && cvu !== "invalido") || traducirNivel(nivel) !== null) return "firme";
+      return textoCvu || nivel ? "dudosa" : "otra";
     };
 
-    const conCeldas = lineas.map((linea) => ({ linea, celdas: celdasDeLinea(cols, linea) }));
-    const anclas = conCeldas.filter((l) => esAncla(l.celdas));
+    const conCeldas = lineas.map((linea) => {
+      const celdas = celdasDeLinea(cols, linea);
+      return { linea, celdas, tipo: tipoDeLinea(celdas) };
+    });
+    const firmes = conCeldas.filter((l) => l.tipo === "firme");
 
-    // Altura típica de fila; una ancla mucho más abajo (pie de página) termina la tabla.
+    // Altura típica de fila, medida entre personas firmes.
     const alturas: number[] = [];
     let anterior = finDeBanda;
-    for (const { linea } of anclas) {
+    for (const { linea } of firmes) {
       if (anterior !== null) alturas.push(anterior - linea.y);
       anterior = linea.y;
     }
     const altura = medianaInferior(alturas) ?? ALTURA_FILA_POR_DEFECTO;
-    let corte = anclas.length;
-    anterior = finDeBanda;
-    anclas.forEach(({ linea }, i) => {
-      if (corte === anclas.length && anterior !== null && anterior - linea.y > 3 * altura) corte = i;
-      anterior = linea.y;
-    });
-    const anclasDeTabla = anclas.slice(0, corte);
+    const ultimaFirme = firmes.at(-1)?.linea.y ?? Infinity;
 
-    const grupos = anclasDeTabla.map((ancla) => [ancla]);
-    for (const linea of conCeldas) {
-      if (anclas.includes(linea)) continue;
+    const anclas: typeof conCeldas = [];
+    for (const l of conCeldas) {
+      const previa = anclas.at(-1)?.linea.y ?? finDeBanda;
+      const pegada = previa !== null && previa - l.linea.y <= 1.5 * altura;
+      if (l.tipo === "firme" || (l.tipo === "dudosa" && (l.linea.y > ultimaFirme || pegada))) anclas.push(l);
+    }
+
+    // Las demás líneas (un nombre partido en dos renglones) se pegan a la ancla más cercana si
+    // quedan entre dos anclas; antes de la primera o después de la última, solo si están a
+    // menos de media fila (así no se pega un pie de página ni una fecha al final).
+    const grupos = anclas.map((ancla) => [ancla]);
+    for (const l of conCeldas) {
+      if (anclas.includes(l)) continue;
+      const y = l.linea.y;
       let mejor = -1;
-      anclasDeTabla.forEach(({ linea: ancla }, i) => {
-        const distancia = Math.abs(ancla.y - linea.linea.y);
-        if (distancia <= 1.5 * altura && (mejor < 0 || distancia < Math.abs(anclasDeTabla[mejor].linea.y - linea.linea.y))) {
-          mejor = i;
-        }
+      anclas.forEach(({ linea: ancla }, i) => {
+        if (mejor < 0 || Math.abs(ancla.y - y) < Math.abs(anclas[mejor].linea.y - y)) mejor = i;
       });
-      if (mejor >= 0) grupos[mejor].push(linea);
+      if (mejor < 0) continue;
+      const entreAnclas = y < anclas[0].linea.y && y > anclas.at(-1)!.linea.y;
+      if (entreAnclas || Math.abs(anclas[mejor].linea.y - y) <= MEDIA_FILA * altura) grupos[mejor].push(l);
     }
 
     for (const grupo of grupos) {
