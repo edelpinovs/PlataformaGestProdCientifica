@@ -1,4 +1,4 @@
-import { claveEncabezado, limpiarCvu } from "./lectura";
+import { claveEncabezado, limpiarCvu, traducirNivel } from "./lectura";
 
 // RF-017: un PDF no trae tabla, solo fragmentos de texto con su posición. Esta función rearma
 // las filas de la tabla del listado oficial a partir de esas posiciones, para que
@@ -101,16 +101,18 @@ export function agruparEnFilas(fragmentos: Fragmento[]): string[][] {
     if (!columnas) continue;
     const cols: Columna[] = columnas;
 
-    // Las líneas «ancla» son las que traen CVU o nivel: una por persona. Las demás (un nombre
-    // partido en dos renglones) se pegan a la ancla más cercana. Si el listado no tiene CVU ni
-    // nivel, cada línea es una persona.
+    // Las líneas «ancla» son una por persona; las demás (un nombre partido en dos renglones) se
+    // pegan a la ancla más cercana. Con columna de CVU, ancla es la que trae un CVU válido o un
+    // nivel reconocible: así el pie de página («…www.secihti.mx») bajo la columna del nivel no
+    // cuenta como persona. Sin CVU, basta con que traiga nivel; sin ninguna, cada línea es ancla.
     const claves = cols.map((c) => claveEncabezado(textoDeColumna(c)));
     const iCvu = claves.findIndex((c) => c.includes("CVU"));
     const iNivel = claves.findIndex((c) => c.includes("NIVEL") || c.includes("DISTINCION"));
     const esAncla = (celdas: string[][]) => {
-      if (iCvu < 0 && iNivel < 0) return true;
-      const cvu = iCvu >= 0 ? limpiarCvu(unir(celdas[iCvu])) : null;
-      return (cvu !== null && cvu !== "invalido") || (iNivel >= 0 && unir(celdas[iNivel]) !== "");
+      const nivel = iNivel >= 0 ? unir(celdas[iNivel]) : "";
+      if (iCvu < 0) return iNivel < 0 || nivel !== "";
+      const cvu = limpiarCvu(unir(celdas[iCvu]));
+      return (cvu !== null && cvu !== "invalido") || traducirNivel(nivel) !== null;
     };
 
     const conCeldas = lineas.map((linea) => ({ linea, celdas: celdasDeLinea(cols, linea) }));

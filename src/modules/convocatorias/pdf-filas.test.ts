@@ -87,6 +87,25 @@ describe("agruparEnFilas (RF-017)", () => {
     ]);
   });
 
+  it("no toma por persona el pie de página que cae en la columna del nivel", () => {
+    // Como en el listado real: la dirección termina con la página web bajo la columna del nivel,
+    // a menos de tres filas de distancia de la última persona.
+    const filas = agruparEnFilas([
+      ...encabezado(1, 600),
+      ...persona(1, 570, ["900001", "ACEVES", "AVILA", "CARLA", "Candidato"]),
+      ...persona(1, 550, ["900002", "ROBLES", "DIAZ", "ANA", "Candidato"]),
+      ...linea(1, 510, [
+        [250, 280, "Av. Insurgentes Sur 1582, Col. Crédito Constructor"],
+        [600, 70, "www.secihti.mx"],
+      ]),
+    ]);
+    expect(filas).toEqual([
+      ENCABEZADO,
+      ["900001", "ACEVES", "AVILA", "CARLA", "Candidato"],
+      ["900002", "ROBLES", "DIAZ", "ANA", "Candidato"],
+    ]);
+  });
+
   it("repite el encabezado de cada página y conserva el orden de las filas", () => {
     const filas = agruparEnFilas([
       ...persona(2, 670, ["900003", "ZUÑIGA", "VEGA", "JOSE JAIME", "Investigador Nacional Nivel III"]),
