@@ -82,6 +82,22 @@ Actualizar `docs/diseno/PAUTA_VISUAL.md` cuando se apruebe el patrón: su ejempl
 
 ## Aprobación solicitada
 
+### Identidad visual propuesta: SIGeC
+
+Se incorpora para revisión el kit aportado por la persona solicitante en [docs/diseno/marca/](diseno/marca/). La marca incluida es **SIGeC — Sistema Integral de Gestión Científica**. Su adopción sustituiría la identificación PGPC visible en la interfaz; no implica renombrar el repositorio, las tablas ni los identificadores internos.
+
+![Logo SIGeC para fondo claro](diseno/marca/sigec-logo.svg)
+
+- Logo normal para superficies claras y `sigec-logo-negativo.svg` para oscuras.
+- Iconos `sigec-icono.svg` y `sigec-icono-blanco.svg` para espacios compactos.
+- `favicon.svg` y PNG de 32, 180 y 512 píxeles para iconos del sitio según corresponda.
+- Integración propuesta en `Marco`, `PantallaAcceso` y metadatos/iconos de la aplicación, una vez autorizado el cambio compartido.
+- Los originales se conservan como material de diseño. Antes de servir los SVG, resolver el `@import` remoto de Google Fonts de los logos completos para que su representación no dependa de una descarga externa; comprobar legibilidad del subtítulo en el menú.
+- Verificar logo e iconos en claro, oscuro y celular, conservando proporciones y un nombre accesible sin duplicar el texto del enlace.
+
+- [ ] Aprobar SIGeC y su nombre completo como identidad visible del sistema.
+- [ ] Aprobar el uso del kit en navegación, acceso e iconos del sitio y su adaptación técnica para servirlo sin fuentes remotas.
+
 - [ ] Aprobar este patrón general y el uso de altas en modal.
 - [ ] Aprobar los cambios necesarios en componentes compartidos y la actualización de la pauta.
 - [ ] Confirmar Profesores como piloto y coordinarlo con `@dpfuentes92`.
