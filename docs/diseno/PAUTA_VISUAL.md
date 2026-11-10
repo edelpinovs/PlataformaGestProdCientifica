@@ -269,6 +269,20 @@ Para elegir un profesor en un formulario (por ejemplo, integrantes de un cuerpo 
 - No crea profesores ni cambia su estatus.
 - La pieza es compartida (`src/components/`): se acuerda con el equipo antes de tocarla y su lógica pura lleva prueba en `src/modules/`.
 
+#### Contrato de `SelectorProfesor` (#162)
+
+La pieza está en `src/components/selector-profesor.tsx`, con búsqueda y validación del identificador en `src/lib/selectores/profesor.ts` (lógica compartida, no del módulo de Profesores; cada módulo aporta su propia regla de elegibilidad en el callback). Se entrega sin migrar pantallas: la integración corresponde al piloto y a cada módulo.
+
+- Recibe `opciones` autorizadas con `id`, `nombres`, `apellidos` y `codigo`; `nombre` del campo (predeterminado `profesorId`), `etiqueta`, `valorInicial`, `requerido`, `deshabilitado` y `error` son opcionales. Para asociarlo con `ModalAlta`, pasa `deshabilitado={enviando}` y `alSeleccionar={() => marcarCambios()}` desde el componente cliente.
+- Es un combobox con listbox. Flechas, Home, End y Enter recorren y eligen opciones; Escape cierra sugerencias antes de llegar al diálogo contenedor. El identificador elegido se envía en un campo oculto; el texto de búsqueda no sustituye esa selección. «Quitar selección» es una acción explícita.
+- La búsqueda en las opciones ya autorizadas tolera mayúsculas, acentos, espacios y palabras en distinto orden. No cambia la búsqueda SQL de otros listados ni resuelve D-213.
+- Las sugerencias muestran como máximo diez coincidencias. Si hay más, el aviso pide precisar la búsqueda. Es un conjunto efímero de opciones, no un listado de gestión: no lleva paginación, edición o borrado. Esta excepción de D-009 se documenta en #162.
+- Si las opciones cambian y el profesor elegido deja de estar permitido, se conserva el identificador y se muestra el aviso; no se borra silenciosamente. El servidor decide si se puede guardar.
+- Después de `requireModulo`/`requireRol`, la Server Action puede llamar a `revalidarProfesorSeleccionado(formData.get("profesorId"), buscarElegible)`. Ese callback consulta **de nuevo con Prisma** usando el identificador y las reglas actuales del módulo; devuelve el profesor permitido o `null`. Nunca revalida contra las opciones recibidas del navegador. La función devuelve `{ profesor }` o `{ error }` en español, también ante valores atípicos e incidencias de datos.
+- Dentro de `ModalAlta`, tras un error el formulario se monta de nuevo: pasa `valorInicial={Number(valor("profesorId")) || undefined}` para que la selección se conserve.
+
+Prueba aislada: `node src/components/selector-profesor.navegador.mjs`. Usa Chrome con perfil temporal y profesores ficticios; comprueba búsqueda, teclado real, ratón, selección conservada, obligatoriedad y cambio de opciones en claro, oscuro y celular. La revalidación al guardar se prueba aparte con callbacks simulados; cada integración conserva las pruebas de elegibilidad propias del módulo.
+
 ## 8. Antes de entregar una pantalla
 
 - [ ] Usa `Marco` (o `PantallaAcceso` si no hay sesión) y piezas de `@/components/ui`.
