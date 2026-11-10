@@ -38,8 +38,10 @@ describe("RF-020: cola persistida de escaneo", () => {
     for (let indice = 0; indice < 26; indice++) await procesarSiguienteProfesor(7);
     expect(trabajo.estado).toBe("PENDIENTE");
     expect(trabajo.avance).toBe(26);
+    expect(trabajo.datos.finalizadoEn).toBeUndefined();
     await procesarSiguienteProfesor(7);
     expect(trabajo.estado).toBe("COMPLETADO");
+    expect(Number.isFinite(new Date(trabajo.datos.finalizadoEn!).getTime())).toBe(true);
     expect(trabajo.datos.resumen.publicacionesGuardadas).toBe(54);
     expect(dobles.ejecutarEscaneo.mock.calls.map(([opciones]) => opciones.profesorId)).toEqual(trabajo.datos.profesoresIds);
     expect(dobles.ejecutarEscaneo).toHaveBeenLastCalledWith({ profesorId: 27, anio: undefined, limiteProfesores: 1 }, {});

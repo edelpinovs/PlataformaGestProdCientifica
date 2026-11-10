@@ -10,6 +10,7 @@ const entero = z.number({ error: "El avance del escaneo no es válido." }).int()
 export const datosLoteEsquema = z.object({
   version: z.literal(1), profesoresIds: z.array(z.number().int().positive()), indice: entero,
   anio: z.number().int().min(1990).max(2100).optional(),
+  finalizadoEn: z.iso.datetime({ error: "La fecha de finalización no es válida." }).optional(),
   resumen: z.object({
     profesoresProcesados: entero, publicacionesEncontradas: entero, publicacionesGuardadas: entero,
     autoriasCreadas: entero, coautoriasDetectadas: entero, errores: z.array(z.string()),

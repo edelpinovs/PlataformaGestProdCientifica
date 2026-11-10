@@ -14,7 +14,7 @@ export async function probarEnChrome(fuente, nombre, plugins = []) {
   const chrome = process.env.CHROME_BIN || "C:/Program Files/Google/Chrome/Application/chrome.exe";
   await build({ stdin: { contents: fuente, loader: "tsx", resolveDir: raiz }, bundle: true, outfile: path.join(temporal, "prueba.js"), jsx: "automatic", define: { "process.env.NODE_ENV": '"development"' }, plugins: [{ name: "router-de-prueba", setup(b) {
     b.onResolve({ filter: /^next\/(navigation|link)$/ }, args => ({ path: args.path, namespace: "prueba" }));
-    b.onLoad({ filter: /.*/, namespace: "prueba" }, args => ({ contents: args.path === "next/link" ? "export default function Link(){return null}" : "export const useRouter=()=>({refresh(){window.actualizaciones=(window.actualizaciones||0)+1}})" }));
+    b.onLoad({ filter: /.*/, namespace: "prueba" }, args => ({ resolveDir: raiz, contents: args.path === "next/link" ? 'import React from "react"; export default function Link({href,children,...props}){return React.createElement("a",{href,...props},children)}' : "export const useRouter=()=>({refresh(){window.actualizaciones=(window.actualizaciones||0)+1}})" }));
   } }, ...plugins] });
   const css = await postcss([tailwind()]).process(await readFile("src/app/globals.css", "utf8"), { from: path.join(raiz, "src/app/globals.css") });
   await writeFile(path.join(temporal, "estilos.css"), css.css);

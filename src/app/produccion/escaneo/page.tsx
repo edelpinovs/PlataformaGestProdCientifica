@@ -26,6 +26,9 @@ export default async function EscaneoPage() {
     subtitulo="Extracción desde ORCID, Scopus y OpenAlex con deduplicación y vinculación de autorías."
     volver={{ href: "/produccion", texto: "Producción científica" }}>
     <NavegacionProduccion actual="escaneo" />
+    <Panel titulo="Antes de volver a buscar" descripcion="Consulta el avance guardado y el periodo que se volverá a revisar por indexaciones tardías.">
+      <div className="flex flex-wrap gap-4"><Link href="/produccion/historial" className={claseBotonSecundario}>Consultar historial de búsquedas</Link><Link href="/produccion/continuidad" className={claseBotonSecundario}>Ver punto de continuación por profesor y fuente</Link></div>
+    </Panel>
     {demoHabilitada(process.env.NODE_ENV, process.env.PRODUCCION_DEMO) && <Panel titulo="Prueba con datos ficticios">
       <Link href="/produccion/demostracion" className={claseBotonSecundario}>Abrir demostración sin base de datos</Link>
     </Panel>}
