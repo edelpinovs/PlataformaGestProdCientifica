@@ -3,7 +3,7 @@ import { crearTrabajoEscaneo, procesarSiguienteProfesor } from "./trabajos";
 import { resumenVacio, type DatosLote } from "@/modules/produccion/lotes";
 
 const dobles = vi.hoisted(() => ({
-  prisma: { $transaction: vi.fn(), $queryRaw: vi.fn(), job: { findFirst: vi.fn(), updateMany: vi.fn(), findUniqueOrThrow: vi.fn(), create: vi.fn() }, profesor: { findMany: vi.fn() } },
+  prisma: { $transaction: vi.fn(), $executeRaw: vi.fn(), $queryRaw: vi.fn(), job: { findFirst: vi.fn(), updateMany: vi.fn(), findUniqueOrThrow: vi.fn(), create: vi.fn() }, profesor: { findMany: vi.fn() } },
   ejecutarEscaneo: vi.fn(),
 }));
 vi.mock("@/lib/prisma", () => ({ prisma: dobles.prisma }));
@@ -116,7 +116,9 @@ describe("RF-020: cola persistida de escaneo", () => {
     await expect(crearTrabajoEscaneo("escaneo-manual")).rejects.toMatchObject({ trabajoId: 8 });
     expect(dobles.prisma.job.create).not.toHaveBeenCalled();
     expect(dobles.prisma.profesor.findMany).not.toHaveBeenCalled();
-    expect(dobles.prisma.$queryRaw).toHaveBeenCalledOnce();
+    // El bloqueo va por $executeRaw: con $queryRaw la base real falla («void» sin lector).
+    expect(dobles.prisma.$executeRaw).toHaveBeenCalledOnce();
+    expect(dobles.prisma.$queryRaw).not.toHaveBeenCalled();
   });
 
   it("las actualizaciones de avance no sobrescriben la fecha original de inicio", async () => {
