@@ -32,6 +32,7 @@ function respuestaJson(cuerpo: unknown) {
 function formulario(campos: Record<string, string>) {
   const fd = new FormData();
   for (const [k, v] of Object.entries(campos)) fd.set(k, v);
+  if (!campos.jobId) { for (const fuente of ["ORCID", "OPENALEX", "SCOPUS"]) fd.append("fuentes", fuente); }
   return fd;
 }
 

@@ -17,13 +17,13 @@ describe("Demostración aislada", () => {
     const primero = await ejecutarDemostracion(vacia, "escanear-1");
     expect(primero.memoria.obras).toHaveLength(2);
     expect(primero.memoria.autorias).toHaveLength(2);
-    expect(primero.fuentesConsultadas).toEqual(["OPENALEX: historial completo", "ORCID: historial completo"]);
+    expect([...(primero.fuentesConsultadas ?? [])].sort()).toEqual(["OPENALEX: historial completo", "ORCID: historial completo"]);
     expect(vacia.obras).toHaveLength(0);
     const repetido = await ejecutarDemostracion(primero.memoria, "escanear-1");
     expect(repetido.memoria.obras).toHaveLength(2);
     expect(repetido.memoria.autorias).toHaveLength(2);
     expect(repetido.mensaje).toContain("Autorías nuevas: 0");
-    expect(repetido.fuentesConsultadas).toEqual(["OPENALEX: 2025", "OPENALEX: 2026", "ORCID: 2025", "ORCID: 2026"]);
+    expect([...(repetido.fuentesConsultadas ?? [])].sort()).toEqual(["OPENALEX: 2025", "OPENALEX: 2026", "ORCID: 2025", "ORCID: 2026"]);
     const segundo = await ejecutarDemostracion(repetido.memoria, "escanear-2");
     expect(segundo.memoria.obras).toHaveLength(2);
     expect(segundo.memoria.autorias).toHaveLength(4);

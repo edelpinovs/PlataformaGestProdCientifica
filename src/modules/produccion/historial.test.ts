@@ -31,7 +31,7 @@ describe("historial y continuidad de Producción (#169)", () => {
     expect(sql.contar.text).toContain('LEFT JOIN "CorteEscaneo"');
     expect(sql.contar.text).toContain('c."profesorId" = p.id AND c.fuente::text = f.fuente');
     expect(sql.contar.text).toContain("Sin búsqueda previa completada");
-    expect(sql.contar.values).toEqual(["ORCID","OPENALEX","SCOPUS"]);
+    expect(sql.contar.values).toEqual(["ORCID","OPENALEX","SCOPUS","CROSSREF","GOOGLE_SCHOLAR"]);
   });
   it.each([undefined, ["1","2"], "0", "Infinity", "2147483648", "9007199254740992"])("rechaza un detalle inválido sin consultar un Job arbitrario (%j)", valor => {
     expect(idRegistroHistorial.safeParse(valor).success).toBe(false);

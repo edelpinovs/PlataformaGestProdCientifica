@@ -3,6 +3,7 @@
 import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { requireRol } from "@/lib/auth/session";
+import { FUENTES_ANTERIORES, type FuenteEscaneo } from "@/modules/produccion/fuentes";
 import { TrabajoEscaneoPendiente } from "@/modules/produccion/fechas-escaneo";
 import { prisma } from "@/lib/prisma";
 import { datosLoteEsquema, solicitudEscaneoEsquema } from "@/modules/produccion/lotes";
@@ -14,8 +15,9 @@ export type EstadoEscaneo = {
   resultado?: ReturnType<typeof presentarResultadoEscaneo>;
   error?: string; exito?: boolean; mensaje?: string; resumen?: ResumenEscaneo;
   jobId?: number; pendiente?: boolean; avance?: number; total?: number;
-  continuar?: boolean;
-  erroresCampos?: { profesorId?: string; anio?: string };
+  continuar?: boolean; fuentes?: FuenteEscaneo[];
+  intento?: number;
+  erroresCampos?: { profesorId?: string; anio?: string; fuentes?: string };
 };
 
 function actualizarPantallasProduccion() {
@@ -36,17 +38,19 @@ export async function iniciarEscaneoAction(_: EstadoEscaneo, formData: FormData)
     } else {
       const parseo = solicitudEscaneoEsquema.safeParse({
         profesorId: formData.get("profesorId") ?? "todos", anio: formData.get("anio") ?? "",
+        fuentes: formData.getAll("fuentes"),
       });
       if (!parseo.success) return {
         error: parseo.error.issues[0]?.message ?? "Revisa los datos del escaneo.",
         erroresCampos: {
           profesorId: parseo.error.issues.find((error) => error.path[0] === "profesorId")?.message,
           anio: parseo.error.issues.find((error) => error.path[0] === "anio")?.message,
+          fuentes: parseo.error.issues.find((error) => error.path[0] === "fuentes")?.message,
         },
       };
       trabajo = await crearTrabajoEscaneo("escaneo-manual",
         parseo.data.profesorId === "todos" ? undefined : Number(parseo.data.profesorId),
-        parseo.data.anio ? Number(parseo.data.anio) : undefined);
+        parseo.data.anio ? Number(parseo.data.anio) : undefined,parseo.data.fuentes);
     }
     const pendiente = trabajo.estado === "PENDIENTE" || trabajo.estado === "EN_PROCESO";
     if (pendiente) {
@@ -61,6 +65,7 @@ export async function iniciarEscaneoAction(_: EstadoEscaneo, formData: FormData)
     return {
       resultado: presentarResultadoEscaneo(trabajo.estado, trabajo.datos),
       jobId: trabajo.id, pendiente, avance: trabajo.avance, total: trabajo.total,
+      fuentes: datos.success ? datos.data.fuentes ?? [...FUENTES_ANTERIORES] : [...FUENTES_ANTERIORES],
       resumen: datos.success ? {
         ...datos.data.resumen,
         errores: datos.data.resumen.errores.map(() => "No se pudo completar una consulta o guardar sus resultados."),
