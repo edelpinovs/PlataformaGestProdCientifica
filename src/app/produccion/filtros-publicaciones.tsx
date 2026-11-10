@@ -25,7 +25,7 @@ export function FiltrosPublicaciones({ consulta, profesores, errores }: {
           filtros={[
             { clave: "profesor", etiqueta: "Profesor de la publicación", opciones: [], contenido: <div className="flex flex-col gap-4">
               <SelectorProfesor key={consulta.filtros.profesor || "todos"} opciones={profesores.map(profesor => ({ ...profesor,
-                apellidos: `${profesor.apellidos}${profesor.estatusLaboral !== "ACTIVO" ? " (no activo)" : ""}`,
+                codigo: `${profesor.codigo}${profesor.estatusLaboral !== "ACTIVO" ? " (no activo)" : ""}`,
               }))} nombre="profesor" etiqueta="Profesor de la publicación" requerido={false}
                 valorInicial={consulta.filtros.profesor ? Number(consulta.filtros.profesor) : undefined} error={errores.profesor} />
               <p className="text-xs text-texto-3">Sin selección se muestran publicaciones de todos los profesores, incluidos los no activos.</p>
