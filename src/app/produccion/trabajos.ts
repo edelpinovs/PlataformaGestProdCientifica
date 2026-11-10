@@ -10,7 +10,8 @@ const TIEMPO_RESERVA_MS = 10 * 60 * 1000;
 export async function crearTrabajoEscaneo(tipo: string, profesorId?: number, anio?: number) {
   return prisma.$transaction(async transaccion => {
     // Serializa el inicio en todas las instancias, sin depender de un bloqueo en memoria.
-    await transaccion.$queryRaw`SELECT pg_advisory_xact_lock(170, 20)`;
+    // $executeRaw y no $queryRaw: la función devuelve void y el adaptador de Prisma no puede leer esa columna.
+    await transaccion.$executeRaw`SELECT pg_advisory_xact_lock(170, 20)`;
     const pendiente = await transaccion.job.findFirst({
       where: { tipo: { in: TIPOS_ESCANEO }, estado: { in: ["PENDIENTE", "EN_PROCESO"] } },
       orderBy: [{ creadoEn: "asc" }, { id: "asc" }],
