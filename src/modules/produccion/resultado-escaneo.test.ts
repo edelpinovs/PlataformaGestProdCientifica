@@ -27,4 +27,13 @@ describe("Presentación segura del resultado del escaneo", () => {
     expect(presentarResultadoEscaneo("FALLIDO", null)?.tipo).toBe("error");
     expect(presentarResultadoEscaneo("EN_PROCESO", datos(1))).toBeNull();
   });
+
+  it("distingue rechazos previos de autorías nuevas sin exponerlas como candidatas", () => {
+    const trabajo = datos(0);
+    trabajo.resumen = { ...trabajo.resumen, publicacionesEncontradas: 2, autoriasRechazadasOmitidas: 2 } as typeof trabajo.resumen;
+    const resultado = presentarResultadoEscaneo("COMPLETADO", trabajo);
+    expect(resultado?.mensaje).toContain("Autorías omitidas por rechazo previo: 2");
+    expect(resultado?.mensaje).toContain("Autorías nuevas: 0");
+    expect(resultado?.mensaje).toContain("Guardadas o actualizadas: 0");
+  });
 });

@@ -5,6 +5,7 @@ const PANTALLAS = [
   { href: "/produccion", texto: "Resumen", clave: "resumen" },
   { href: "/produccion/escaneo", texto: "Escanear", clave: "escaneo" },
   { href: "/produccion/publicaciones", texto: "Publicaciones", clave: "publicaciones" },
+  { href: "/produccion/historial", texto: "Historial", clave: "historial" },
 ] as const;
 
 export function NavegacionProduccion({ actual }: { actual: typeof PANTALLAS[number]["clave"] }) {

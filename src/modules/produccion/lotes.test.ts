@@ -22,4 +22,15 @@ describe("RF-020: reglas de lotes", () => {
     expect(datos.indice).toBe(0);
     expect(datos.resumen.errores).toEqual([]);
   });
+
+  it("suma las exclusiones al continuar lotes y admite trabajos antiguos sin ese contador", () => {
+    const datos: DatosLote = { version: 1, profesoresIds: [1,2], indice: 0, resumen: { ...resumenVacio(), autoriasRechazadasOmitidas: 3 } };
+    const siguiente = avanzarLote(datos, { ...resumenVacio(), autoriasRechazadasOmitidas: 2 });
+    expect(siguiente.resumen.autoriasRechazadasOmitidas).toBe(5);
+    expect(datos.resumen.autoriasRechazadasOmitidas).toBe(3);
+    const resumenAntiguo: Partial<typeof datos.resumen> = { ...datos.resumen };
+    delete resumenAntiguo.autoriasRechazadasOmitidas;
+    const antiguo = { ...datos, resumen: resumenAntiguo };
+    expect(datosLoteEsquema.parse(antiguo).resumen.autoriasRechazadasOmitidas).toBe(0);
+  });
 });

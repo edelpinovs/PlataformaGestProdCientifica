@@ -33,9 +33,11 @@ Las publicaciones extraídas de fuentes indizadas (Scopus, OpenAlex, ORCID) repr
 ### Procesamiento por lotes y recuperación (Hallazgos 2a, 12 y 13)
 - El escaneo manual crea un `Job` con la lista ordenada de profesores activos, el índice pendiente y el resumen acumulado en `datos`. Las altas o bajas posteriores no desplazan los índices de esa lista.
 - La Server Action responde antes de consultar las APIs. `after()` procesa un profesor por ejecución; el formulario consulta el avance cada tres segundos y agenda la continuación con `useActionState`. Al volver a `/produccion/escaneo` se recupera el trabajo pendiente más antiguo.
-- El cron comparte la misma cola: retoma el trabajo pendiente más antiguo antes de crear otro y procesa hasta 25 profesores, dejando de iniciar nuevos después de tres minutos. La siguiente ejecución continúa desde el índice guardado, también después del profesor 25.
+- Solo Coordinación inicia y continúa búsquedas manuales (#170). Abrir la pantalla muestra el trabajo pendiente sin ejecutarlo hasta pulsar «Continuar búsqueda pendiente»; después, la pantalla puede procesar sus siguientes lotes.
+- Se retiró el cron diario de Vercel y su endpoint devuelve 410 sin crear ni continuar trabajos. La cola y las reservas siguen permitiendo recuperar búsquedas solicitadas manualmente.
 - Una reserva atómica evita que dos peticiones procesen el mismo trabajo simultáneamente. Caduca a los diez minutos para recuperar ejecuciones interrumpidas; un trabajador antiguo no puede sobrescribir el avance de una reserva nueva.
-- La pantalla y el cron declaran `maxDuration = 300`. Un profesor con muchas páginas o APIs lentas todavía puede superar ese límite: hay recuperación, pero falta medir el rendimiento real en Vercel. El cierre del navegador detiene las continuaciones de la pantalla; el cron diario puede retomarlas.
+- La pantalla declara `maxDuration = 300`. Un profesor con muchas páginas o APIs lentas todavía puede superar ese límite: hay recuperación, pero falta medir el rendimiento real en Vercel. Si se cierra el navegador, Coordinación debe volver y continuar el trabajo pendiente.
+- El inicio usa una transacción con bloqueo asesor de PostgreSQL para no crear otra búsqueda mientras hay una pendiente. Las reservas por trabajo siguen protegiendo las continuaciones simultáneas. Se usa `Job.creadoEn` como inicio inmutable y se distingue de `actualizadoEn`; la interfaz indica America/Mexico_City.
 - Un fallo de fuente no impide revisar los siguientes profesores. Al terminar con incidencias el trabajo queda `FALLIDO`, con sus datos y cortes conservados para reintentar mediante un nuevo escaneo.
 - Pruebas: `lotes.test.ts`, `trabajos.test.ts`, `cron.test.ts` y las pruebas de la Server Action en `revision-pr63.test.ts`. Usan datos ficticios, repositorios simulados y ninguna API real.
 
@@ -50,6 +52,7 @@ Las publicaciones extraídas de fuentes indizadas (Scopus, OpenAlex, ORCID) repr
 ### Integración con autorías y validación (RF-021 y RF-022)
 - El repositorio recupera el registro existente cuando otra petición guarda primero el mismo DOI o la misma autoría (`P2002`). Otros errores se propagan para conservar el corte y permitir el reintento.
 - Un nuevo escaneo conserva las autorías `VALIDADA` y `RECHAZADA`: no las reinicia a `PENDIENTE`. Las exclusiones por homónimo siguen fuera del conteo validado.
+- Una autoría rechazada se devuelve como exclusión explícita al motor (#168), también ante un conflicto de unicidad concurrente. El resumen muestra «Autorías omitidas por rechazo previo»; no las cuenta como nuevas ni como guardadas para ese profesor. Una obra con todas sus autorías excluidas tampoco suma una coautoría; las de otros profesores siguen su flujo normal.
 - Si falla la consulta de similitud, el motor no crea la obra sin comprobarla. Devuelve un error legible y conserva el corte; ya no degrada silenciosamente a coincidencia exacta.
 - Una publicación se cuenta como guardada en el resumen solo después de vincular sus autorías.
 - `repositorio.test.ts` cubre los conflictos de unicidad y los fallos de similitud. `integracion.test.ts` conecta el conector ORCID, el motor, el repositorio y las acciones de Validación con HTTP, sesión y Prisma simulados. Prueba coautorías entre lotes, confirmación, rechazo, permisos y escaneos simultáneos, sin escribir en Supabase.

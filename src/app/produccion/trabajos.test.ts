@@ -3,7 +3,7 @@ import { crearTrabajoEscaneo, procesarSiguienteProfesor } from "./trabajos";
 import { resumenVacio, type DatosLote } from "@/modules/produccion/lotes";
 
 const dobles = vi.hoisted(() => ({
-  prisma: { job: { updateMany: vi.fn(), findUniqueOrThrow: vi.fn(), create: vi.fn() }, profesor: { findMany: vi.fn() } },
+  prisma: { $transaction: vi.fn(), $executeRaw: vi.fn(), $queryRaw: vi.fn(), job: { findFirst: vi.fn(), updateMany: vi.fn(), findUniqueOrThrow: vi.fn(), create: vi.fn() }, profesor: { findMany: vi.fn() } },
   ejecutarEscaneo: vi.fn(),
 }));
 vi.mock("@/lib/prisma", () => ({ prisma: dobles.prisma }));
@@ -16,6 +16,7 @@ let trabajo: Trabajo;
 describe("RF-020: cola persistida de escaneo", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    dobles.prisma.$transaction.mockImplementation(accion => accion(dobles.prisma));
     trabajo = { id: 7, estado: "PENDIENTE", avance: 0, actualizadoEn: new Date(), datos: {
       version: 1, profesoresIds: Array.from({ length: 27 }, (_, indice) => indice + 1),
       indice: 0, resumen: resumenVacio(),
@@ -37,8 +38,10 @@ describe("RF-020: cola persistida de escaneo", () => {
     for (let indice = 0; indice < 26; indice++) await procesarSiguienteProfesor(7);
     expect(trabajo.estado).toBe("PENDIENTE");
     expect(trabajo.avance).toBe(26);
+    expect(trabajo.datos.finalizadoEn).toBeUndefined();
     await procesarSiguienteProfesor(7);
     expect(trabajo.estado).toBe("COMPLETADO");
+    expect(Number.isFinite(new Date(trabajo.datos.finalizadoEn!).getTime())).toBe(true);
     expect(trabajo.datos.resumen.publicacionesGuardadas).toBe(54);
     expect(dobles.ejecutarEscaneo.mock.calls.map(([opciones]) => opciones.profesorId)).toEqual(trabajo.datos.profesoresIds);
     expect(dobles.ejecutarEscaneo).toHaveBeenLastCalledWith({ profesorId: 27, anio: undefined, limiteProfesores: 1 }, {});
@@ -107,5 +110,21 @@ describe("RF-020: cola persistida de escaneo", () => {
     dobles.prisma.profesor.findMany.mockResolvedValue([]);
     await crearTrabajoEscaneo("escaneo-diario");
     expect(dobles.prisma.job.create).toHaveBeenCalledWith({ data: expect.objectContaining({ estado: "COMPLETADO", total: 0 }) });
+  });
+
+  it("no crea otra búsqueda si hay un trabajo pendiente y conserva su fecha", async () => {
+    const creadoEn = new Date("2026-11-09T12:00:00Z");
+    dobles.prisma.job.findFirst.mockResolvedValue({ id: 8, creadoEn, estado: "PENDIENTE" });
+    await expect(crearTrabajoEscaneo("escaneo-manual")).rejects.toMatchObject({ trabajoId: 8 });
+    expect(dobles.prisma.job.create).not.toHaveBeenCalled();
+    expect(dobles.prisma.profesor.findMany).not.toHaveBeenCalled();
+    // El bloqueo va por $executeRaw: con $queryRaw la base real falla («void» sin lector).
+    expect(dobles.prisma.$executeRaw).toHaveBeenCalledOnce();
+    expect(dobles.prisma.$queryRaw).not.toHaveBeenCalled();
+  });
+
+  it("las actualizaciones de avance no sobrescriben la fecha original de inicio", async () => {
+    await procesarSiguienteProfesor(7);
+    for (const [llamada] of dobles.prisma.job.updateMany.mock.calls) expect(llamada.data).not.toHaveProperty("creadoEn");
   });
 });
