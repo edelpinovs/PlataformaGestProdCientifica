@@ -19,11 +19,14 @@ export type FiltroUi = {
   clave: string;
   etiqueta: string;
   opciones: { valor: string; texto: string }[];
+  /** Campo compuesto por el módulo, con su etiqueta, nombre y validación. */
+  contenido?: React.ReactNode;
 };
 
 /**
  * Búsqueda de texto libre, filtros y, solo en celular, «Ordenar por».
- * Es un formulario GET: no hace falta JavaScript y el estado queda en la URL.
+ * Es un formulario GET y el estado queda en la URL. Los campos nativos funcionan
+ * sin JavaScript; el contenido personalizado puede requerirlo.
  * Al enviarlo vuelve a la página 1 porque no manda `pagina`.
  */
 export function BarraListado({ base, consulta, filtros = [], columnas, errores = {}, etiquetaBusqueda = "Buscar", placeholder }: Omit<Contexto, "definicion"> & {
@@ -45,7 +48,7 @@ export function BarraListado({ base, consulta, filtros = [], columnas, errores =
               aria-invalid={Boolean(errores.q)} className={`${claseCampo(Boolean(errores.q))} min-w-0 w-full`} />
           </label>
           {filtros.map((filtro) => (
-            <label key={filtro.clave} className={`${claseEtiqueta} min-w-0`}>
+            filtro.contenido !== undefined ? <div key={filtro.clave} className="min-w-0">{filtro.contenido}</div> : <label key={filtro.clave} className={`${claseEtiqueta} min-w-0`}>
               {filtro.etiqueta}
               <select name={filtro.clave} defaultValue={consulta.filtros[filtro.clave] ?? ""}
                 aria-invalid={Boolean(errores[filtro.clave])} className={`${claseCampo(Boolean(errores[filtro.clave]))} min-w-0 w-full`}>

@@ -1,4 +1,5 @@
 import { BarraListado } from "@/components/listado";
+import { SelectorProfesor } from "@/components/selector-profesor";
 import { COLUMNAS_PUBLICACIONES, RUTA_PUBLICACIONES, ETIQUETAS_TIPO, ETIQUETAS_FUENTE, ETIQUETAS_ESTADO, type ConsultaPublicaciones, type ErroresConsulta } from "@/modules/produccion/consulta";
 
 export function FiltrosPublicaciones({ consulta, profesores, errores }: {
@@ -22,9 +23,13 @@ export function FiltrosPublicaciones({ consulta, profesores, errores }: {
         <BarraListado base={RUTA_PUBLICACIONES} consulta={consulta} columnas={COLUMNAS_PUBLICACIONES} errores={errores}
           etiquetaBusqueda="Buscar publicaciones" placeholder="Título, autores, revista, DOI, tipo, fuente o profesor"
           filtros={[
-            { clave: "profesor", etiqueta: "Profesor de la publicación", opciones: profesores.map((profesor) => ({
-              valor: String(profesor.id), texto: `${profesor.apellidos}, ${profesor.nombres} · ${profesor.codigo}${profesor.estatusLaboral !== "ACTIVO" ? " (no activo)" : ""}`,
-            })) },
+            { clave: "profesor", etiqueta: "Profesor de la publicación", opciones: [], contenido: <div className="flex flex-col gap-4">
+              <SelectorProfesor key={consulta.filtros.profesor || "todos"} opciones={profesores.map(profesor => ({ ...profesor,
+                codigo: `${profesor.codigo}${profesor.estatusLaboral !== "ACTIVO" ? " (no activo)" : ""}`,
+              }))} nombre="profesor" etiqueta="Profesor de la publicación" requerido={false}
+                valorInicial={consulta.filtros.profesor ? Number(consulta.filtros.profesor) : undefined} error={errores.profesor} />
+              <p className="text-xs text-texto-3">Sin selección se muestran publicaciones de todos los profesores, incluidos los no activos.</p>
+            </div> },
             { clave: "anio", etiqueta: "Año de publicación", opciones: Array.from({ length: 201 }, (_, indice) => ({ valor: String(2100 - indice), texto: String(2100 - indice) })) },
             { clave: "tipo", etiqueta: "Tipo", opciones: opciones(ETIQUETAS_TIPO) },
             { clave: "fuente", etiqueta: "Fuente", opciones: opciones(ETIQUETAS_FUENTE) },

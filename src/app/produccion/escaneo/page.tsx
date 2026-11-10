@@ -19,7 +19,7 @@ export default async function EscaneoPage() {
   const perfil = await requireModulo("produccion");
   const [profesores, ultimoJob, pendiente] = await Promise.all([
     prisma.profesor.findMany({ where: { estatusLaboral: "ACTIVO" },
-      select: { id: true, nombres: true, apellidos: true }, orderBy: [{ apellidos: "asc" }, { id: "asc" }] }),
+      select: { id: true, nombres: true, apellidos: true, codigo: true }, orderBy: [{ apellidos: "asc" }, { id: "asc" }] }),
     prisma.job.findFirst({ where: { tipo: { in: ["escaneo-manual", "escaneo-diario"] } }, orderBy: { creadoEn: "desc" } }),
     obtenerTrabajoPendiente(),
   ]);
