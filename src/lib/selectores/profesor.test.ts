@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { buscarProfesores, idProfesorSeleccionado, revalidarProfesorSeleccionado } from "./selector";
+import { buscarProfesores, idProfesorSeleccionado, revalidarProfesorSeleccionado } from "./profesor";
 
 const opciones = [
   { id: 1, nombres: "Profesora Ámbar", apellidos: "Ejemplo Norte", codigo: "DEMO-001" },
@@ -16,7 +16,7 @@ describe("selector compartido de profesores (#162)", () => {
     expect(buscarProfesores([opciones[0]], "bruno")).toEqual([]);
   });
 
-  it.each([null, undefined, NaN, 2, ["2"], {}, "", "NaN", "Infinity", "0", "-1", "1.5", "2e0", "9007199254740992"])("rechaza valores atípicos (%j) con mensaje español", valor => {
+  it.each([null, undefined, NaN, 2, ["2"], {}, "", "NaN", "Infinity", "0", "-1", "1.5", "2e0", "2147483648", "9007199254740992"])("rechaza valores atípicos (%j) con mensaje español", valor => {
     const resultado = idProfesorSeleccionado.safeParse(valor);
     expect(resultado.success).toBe(false);
     if (!resultado.success) expect(["Selecciona un profesor.", "Selecciona un profesor válido de la lista."]).toContain(resultado.error.issues[0].message);

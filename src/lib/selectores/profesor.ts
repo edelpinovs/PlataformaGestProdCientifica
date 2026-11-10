@@ -15,10 +15,11 @@ export function buscarProfesores(opciones: readonly OpcionProfesor[], busqueda: 
   });
 }
 
+/** `Profesor.id` es un Int de 32 bits en la base: un identificador mayor no puede existir. */
 export const idProfesorSeleccionado = z.string({ error: "Selecciona un profesor." })
   .regex(/^[1-9]\d*$/, "Selecciona un profesor válido de la lista.")
   .transform(Number)
-  .pipe(z.number({ error: "Selecciona un profesor válido de la lista." }).int("Selecciona un profesor válido de la lista.").max(Number.MAX_SAFE_INTEGER, "Selecciona un profesor válido de la lista."));
+  .pipe(z.number({ error: "Selecciona un profesor válido de la lista." }).int("Selecciona un profesor válido de la lista.").max(2147483647, "Selecciona un profesor válido de la lista."));
 
 /**
  * Se llama dentro de la Server Action, después de exigir permisos. El callback consulta

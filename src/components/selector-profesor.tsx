@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
-import { buscarProfesores, type OpcionProfesor } from "@/modules/profesores/selector";
+import { buscarProfesores, type OpcionProfesor } from "@/lib/selectores/profesor";
 import { Aviso, claseBotonSecundario, claseCampo, claseEtiqueta } from "./ui";
 
 type Props = {
