@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { avanzarLote, datosLoteEsquema, resumenVacio, solicitudEscaneoEsquema, type DatosLote } from "./lotes";
 
 describe("RF-020: reglas de lotes", () => {
-  it.each(["abc", "0", "-1", "1.5", "9007199254740992"])("rechaza el profesor manipulado %s", (profesorId) => {
-    const resultado = solicitudEscaneoEsquema.safeParse({ profesorId, anio: "" });
+  it.each(["abc", "0", "-1", "1.5", "2147483648", "9007199254740992"])("rechaza el profesor manipulado %s", (profesorId) => {
+    const resultado = solicitudEscaneoEsquema.safeParse({ profesorId, anio: "", fuentes: ["ORCID"] });
     expect(resultado.success).toBe(false);
     if (!resultado.success) expect(resultado.error.issues[0].message).toBe("Selecciona un profesor válido.");
   });

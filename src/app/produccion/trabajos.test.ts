@@ -112,6 +112,13 @@ describe("RF-020: cola persistida de escaneo", () => {
     expect(dobles.prisma.job.create).toHaveBeenCalledWith({ data: expect.objectContaining({ estado: "COMPLETADO", total: 0 }) });
   });
 
+  it("rechaza la selección si el profesor dejó de estar activo antes del envío", async () => {
+    dobles.prisma.profesor.findMany.mockResolvedValue([]);
+    await expect(crearTrabajoEscaneo("escaneo-manual", 5)).rejects.toThrow("El profesor no está disponible para escanear.");
+    expect(dobles.prisma.profesor.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 5, estatusLaboral: "ACTIVO" } }));
+    expect(dobles.prisma.job.create).not.toHaveBeenCalled();
+  });
+
   it("una reanudación consulta solo las fuentes guardadas en el trabajo", async () => {
     trabajo.datos.fuentes = ["ORCID"];
     await procesarSiguienteProfesor(7);
