@@ -7,6 +7,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { requireModulo } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { idDeFormulario } from "@/modules/catalogos/comun";
+import { retornoValidacion } from "@/modules/validacion/listados";
 import {
   edicionMetadatosBandejaEsquema,
   puedeGestionarAutoria,
@@ -164,7 +165,7 @@ export async function registrarPublicacionManual(
 }
 
 // Edición de una publicación manual (regla #59 de AGENTS.md)
-export async function editarPublicacionManual(_: EstadoFila, formData: FormData): Promise<EstadoFila> {
+export async function editarPublicacionManual(retorno: string, _: EstadoFila, formData: FormData): Promise<EstadoFila> {
   const perfil = await requireModulo("validacion");
 
   const id = idDeFormulario(formData);
@@ -277,11 +278,11 @@ export async function editarPublicacionManual(_: EstadoFila, formData: FormData)
   }
 
   revalidatePath("/validacion");
-  redirect("/validacion?accion=editado", RedirectType.replace);
+  redirect(retornoValidacion(retorno, "accion=editado"), RedirectType.replace);
 }
 
 // Eliminación de una publicación manual (regla #59 de AGENTS.md)
-export async function eliminarPublicacionManual(_: EstadoFila, formData: FormData): Promise<EstadoFila> {
+export async function eliminarPublicacionManual(retorno: string, _: EstadoFila, formData: FormData): Promise<EstadoFila> {
   const perfil = await requireModulo("validacion");
 
   const id = idDeFormulario(formData);
@@ -316,7 +317,7 @@ export async function eliminarPublicacionManual(_: EstadoFila, formData: FormDat
   }
 
   revalidatePath("/validacion");
-  redirect("/validacion?accion=eliminado", RedirectType.replace);
+  redirect(retornoValidacion(retorno, "accion=eliminado"), RedirectType.replace);
 }
 
 // RF-024 · RF-025 · CU-013: Confirmar autoría de una publicación detectada
@@ -325,12 +326,12 @@ export async function confirmarAutoria(formData: FormData): Promise<void> {
   const publicacionId = Number(formData.get("publicacionId"));
   const profesorId = Number(formData.get("profesorId"));
 
-  if (!publicacionId || !profesorId) {
-    redirect("/validacion?error=datos-invalidos", RedirectType.replace);
+  if (!Number.isSafeInteger(publicacionId) || publicacionId <= 0 || !Number.isSafeInteger(profesorId) || profesorId <= 0) {
+    redirect(retornoValidacion(formData.get("retorno"), "error=datos-invalidos"), RedirectType.replace);
   }
 
   if (!puedeGestionarAutoria(perfil, profesorId)) {
-    redirect("/validacion?error=sin-permiso", RedirectType.replace);
+    redirect(retornoValidacion(formData.get("retorno"), "error=sin-permiso"), RedirectType.replace);
   }
 
   const autoria = await prisma.autoria.findUnique({
@@ -338,12 +339,12 @@ export async function confirmarAutoria(formData: FormData): Promise<void> {
   });
 
   if (!autoria) {
-    redirect("/validacion?error=no-existe", RedirectType.replace);
+    redirect(retornoValidacion(formData.get("retorno"), "error=no-existe"), RedirectType.replace);
   }
 
   const transicion = validarTransicionAutoria(autoria.estado, "VALIDADA");
   if (!transicion.valida) {
-    redirect("/validacion?error=transicion-invalida", RedirectType.replace);
+    redirect(retornoValidacion(formData.get("retorno"), "error=transicion-invalida"), RedirectType.replace);
   }
 
   // RF-025: cambia a VALIDADA con fecha de revisión (incorpora al conteo oficial)
@@ -356,7 +357,7 @@ export async function confirmarAutoria(formData: FormData): Promise<void> {
   });
 
   revalidatePath("/validacion");
-  redirect("/validacion?accion=confirmada", RedirectType.replace);
+  redirect(retornoValidacion(formData.get("retorno"), "accion=confirmada"), RedirectType.replace);
 }
 
 // RF-024 · CU-013: Rechazar publicación por homónimo
@@ -365,12 +366,12 @@ export async function rechazarHomonimo(formData: FormData): Promise<void> {
   const publicacionId = Number(formData.get("publicacionId"));
   const profesorId = Number(formData.get("profesorId"));
 
-  if (!publicacionId || !profesorId) {
-    redirect("/validacion?error=datos-invalidos", RedirectType.replace);
+  if (!Number.isSafeInteger(publicacionId) || publicacionId <= 0 || !Number.isSafeInteger(profesorId) || profesorId <= 0) {
+    redirect(retornoValidacion(formData.get("retorno"), "error=datos-invalidos"), RedirectType.replace);
   }
 
   if (!puedeGestionarAutoria(perfil, profesorId)) {
-    redirect("/validacion?error=sin-permiso", RedirectType.replace);
+    redirect(retornoValidacion(formData.get("retorno"), "error=sin-permiso"), RedirectType.replace);
   }
 
   const autoria = await prisma.autoria.findUnique({
@@ -378,12 +379,12 @@ export async function rechazarHomonimo(formData: FormData): Promise<void> {
   });
 
   if (!autoria) {
-    redirect("/validacion?error=no-existe", RedirectType.replace);
+    redirect(retornoValidacion(formData.get("retorno"), "error=no-existe"), RedirectType.replace);
   }
 
   const transicion = validarTransicionAutoria(autoria.estado, "RECHAZADA");
   if (!transicion.valida) {
-    redirect("/validacion?error=transicion-invalida", RedirectType.replace);
+    redirect(retornoValidacion(formData.get("retorno"), "error=transicion-invalida"), RedirectType.replace);
   }
 
   // Pasa a RECHAZADA (queda como registro de exclusión para futuros escaneos)
@@ -396,7 +397,7 @@ export async function rechazarHomonimo(formData: FormData): Promise<void> {
   });
 
   revalidatePath("/validacion");
-  redirect("/validacion?accion=rechazada", RedirectType.replace);
+  redirect(retornoValidacion(formData.get("retorno"), "accion=rechazada"), RedirectType.replace);
 }
 
 // RF-024 · CU-013: Editar metadatos de una publicación de la bandeja
