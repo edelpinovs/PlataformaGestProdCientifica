@@ -4,7 +4,7 @@ Registro de la revisión del [PR #179](https://github.com/edelpinovs/PlataformaG
 
 ## 1. Alcance revisado
 
-`SelectorProfesor` en el formulario de Escanear (con la opción «Todos los profesores activos») y en el filtro de Publicaciones (opcional, incluye no activos); `contenido` opcional por filtro en `BarraListado`; límite de 32 bits del identificador; D-219.
+`SelectorProfesor` en el formulario de Escanear (con la opción «Todos los profesores activos») y en el filtro de Publicaciones (opcional, incluye no activos); `contenido` opcional por filtro en `BarraListado`; límite de 32 bits del identificador; D-220.
 
 ## 2. Chequeos
 
@@ -15,7 +15,7 @@ Solo se leyó el diff y el código de los componentes. El CI (`verificar`) y Ver
 | # | Hallazgo | Tipo |
 |---|---|---|
 | 1 | Se adelanta al piloto de Profesores (D-216); `SelectorProfesor` no tiene consumidores en `main` | Bloqueante de proceso |
-| 2 | Cambio en `src/components/listado.tsx` autorizado solo por la autora; D-219 queda «vigente» | Bloqueante de proceso |
+| 2 | Cambio en `src/components/listado.tsx` autorizado solo por la autora; D-220 queda «vigente» | Bloqueante de proceso |
 | 3 | Depende del #175 (abierto, con cambios solicitados); cambiar la base a `main` después | Bloqueante de proceso |
 | 4 | «(no activo)» se añade al apellido de la opción | A corregir |
 | 5 | Sin prueba del límite de 32 bits en el filtro de Publicaciones | A corregir |
