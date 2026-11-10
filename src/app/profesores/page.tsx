@@ -1,8 +1,7 @@
-import Link from "next/link";
 import { FilaEditable } from "@/components/fila-editable";
 import { BarraListado, EncabezadoOrdenable, PaginacionListado } from "@/components/listado";
 import { Marco } from "@/components/marco";
-import { Aviso, claseBoton, claseTabla, EstadoVacio, EtiquetaEstado, Panel } from "@/components/ui";
+import { Aviso, claseTabla, EstadoVacio, EtiquetaEstado, Panel } from "@/components/ui";
 import { requireModulo } from "@/lib/auth/session";
 import { analizarListado, hayFiltrosActivos, paginar } from "@/lib/listados/consulta";
 import { prisma } from "@/lib/prisma";
@@ -11,6 +10,7 @@ import {
 } from "@/modules/profesores/profesores-listado";
 import { ETIQUETA_CONTRATACION, ETIQUETA_ESTATUS } from "@/modules/profesores/profesores";
 import { editarProfesor, eliminarProfesor } from "./actions";
+import { RegistrarProfesor } from "./registrar-profesor";
 
 const BASE = "/profesores";
 
@@ -72,8 +72,8 @@ export default async function ProfesoresPage({ searchParams }: PageProps<"/profe
 
   return (
     <Marco correo={perfil.correo} rol={perfil.rol} activo="profesores" titulo="Directorio de profesores">
-      <Panel titulo={`Profesores registrados (${total})`}
-        accion={{ href: "/profesores/nuevo", texto: "Registrar profesor" }}>
+      <Panel titulo={`Profesores registrados (${total})`}>
+        <div className="mb-4"><RegistrarProfesor grados={grados} departamentos={departamentos} /></div>
         {resultado && <div className="mb-4"><Aviso tipo="exito">{resultado}</Aviso></div>}
         <div className="flex flex-col gap-4">
           <BarraListado {...contexto} columnas={COLUMNAS_PROFESORES} errores={errores}
@@ -90,9 +90,6 @@ export default async function ProfesoresPage({ searchParams }: PageProps<"/profe
                   ? "No hay profesores con esta búsqueda. Prueba con otro texto o limpia los filtros."
                   : "Aún no hay profesores registrados en el directorio."}
               </EstadoVacio>
-              {!hayFiltros && (
-                <Link href="/profesores/nuevo" className={claseBoton}>Registrar el primer profesor</Link>
-              )}
             </div>
           ) : (
             <table className={claseTabla.tabla}>
