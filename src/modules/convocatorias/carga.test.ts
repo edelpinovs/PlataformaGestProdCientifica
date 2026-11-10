@@ -3,6 +3,7 @@ import {
   cargaResultados,
   formatoDeArchivo,
   motivoNoEliminable,
+  puedeVolverALeer,
   nombreDeRuta,
   nombreSeguro,
   registroCarga,
@@ -163,5 +164,26 @@ describe("motivoNoEliminable (#59)", () => {
 
   it("no elimina una carga mientras se lee su contenido", () => {
     expect(motivoNoEliminable({ estado: "PROCESANDO", nombre: "a.pdf" }, true)).toContain("mientras se lee");
+  });
+});
+
+describe("puedeVolverALeer (RF-017)", () => {
+  const ahora = new Date("2026-11-09T12:00:00Z");
+  const hace = (minutos: number) => new Date(ahora.getTime() - minutos * 60 * 1000);
+
+  it("permite volver a leer una carga fallida", () => {
+    expect(puedeVolverALeer("FALLIDA", hace(1), ahora)).toBe(true);
+    expect(puedeVolverALeer("FALLIDA", null, ahora)).toBe(true);
+  });
+
+  it("permite retomar una lectura sin avance en más de 10 minutos, no antes", () => {
+    expect(puedeVolverALeer("PROCESANDO", hace(11), ahora)).toBe(true);
+    expect(puedeVolverALeer("PROCESANDO", hace(2), ahora)).toBe(false);
+    expect(puedeVolverALeer("PROCESANDO", null, ahora)).toBe(true);
+  });
+
+  it("no vuelve a leer una carga ya leída o confirmada", () => {
+    expect(puedeVolverALeer("EN_REVISION", hace(60), ahora)).toBe(false);
+    expect(puedeVolverALeer("CONFIRMADA", hace(60), ahora)).toBe(false);
   });
 });

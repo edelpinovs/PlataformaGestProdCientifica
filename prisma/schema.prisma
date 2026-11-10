@@ -266,14 +266,36 @@ model ParticipacionConvocatoria {
 
 // Archivo oficial cargado y el balance que se muestra antes de confirmar (RF-019).
 model CargaResultados {
-  id             Int          @id @default(autoincrement())
+  id             Int                @id @default(autoincrement())
   convocatoriaId Int
-  convocatoria   Convocatoria @relation(fields: [convocatoriaId], references: [id])
+  convocatoria   Convocatoria       @relation(fields: [convocatoriaId], references: [id])
   archivoRuta    String // ruta en Supabase Storage
-  estado         EstadoCarga  @default(PROCESANDO)
+  estado         EstadoCarga        @default(PROCESANDO)
   balance        Json?
-  cargadaPor     String       @db.Uuid
-  creadaEn       DateTime     @default(now())
+  cargadaPor     String             @db.Uuid
+  creadaEn       DateTime           @default(now())
+  renglones      RenglonResultado[]
+}
+
+// RF-017: lo que trae el listado oficial, un renglón por persona. Nada se calcula: el SNII no
+// publica Código ni Vigencia y quedan vacíos (D-216). RF-018 lo cruza con el directorio.
+model RenglonResultado {
+  id              Int             @id @default(autoincrement())
+  cargaId         Int
+  carga           CargaResultados @relation(fields: [cargaId], references: [id], onDelete: Cascade)
+  numero          Int // renglón dentro del archivo
+  cvu             String?
+  codigo          String? // Código CUValles, si el archivo lo trae
+  apellidoPaterno String? // vacío si el archivo trae el nombre en una sola columna
+  apellidoMaterno String?
+  nombres         String
+  nivelTexto      String? // tal como viene en el archivo
+  nivel           NivelSnii? // traducido; solo SNII
+  vigenciaInicio  DateTime?       @db.Date // solo si el archivo la trae
+  vigenciaFin     DateTime?       @db.Date
+
+  @@unique([cargaId, numero])
+  @@index([cargaId, cvu])
 }
 
 // ─── M6 Producción científica (RF-020 a RF-025) · Integrantes 6 y 7 ─────────

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect, RedirectType } from "next/navigation";
+import { after } from "next/server";
 import { requireModulo } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
@@ -11,16 +12,20 @@ import {
   formatoDeArchivo,
   motivoNoEliminable,
   nombreDeRuta,
+  puedeVolverALeer,
   registroCarga,
   rutaArchivo,
   TAMANO_MAXIMO,
+  TIEMPO_ATASCO_MS,
   tipoMime,
 } from "@/modules/convocatorias/carga";
+import { procesarCarga } from "./procesamiento";
 
 // RF-016 (CU-010) en tres pasos, porque Vercel no acepta más de 4.5 MB por petición:
 // 1. prepararCarga valida los datos del archivo y entrega una URL firmada de Storage.
 // 2. El navegador sube el archivo directo a Storage con esa URL.
-// 3. registrarCarga comprueba el archivo subido y registra la carga y su tarea (RF-017).
+// 3. registrarCarga comprueba el archivo subido, registra la carga y su tarea, y lanza la
+//    lectura del archivo en segundo plano (RF-017).
 
 export type EstadoCarga = { errors?: string[]; registrada?: string };
 
@@ -81,8 +86,9 @@ export async function registrarCarga(datos: {
     return { errors: ["Este archivo ya está registrado."] };
   }
 
+  let jobId: number;
   try {
-    await prisma.$transaction(async (tx) => {
+    jobId = await prisma.$transaction(async (tx) => {
       const convocatoria = await tx.convocatoria.upsert({
         where: { programa_anio: { programa, anio } },
         update: {},
@@ -92,19 +98,23 @@ export async function registrarCarga(datos: {
         data: { convocatoriaId: convocatoria.id, archivoRuta: ruta, estado: "PROCESANDO", cargadaPor: perfil.id },
       });
       // RF-017 toma esta tarea para leer el archivo y cruzarlo con el directorio (RNF-001).
-      await tx.job.create({
+      const tarea = await tx.job.create({
         data: {
           tipo: "carga-resultados",
           total: 1,
           datos: { cargaId: carga.id, convocatoriaId: convocatoria.id, ruta, programa, anio },
         },
       });
+      return tarea.id;
     });
   } catch {
     // Sin registro, el archivo quedaría huérfano en Storage.
     await supabase.storage.from(BUCKET).remove([ruta]);
     return { errors: ["No se pudo registrar la carga. Inténtalo de nuevo en unos minutos."] };
   }
+
+  // La lectura sigue después de responder, con la sesión de quien subió el archivo (RF-017).
+  after(() => procesarCarga(jobId, supabase));
 
   revalidatePath("/convocatorias");
   return { registrada: `${programa} ${anio} · ${nombre}` };
@@ -152,4 +162,64 @@ export async function eliminarCarga(_: EstadoFila, formData: FormData): Promise<
   revalidatePath("/convocatorias");
   const texto = `${carga.convocatoria.programa} ${carga.convocatoria.anio} · ${nombre}`;
   redirect(`/convocatorias?eliminado=${encodeURIComponent(texto)}`, RedirectType.replace);
+}
+
+const LEYENDO = "La carga se está leyendo. Espera unos minutos.";
+const CARGA_CAMBIO = "Esa carga ya cambió. Recarga la página.";
+class CambioDeEstado extends Error {}
+
+// RF-017: vuelve a leer una carga fallida, o una cuya lectura se cortó (sin avance en 10 min).
+export async function volverALeer(_: EstadoFila, formData: FormData): Promise<EstadoFila> {
+  await requireModulo("convocatorias");
+
+  const id = Number(formData.get("id"));
+  if (!Number.isInteger(id) || id <= 0) return { error: NO_EXISTE };
+
+  const carga = await prisma.cargaResultados.findUnique({ where: { id }, select: { id: true, estado: true } });
+  if (!carga) return { error: NO_EXISTE };
+  if (carga.estado === "EN_REVISION") return { error: "Esta carga ya se leyó." };
+  if (carga.estado === "CONFIRMADA") return { error: "Esta carga ya se confirmó." };
+
+  const tareas = { tipo: "carga-resultados", datos: { path: ["cargaId"], equals: id } };
+  const tarea = await prisma.job.findFirst({ where: tareas, orderBy: { id: "desc" }, select: { id: true, actualizadoEn: true } });
+  if (!puedeVolverALeer(carga.estado, tarea?.actualizadoEn ?? null, new Date())) {
+    return { error: LEYENDO };
+  }
+
+  // Los dos cambios son condicionados: si la carga cambió (otra lectura terminó, se borró) o
+  // otra pestaña acaba de empezar a leerla, no se toca nada y se explica por qué.
+  let jobId: number;
+  try {
+    jobId = await prisma.$transaction(async (tx) => {
+      const { count } = await tx.cargaResultados.updateMany({
+        where: { id, estado: { in: ["FALLIDA", "PROCESANDO"] } },
+        data: { estado: "PROCESANDO" },
+      });
+      if (!count) throw new CambioDeEstado(CARGA_CAMBIO);
+      if (!tarea) {
+        const nueva = await tx.job.create({ data: { tipo: "carga-resultados", total: 1, datos: { cargaId: id } } });
+        return nueva.id;
+      }
+      const reiniciada = await tx.job.updateMany({
+        where: {
+          id: tarea.id,
+          OR: [
+            { estado: { not: "EN_PROCESO" } },
+            { actualizadoEn: { lt: new Date(Date.now() - TIEMPO_ATASCO_MS) } },
+          ],
+        },
+        data: { estado: "PENDIENTE", error: null, avance: 0 },
+      });
+      if (!reiniciada.count) throw new CambioDeEstado(LEYENDO);
+      return tarea.id;
+    });
+  } catch (error) {
+    return { error: error instanceof CambioDeEstado ? error.message : "No se pudo volver a leer la carga. Inténtalo de nuevo." };
+  }
+
+  const supabase = await createClient();
+  after(() => procesarCarga(jobId, supabase));
+
+  revalidatePath("/convocatorias");
+  redirect("/convocatorias", RedirectType.replace);
 }

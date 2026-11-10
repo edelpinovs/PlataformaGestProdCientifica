@@ -140,3 +140,19 @@ export function motivoNoEliminable(
   }
   return null;
 }
+
+// RF-017: una lectura sin avance en 10 minutos se da por cortada (el proceso en segundo plano
+// pudo terminar antes de tiempo) y se puede retomar.
+export const TIEMPO_ATASCO_MS = 10 * 60 * 1000;
+
+// «Volver a leer» se ofrece a una carga fallida o a una que lleva demasiado tiempo leyéndose.
+// actualizadoEn es el de su tarea; sin tarea, la carga se puede volver a leer.
+export function puedeVolverALeer(
+  estado: "PROCESANDO" | "EN_REVISION" | "CONFIRMADA" | "FALLIDA",
+  actualizadoEn: Date | null,
+  ahora: Date,
+): boolean {
+  if (estado === "FALLIDA") return true;
+  if (estado !== "PROCESANDO") return false;
+  return !actualizadoEn || ahora.getTime() - actualizadoEn.getTime() > TIEMPO_ATASCO_MS;
+}
