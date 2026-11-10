@@ -173,7 +173,7 @@ export async function ejecutarEscaneo(
       try {
         const sinIdentificador = (fuente === "ORCID" || fuente === "OPENALEX") ? !prof.orcid
           : fuente === "SCOPUS" ? !(prof.scopusId || prof.orcid)
-          : fuente === "GOOGLE_SCHOLAR" ? !prof.scholarId : !(prof.orcid || (prof.nombres && prof.apellidos));
+          : fuente === "GOOGLE_SCHOLAR" ? !prof.scholarId : !prof.orcid;
         let res: { publicaciones: PublicacionCandidata[]; error?: string };
         if (sinIdentificador) res = { publicaciones: [], error: "FALTA_IDENTIFICADOR" };
         else {

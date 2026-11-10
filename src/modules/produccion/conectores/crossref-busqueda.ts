@@ -6,24 +6,22 @@ import { fetchJsonConReintentos } from "./http";
 
 type Autor = { ORCID?: string; given?: string; family?: string; name?: string };
 type Obra = { DOI?: string; title?: string[]; type?: string; author?: Autor[]; "container-title"?: string[]; publisher?: string; ISSN?: string[]; ISBN?: string[]; published?: { "date-parts"?: number[][] }; issued?: { "date-parts"?: number[][] } };
-const normalizarNombre = (texto: string) => texto.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu," ").trim();
 const orcidLimpio = (texto: string) => texto.replace(/^https?:\/\/orcid.org\//i, "").toUpperCase();
 
+/** Solo el ORCID identifica al autor: el nombre no basta (homónimos) y un ORCID distinto no se sustituye por nombre. */
 export function coincideAutorCrossref(autores: Autor[], profesor: ProfesorParaEscaneo) {
-  if (profesor.orcid && autores.some(a => a.ORCID && orcidLimpio(a.ORCID) === orcidLimpio(profesor.orcid!))) return true;
-  // Un ORCID distinto explícito no se sustituye por una coincidencia de nombre.
-  const palabras = normalizarNombre(`${profesor.nombres} ${profesor.apellidos}`).split(" ").filter(Boolean);
-  return palabras.length >= 2 && autores.some(a => !a.ORCID && palabras.every(p => normalizarNombre(`${a.given ?? ""} ${a.family ?? ""} ${a.name ?? ""}`).split(" ").includes(p)));
+  return Boolean(profesor.orcid) && autores.some(a => a.ORCID && orcidLimpio(a.ORCID) === orcidLimpio(profesor.orcid!));
 }
 
 export async function consultarCrossref(profesor: ProfesorParaEscaneo, desde?: number, hasta = desde): Promise<{ publicaciones: PublicacionCandidata[]; error?: string }> {
-  if (!profesor.orcid && (!profesor.nombres?.trim() || !profesor.apellidos?.trim())) return { publicaciones: [], error: "FALTA_IDENTIFICADOR" };
+  // Sin ORCID no se consulta: una búsqueda por nombre devuelve cientos de miles de obras de homónimos (D-124).
+  if (!profesor.orcid) return { publicaciones: [], error: "FALTA_IDENTIFICADOR" };
   const publicaciones: PublicacionCandidata[] = [];
   let cursor = "*";
   const vistos = new Set<string>();
-  const filtros = [profesor.orcid ? `orcid:${orcidLimpio(profesor.orcid)}` : "", desde ? `from-pub-date:${desde}-01-01` : "", hasta ? `until-pub-date:${hasta}-12-31` : ""].filter(Boolean).join(",");
+  const filtros = [`orcid:${orcidLimpio(profesor.orcid)}`, desde ? `from-pub-date:${desde}-01-01` : "", hasta ? `until-pub-date:${hasta}-12-31` : ""].filter(Boolean).join(",");
   for (let pagina = 0; pagina < 1000; pagina++) {
-    const respuesta = await fetchJsonConReintentos<{ message?: { items?: Obra[]; "next-cursor"?: string; "total-results"?: number } }>("https://api.crossref.org/works", { params: { filter: filtros, "query.author": profesor.orcid ? undefined : `${profesor.nombres} ${profesor.apellidos}`, rows: 100, cursor, mailto: process.env.CROSSREF_MAILTO } });
+    const respuesta = await fetchJsonConReintentos<{ message?: { items?: Obra[]; "next-cursor"?: string; "total-results"?: number } }>("https://api.crossref.org/works", { params: { filter: filtros, rows: 100, cursor, mailto: process.env.CROSSREF_MAILTO } });
     const mensaje = respuesta.data?.message;
     if (!mensaje || !Array.isArray(mensaje.items)) return { publicaciones: [], error: respuesta.error ?? "RESPUESTA_INVALIDA" };
     for (const obra of mensaje.items) {

@@ -17,10 +17,15 @@ describe("Crossref como fuente independiente (#167)",()=>{
     expect(http.mock.calls[0][1]?.params?.filter).toBe("orcid:0000-0000-0000-0001,from-pub-date:2025-01-01,until-pub-date:2026-12-31");
     expect(http.mock.calls[1][1]?.params?.cursor).toBe("pagina-2");
   });
-  it("descarta resultados con otro ORCID aunque coincida el nombre; admite candidatos por nombre sin identificador",()=>{
+  it("solo el ORCID identifica al autor: el nombre no basta ni sin ORCID ni con otro ORCID",()=>{
+    expect(coincideAutorCrossref([{given:"Persona",family:"Ficticia",ORCID:"https://orcid.org/0000-0000-0000-0001"}],profesor)).toBe(true);
     expect(coincideAutorCrossref([{given:"Persona",family:"Ficticia",ORCID:"https://orcid.org/0000-0000-0000-0002"}],profesor)).toBe(false);
-    expect(coincideAutorCrossref([{given:"Persona",family:"Ficticia"}],{...profesor,orcid:null})).toBe(true);
-    expect(coincideAutorCrossref([{given:"Otra",family:"Persona"}],profesor)).toBe(false);
+    expect(coincideAutorCrossref([{given:"Persona",family:"Ficticia"}],profesor)).toBe(false);
+    expect(coincideAutorCrossref([{given:"Persona",family:"Ficticia"}],{...profesor,orcid:null})).toBe(false);
+  });
+  it("sin ORCID no hace ninguna petición: una búsqueda por nombre devolvería cientos de miles de obras",async()=>{
+    expect(await consultarCrossref({...profesor,orcid:null})).toEqual({publicaciones:[],error:"FALTA_IDENTIFICADOR"});
+    expect(http).not.toHaveBeenCalled();
   });
   it("un fallo intermedio no devuelve una consulta parcial como completa",async()=>{
     http.mockResolvedValueOnce(respuesta({message:{items:Array.from({length:100},()=>obra),"next-cursor":"pagina-2"}})).mockResolvedValueOnce({data:null,status:503,error:"HTTP_503",headers:new Headers()});
