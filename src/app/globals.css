@@ -91,3 +91,8 @@ body {
   background: var(--fondo);
   color: var(--texto);
 }
+
+/* Identidad SIGeC (D-217): una variante del icono por tema, según la elección de la persona. */
+.marca-oscuro { display: none; }
+[data-tema="oscuro"] .marca-claro { display: none; }
+[data-tema="oscuro"] .marca-oscuro { display: block; }
