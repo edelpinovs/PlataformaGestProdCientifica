@@ -52,6 +52,7 @@ Las publicaciones extraídas de fuentes indizadas (Scopus, OpenAlex, ORCID) repr
 ### Integración con autorías y validación (RF-021 y RF-022)
 - El repositorio recupera el registro existente cuando otra petición guarda primero el mismo DOI o la misma autoría (`P2002`). Otros errores se propagan para conservar el corte y permitir el reintento.
 - Un nuevo escaneo conserva las autorías `VALIDADA` y `RECHAZADA`: no las reinicia a `PENDIENTE`. Las exclusiones por homónimo siguen fuera del conteo validado.
+- Una autoría rechazada se devuelve como exclusión explícita al motor (#168), también ante un conflicto de unicidad concurrente. El resumen muestra «Autorías omitidas por rechazo previo»; no las cuenta como nuevas ni como guardadas para ese profesor. Una obra con todas sus autorías excluidas tampoco suma una coautoría; las de otros profesores siguen su flujo normal.
 - Si falla la consulta de similitud, el motor no crea la obra sin comprobarla. Devuelve un error legible y conserva el corte; ya no degrada silenciosamente a coincidencia exacta.
 - Una publicación se cuenta como guardada en el resumen solo después de vincular sus autorías.
 - `repositorio.test.ts` cubre los conflictos de unicidad y los fallos de similitud. `integracion.test.ts` conecta el conector ORCID, el motor, el repositorio y las acciones de Validación con HTTP, sesión y Prisma simulados. Prueba coautorías entre lotes, confirmación, rechazo, permisos y escaneos simultáneos, sin escribir en Supabase.

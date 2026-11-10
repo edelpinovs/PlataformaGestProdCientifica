@@ -158,7 +158,7 @@ export const repositorioPrisma: RepositorioProduccion = {
       },
     });
 
-    if (existente) return false;
+    if (existente) return existente.estado === "RECHAZADA" ? "RECHAZADA" : false;
 
     try {
       await prisma.autoria.create({
@@ -170,7 +170,7 @@ export const repositorioPrisma: RepositorioProduccion = {
         const concurrente = await prisma.autoria.findUnique({
           where: { publicacionId_profesorId: { publicacionId, profesorId } },
         });
-        if (concurrente) return false;
+        if (concurrente) return concurrente.estado === "RECHAZADA" ? "RECHAZADA" : false;
       }
       throw error;
     }
