@@ -228,7 +228,7 @@ const filas = await prisma.x.findMany({ where, orderBy: orden(consulta), skip: p
 
 ### Altas en modal (D-214)
 
-> **Estado:** acordada (D-214), pero la pieza `<ModalAlta>` aún no existe en `src/components/`. Mientras no esté en `main`, el alta en panel de la plantilla de arriba sigue siendo la válida. No migres una pantalla sin su issue y sin esperar al piloto de Profesores (D-216).
+> **Estado:** acordada (D-214). La pieza `<ModalAlta>` ya existe en `src/components/modal-alta.tsx` (contrato más abajo), pero **ninguna pantalla la usa todavía**: el alta en panel de la plantilla de arriba sigue siendo la válida. No migres una pantalla sin su issue y sin esperar al piloto de Profesores (D-216).
 
 El listado es la pantalla principal de gestión: encabezado con título, descripción, total de registros y la acción principal; debajo, un panel con búsqueda, filtros, tabla y paginación (D-009). El botón «Registrar…» abre el alta en un modal. *Editar* y *Eliminar* no cambian: siguen en la fila con `<FilaEditable>`.
 
