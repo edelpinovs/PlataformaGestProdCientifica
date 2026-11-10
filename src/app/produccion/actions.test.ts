@@ -28,16 +28,18 @@ describe("escaneo manual exclusivo de Coordinación (#170)", () => {
     expect(dobles.leer).not.toHaveBeenCalled(); expect(dobles.crear).not.toHaveBeenCalled(); expect(dobles.after).not.toHaveBeenCalled();
   });
   it("Coordinación puede iniciar y continuar el mismo trabajo sin crearlo de nuevo", async () => {
-    await iniciarEscaneoAction({}, new FormData());
+    const inicio = new FormData(); inicio.set("fuentes", "ORCID");
+    await iniciarEscaneoAction({}, inicio);
     const datos = new FormData(); datos.set("jobId", "7");
     await iniciarEscaneoAction({}, datos);
     expect(dobles.permiso).toHaveBeenCalledWith(["COORDINADOR"]);
-    expect(dobles.crear).toHaveBeenCalledExactlyOnceWith("escaneo-manual", undefined, undefined);
+    expect(dobles.crear).toHaveBeenCalledExactlyOnceWith("escaneo-manual", undefined, undefined, ["ORCID"]);
     expect(dobles.after).toHaveBeenCalledTimes(2);
   });
   it("un doble inicio ofrece continuar el trabajo pendiente en lugar de lanzar otro", async () => {
     dobles.crear.mockRejectedValue(new TrabajoEscaneoPendiente(12));
-    expect(await iniciarEscaneoAction({}, new FormData())).toEqual({ error: "Ya hay una búsqueda pendiente. Continúala antes de iniciar otra.", jobId: 12, continuar: true });
+    const inicio = new FormData(); inicio.set("fuentes", "ORCID");
+    expect(await iniciarEscaneoAction({}, inicio)).toEqual({ error: "Ya hay una búsqueda pendiente. Continúala antes de iniciar otra.", jobId: 12, continuar: true });
     expect(dobles.after).not.toHaveBeenCalled();
   });
 });

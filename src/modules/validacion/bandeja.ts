@@ -9,6 +9,7 @@ export const FUENTES_PUBLICACION = [
   "SCOPUS",
   "OPENALEX",
   "GOOGLE_SCHOLAR",
+  "CROSSREF",
   "MANUAL",
 ] as const;
 export type FuentePublicacion = (typeof FUENTES_PUBLICACION)[number];
@@ -24,6 +25,7 @@ export const ETIQUETA_FUENTE: Record<FuentePublicacion, string> = {
   SCOPUS: "Scopus",
   OPENALEX: "OpenAlex",
   GOOGLE_SCHOLAR: "Google Scholar",
+  CROSSREF: "Crossref",
   MANUAL: "Captura manual",
 };
 

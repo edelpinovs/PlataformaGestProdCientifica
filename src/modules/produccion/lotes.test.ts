@@ -8,8 +8,8 @@ describe("RF-020: reglas de lotes", () => {
     if (!resultado.success) expect(resultado.error.issues[0].message).toBe("Selecciona un profesor válido.");
   });
   it("valida el año y el profesor en el servidor", () => {
-    expect(solicitudEscaneoEsquema.safeParse({ profesorId: "todos", anio: "1500" }).success).toBe(false);
-    expect(solicitudEscaneoEsquema.safeParse({ profesorId: "5", anio: "" }).success).toBe(true);
+    expect(solicitudEscaneoEsquema.safeParse({ profesorId: "todos", anio: "1500", fuentes: ["ORCID"] }).success).toBe(false);
+    expect(solicitudEscaneoEsquema.safeParse({ profesorId: "5", anio: "", fuentes: ["ORCID"] }).success).toBe(true);
   });
   it("rechaza índices fuera de la instantánea", () => {
     expect(datosLoteEsquema.safeParse({ version: 1, profesoresIds: [1], indice: 2, resumen: resumenVacio() }).success).toBe(false);
