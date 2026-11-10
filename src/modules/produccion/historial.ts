@@ -8,7 +8,7 @@ export const LISTADO_HISTORIAL: DefinicionListado = {
   columnas: COLUMNAS_HISTORIAL.map(c => c.clave), ordenInicial: { columna: "inicio", dir: "desc" },
   filtros: { estado: Object.keys(ESTADOS_HISTORIAL), tipo: ["escaneo-manual", "escaneo-diario"] },
 };
-export const idRegistroHistorial = z.string({ error: "Selecciona una sola búsqueda." }).regex(/^[1-9]\d*$/, "Selecciona una búsqueda válida.").transform(Number).pipe(z.number({ error: "Selecciona una búsqueda válida." }).int().max(Number.MAX_SAFE_INTEGER, "Selecciona una búsqueda válida."));
+export const idRegistroHistorial = z.string({ error: "Selecciona una sola búsqueda." }).regex(/^[1-9]\d*$/, "Selecciona una búsqueda válida.").transform(Number).pipe(z.number({ error: "Selecciona una búsqueda válida." }).int().max(2147483647, "Selecciona una búsqueda válida."));
 export const FUENTES_CONTINUIDAD = ["ORCID", "OPENALEX", "SCOPUS"] as const;
 export const COLUMNAS_CONTINUIDAD = [{ clave: "profesor", texto: "Profesor" }, { clave: "fuente", texto: "Fuente" }, { clave: "corte", texto: "Último corte válido" }, { clave: "periodo", texto: "Próxima consulta" }];
 export const LISTADO_CONTINUIDAD: DefinicionListado = {
