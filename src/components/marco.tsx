@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { MarcaSigec } from "@/components/marca";
 import { cerrarSesion } from "@/app/login/actions";
 import { ETIQUETA_ROL, type Rol } from "@/lib/auth/roles";
 import { MODULOS } from "@/modules/registry";
@@ -42,12 +43,8 @@ export function Marco({
       <div className="mx-auto flex min-h-[calc(100vh-1.5rem)] max-w-[1440px] flex-col overflow-hidden rounded-[28px] bg-superficie shadow-marco lg:flex-row">
         <aside className="flex w-full flex-col gap-4 border-linea px-4 py-4 lg:w-60 lg:shrink-0 lg:gap-6 lg:border-r lg:py-5">
           <div className="flex items-center justify-between gap-3">
-            <Link href="/" className="flex items-center gap-3 px-2">
-              <span className="grid h-10 w-10 place-items-center rounded-2xl bg-marca text-sm font-bold text-sobre-marca">P</span>
-              <span>
-                <span className="block text-sm font-semibold leading-tight">PGPC</span>
-                <span className="block text-xs text-texto-3">CUValles</span>
-              </span>
+            <Link href="/" className="flex min-w-0 items-center gap-3 px-2">
+              <MarcaSigec />
             </Link>
             <div className="flex items-center gap-1 lg:hidden">
               <OpcionesCuenta compacto />

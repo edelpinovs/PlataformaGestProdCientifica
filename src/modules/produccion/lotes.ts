@@ -30,7 +30,7 @@ export const solicitudEscaneoEsquema = z.object({
   profesorId: z.union([
     z.literal("todos"),
     z.string().regex(/^[1-9]\d*$/, "Selecciona un profesor válido.").refine(
-      (valor) => Number.isSafeInteger(Number(valor)), "Selecciona un profesor válido.",
+      (valor) => Number.isSafeInteger(Number(valor)) && Number(valor) <= 2147483647, "Selecciona un profesor válido.",
     ),
   ], { error: "Selecciona un profesor válido." }),
   anio: z.string({ error: "Indica un año válido." }).trim().refine(

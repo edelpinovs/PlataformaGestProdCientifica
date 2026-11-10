@@ -6,6 +6,7 @@ import { useFormStatus } from "react-dom";
 import { Aviso, claseBoton, claseCampo, claseEtiqueta } from "@/components/ui";
 import { iniciarEscaneoAction, type EstadoEscaneo } from "./actions";
 import { ResultadoEscaneo } from "./resultado-escaneo";
+import { SelectorProfesor } from "@/components/selector-profesor";
 
 function BotonEscanear({ enCurso, continuar }: { enCurso: boolean; continuar: boolean }) {
   const { pending } = useFormStatus();
@@ -23,7 +24,7 @@ export function FormularioEscaneo({
   profesorTrabajo,
   anioTrabajo,
 }: {
-  profesores: { id: number; nombres: string; apellidos: string }[];
+  profesores: { id: number; nombres: string; apellidos: string; codigo: string }[];
   trabajoPendiente?: number;
   fuentesTrabajo?: FuenteEscaneo[];
   profesorTrabajo?: string;
@@ -58,20 +59,21 @@ export function FormularioEscaneo({
         <p className="text-sm text-texto-3">Se consultarán únicamente las fuentes elegidas. Google Scholar está sujeto a la cuota del proveedor. Al continuar un trabajo se respetan sus fuentes guardadas.</p>
       </fieldset>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <label className={claseEtiqueta}>
-          Profesor
-          <select name="profesorId" value={profesorElegido} onChange={evento => elegirProfesor(evento.target.value)} disabled={estado.pendiente || estado.continuar}
-            aria-invalid={Boolean(estado.erroresCampos?.profesorId)}
-            className={claseCampo(Boolean(estado.erroresCampos?.profesorId))}>
-            <option value="todos">Todos los profesores activos</option>
-            {profesorElegido !== "todos" && !profesores.some(p => String(p.id) === profesorElegido) && <option value={profesorElegido}>Profesor del trabajo #{profesorElegido}</option>}
-            {profesores.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.apellidos}, {p.nombres}
-              </option>
-            ))}
-          </select>
-        </label>
+        <fieldset disabled={estado.pendiente || estado.continuar} className="flex min-w-0 flex-col gap-4">
+          <legend className="mb-2 text-sm font-semibold">Profesores de la búsqueda</legend>
+          <label className="flex items-center gap-2 text-sm text-texto-2">
+            <input type="checkbox" checked={profesorElegido === "todos"}
+              onChange={evento => elegirProfesor(evento.target.checked ? "todos" : "")} />
+            Todos los profesores activos
+          </label>
+          {profesorElegido === "todos" ? <input type="hidden" name="profesorId" value="todos" /> :
+            (estado.pendiente || estado.continuar) && !profesores.some(profesor => String(profesor.id) === profesorElegido) ?
+            <p className="text-sm text-texto-2">Profesor del trabajo #{profesorElegido}. Se conserva la selección original aunque ya no esté activo.</p> :
+            <SelectorProfesor opciones={profesores} valorInicial={profesorElegido ? Number(profesorElegido) : undefined}
+              alSeleccionar={id => elegirProfesor(id === undefined ? "" : String(id))}
+              deshabilitado={Boolean(estado.pendiente || estado.continuar)} error={estado.erroresCampos?.profesorId} />}
+          {estado.erroresCampos?.profesorId && profesorElegido === "todos" && <Aviso tipo="error">{estado.erroresCampos.profesorId}</Aviso>}
+        </fieldset>
 
         <label className={claseEtiqueta}>
           Año de publicación (opcional)
