@@ -12,6 +12,6 @@ Los SVG y PNG de marca en [marca/](marca/) conservan sus colores originales; est
 - sigec-icono.svg y sigec-icono-blanco.svg: espacios compactos.
 - favicon.svg y PNG de 32, 180 y 512 píxeles: iconos del sitio.
 
-## Integración posterior
+## Integración (#163)
 
-PR aparte para Marco, PantallaAcceso y metadatos/iconos. Mantener proporción y un único nombre accesible por enlace; los iconos decorativos no duplican el texto. Elegir variante según el tema de la aplicación. Verificar subtítulo legible, claro, oscuro y celular. Este PR incorpora el kit; no afirma que la interfaz ya muestre SIGeC.
+Integrada en `Marco`, `PantallaAcceso` y los metadatos. Se usa el icono del kit con el nombre y la descripción como texto (el logotipo completo no cabe en el menú lateral con un subtítulo legible): `src/components/marca.tsx`. El icono es decorativo y el nombre accesible del enlace es el texto; la variante se elige por tema con CSS. El favicon y los iconos de la aplicación usan el kit y se retiró el favicon por omisión de Next.js. Los logotipos completos (`sigec-logo.svg` y `sigec-logo-negativo.svg`) siguen sin usarse en la interfaz; quedan como material de diseño.

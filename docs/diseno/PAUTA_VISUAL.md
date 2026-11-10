@@ -100,8 +100,9 @@ Separación: `gap-4` dentro de una sección y `gap-5` entre secciones (la da `Ma
 └────────────────────────────────────────────────────────────┘
 ```
 
-- **Menú lateral:** logotipo, *Inicio* y los módulos del rol con su icono. Abajo: *Cambiar contraseña*, *Tema oscuro* y *Cerrar sesión*. El módulo activo va en `marca-suave` con `aria-current="page"`.
+- **Menú lateral:** la marca SIGeC (`<MarcaSigec>` de `@/components/marca`: icono, nombre y «Sistema Integral de Gestión Científica»), *Inicio* y los módulos del rol con su icono. Abajo: *Cambiar contraseña*, *Tema oscuro* y *Cerrar sesión*. El módulo activo va en `marca-suave` con `aria-current="page"`.
 - **Menos de 1024 px:** el menú pasa a una fila horizontal con desplazamiento y las opciones de cuenta suben junto al logotipo.
+- **Marca (D-217):** el nombre visible es SIGeC; el repositorio, las tablas y los identificadores internos no cambian. Usa siempre `<MarcaSigec>` (en `Marco` y en `PantallaAcceso`, con `grande`): no escribas otro logotipo. El icono es decorativo (`alt=""`) y el nombre accesible del enlace es el texto, sin duplicarlo. Tiene una variante por tema (`.marca-claro` y `.marca-oscuro` en `globals.css`, según la elección de la persona, no la del sistema operativo). Los archivos están en `public/marca/`; el favicon y el icono de la aplicación, en `src/app/` (`icon.svg`, `icon1.png`, `apple-icon.png`). Los originales del kit están en `docs/diseno/marca/`.
 - **Encabezado:** enlace *volver* opcional, título y subtítulo a la izquierda; correo, rol y avatar a la derecha. El correo se oculta en celular.
 
 ## 7. Plantilla de pantalla nueva
