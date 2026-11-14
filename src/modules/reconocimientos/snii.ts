@@ -25,6 +25,14 @@ export const reconocimientoSnii = z.object({
   fechaFin: fechaSnii,
   enRecursoReconsideracion: z.boolean(),
 }).superRefine((datos, contexto) => {
+  if (datos.nivel === "CANDIDATO" && datos.tipoParticipacion === "RENOVACION") {
+    contexto.addIssue({
+      code: "custom",
+      path: ["tipoParticipacion"],
+      message: "El nivel Candidato no admite renovación.",
+    });
+  }
+
   if (fechaValida(datos.fechaInicio) && fechaValida(datos.fechaFin) && datos.fechaInicio >= datos.fechaFin) {
     contexto.addIssue({
       code: "custom",

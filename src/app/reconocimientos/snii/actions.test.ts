@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { registrarReconocimientoSnii } from "./actions";
+import { editarReconocimientoSnii, registrarReconocimientoSnii } from "./actions";
 
 const dobles = vi.hoisted(() => ({
   requireModulo: vi.fn(),
   profesor: { findUnique: vi.fn(), findFirst: vi.fn(), update: vi.fn() },
-  reconocimientoSnii: { findMany: vi.fn(), create: vi.fn() },
+  reconocimientoSnii: { findMany: vi.fn(), findUnique: vi.fn(), create: vi.fn() },
   $transaction: vi.fn(),
 }));
 vi.mock("@/lib/auth/session", () => ({ requireModulo: dobles.requireModulo }));
@@ -31,7 +31,30 @@ describe("RF-007: traslape de periodos SNII según el resultado guardado", () =>
     dobles.profesor.findUnique.mockResolvedValue({ id: 7, cvu: "123456" });
     dobles.profesor.findFirst.mockResolvedValue(null);
     dobles.reconocimientoSnii.findMany.mockResolvedValue([existente]);
+    dobles.reconocimientoSnii.findUnique.mockResolvedValue({ convocatoriaId: null });
     dobles.$transaction.mockResolvedValue({ error: null });
+  });
+
+  it("regresa el error de renovación de Candidato al formulario de alta", async () => {
+    const estado = await registrarReconocimientoSnii({}, formulario({ nivel: "CANDIDATO", tipoParticipacion: "RENOVACION" }));
+
+    expect(estado).toMatchObject({
+      error: "El nivel Candidato no admite renovación.",
+      campo: "tipoParticipacion",
+      valores: { nivel: "CANDIDATO", tipoParticipacion: "RENOVACION" },
+    });
+    expect(dobles.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("regresa el error de renovación de Candidato al formulario de edición", async () => {
+    const estado = await editarReconocimientoSnii({}, formulario({ id: "1", nivel: "CANDIDATO", tipoParticipacion: "RENOVACION" }));
+
+    expect(estado).toMatchObject({
+      error: "El nivel Candidato no admite renovación.",
+      campo: "tipoParticipacion",
+      valores: { nivel: "CANDIDATO", tipoParticipacion: "RENOVACION" },
+    });
+    expect(dobles.$transaction).not.toHaveBeenCalled();
   });
 
   it("un nivel aprobado que choca con otro periodo se rechaza", async () => {

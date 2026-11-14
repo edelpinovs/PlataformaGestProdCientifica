@@ -16,6 +16,28 @@ describe("reconocimientoSnii (RF-007)", () => {
     expect(reconocimientoSnii.safeParse(reconocimiento).success).toBe(true);
   });
 
+  it.each(["alta", "edición"])("rechaza una renovación de Candidato durante %s", () => {
+    const resultado = reconocimientoSnii.safeParse({
+      ...reconocimiento,
+      nivel: "CANDIDATO",
+      tipoParticipacion: "RENOVACION",
+    });
+
+    expect(resultado.success).toBe(false);
+    if (!resultado.success) {
+      expect(resultado.error.issues[0]?.path).toEqual(["tipoParticipacion"]);
+      expect(resultado.error.issues[0]?.message).toBe("El nivel Candidato no admite renovación.");
+    }
+  });
+
+  it.each(["NUEVO_INGRESO", "REINGRESO_NO_VIGENTE"])("permite Candidato con tipo de participación %s", (tipoParticipacion) => {
+    expect(reconocimientoSnii.safeParse({ ...reconocimiento, nivel: "CANDIDATO", tipoParticipacion }).success).toBe(true);
+  });
+
+  it.each(["NIVEL_1", "NIVEL_2", "NIVEL_3", "EMERITO"])("permite renovar el nivel %s", (nivel) => {
+    expect(reconocimientoSnii.safeParse({ ...reconocimiento, nivel, tipoParticipacion: "RENOVACION" }).success).toBe(true);
+  });
+
   it("normaliza espacios del CVU y acepta fechas límite válidas", () => {
     const resultado = reconocimientoSnii.parse({
       ...reconocimiento,
