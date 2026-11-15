@@ -16,6 +16,7 @@ import {
   type ColumnaConvocatoria,
   type EstadoConvocatoria,
 } from "@/modules/reportes/convocatoria";
+import { EnlacesReportes } from "../enlaces";
 
 const BASE = "/reportes/convocatoria";
 
@@ -34,6 +35,7 @@ export default async function ConvocatoriaPage({ searchParams }: { searchParams:
     <Marco correo={perfil.correo} rol={perfil.rol} activo="reportes" titulo="Convocatoria anual"
       volver={{ href: "/reportes", texto: "Reportes" }}>
       <Panel titulo="Armar reporte" descripcion="Elige el programa, el año y las columnas. Una renovación SNII que sube de nivel cuenta como promoción; si no sube, sigue vigente. PRODEP no tiene promoción. Un dictamen en reconsideración no entra.">
+        <EnlacesReportes actual="convocatoria" />
         <Constructor estado={vista} anios={aniosConvocatoria(carga.dictamenes, carga.participaciones, vista.anio)} />
       </Panel>
       <Panel titulo="Resultado" descripcion="Cada dictamen ligado a una convocatoria cuenta una vez. El desglose es por departamento y género.">
