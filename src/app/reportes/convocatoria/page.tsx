@@ -4,6 +4,7 @@ import { Aviso, claseBoton, claseBotonSecundario, claseCampo, claseEtiqueta, cla
 import { requireModulo } from "@/lib/auth/session";
 import { siguienteOrden, type ParametrosListado } from "@/lib/listados/consulta";
 import { cargarConvocatoria } from "@/modules/reportes/cargar-convocatoria";
+import { enlaceDescarga } from "@/modules/reportes/exportar";
 import {
   analizarConvocatoria,
   aniosConvocatoria,
@@ -16,6 +17,7 @@ import {
   type ColumnaConvocatoria,
   type EstadoConvocatoria,
 } from "@/modules/reportes/convocatoria";
+import { Descargas } from "../descargas";
 import { EnlacesReportes } from "../enlaces";
 
 const BASE = "/reportes/convocatoria";
@@ -42,6 +44,12 @@ export default async function ConvocatoriaPage({ searchParams }: { searchParams:
         <div className="flex flex-col gap-4">
           {mensajes.length > 0 && (
             <Aviso tipo="error"><ul>{mensajes.map((mensaje) => <li key={mensaje}>{mensaje}</li>)}</ul></Aviso>
+          )}
+          {vista.columnas.length > 0 && (
+            <Descargas
+              excel={enlaceDescarga("convocatoria", "xlsx", enlaceConvocatoria(BASE, vista))}
+              pdf={enlaceDescarga("convocatoria", "pdf", enlaceConvocatoria(BASE, vista))}
+            />
           )}
           {vista.columnas.length === 0 || filas.length === 0 ? (
             <EstadoVacio>
