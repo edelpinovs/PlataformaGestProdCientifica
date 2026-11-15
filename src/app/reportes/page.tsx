@@ -14,6 +14,7 @@ import {
   textoColumna,
   TIPOS_DISTINCION,
   analizarReporte,
+  opcionesAnio,
   type ColumnaVigencia,
   type EstadoReporte,
   type FilaVigencia,
@@ -34,13 +35,13 @@ export default async function ReportesPage({ searchParams }: { searchParams: Pro
   const { filas, paginacion } = consultarVigencias(cargadas, estado);
   const vista: EstadoReporte = { ...estado, consulta: { ...estado.consulta, pagina: paginacion.pagina } };
   const mensajes = Object.values(vista.errores);
-  const acotado = Boolean(vista.consulta.q) || Boolean(vista.consulta.filtros.semaforo) || vista.tipos.length !== TIPOS_DISTINCION.length;
+  const acotado = Boolean(vista.consulta.q) || Boolean(vista.consulta.filtros.semaforo) || vista.anio !== null || vista.tipos.length !== TIPOS_DISTINCION.length;
   const columnas = COLUMNAS_VIGENCIA.filter((columna) => vista.columnas.includes(columna));
 
   return (
     <Marco correo={perfil.correo} rol={perfil.rol} activo="reportes" titulo="Vigencias y reportes">
-      <Panel titulo="Armar reporte" descripcion="Elige las distinciones y las columnas. El semáforo se calcula al abrir el reporte: vigente, por vencer en 12 meses o menos, o vencido.">
-        <Constructor estado={vista} />
+      <Panel titulo="Armar reporte" descripcion="Elige las distinciones, las columnas y el año de vencimiento. El semáforo se calcula al abrir el reporte: vigente, por vencer en 12 meses o menos, o vencido.">
+        <Constructor estado={vista} anios={opcionesAnio(cargadas, vista.anio)} />
       </Panel>
 
       <Panel titulo="Resultado" descripcion="Reconocimientos aprobados o en reconsideración, y cuerpos académicos. El vencimiento de un cuerpo es el 31 de diciembre de su año de vencimiento.">
@@ -55,7 +56,7 @@ export default async function ReportesPage({ searchParams }: { searchParams: Pro
               {vista.columnas.length === 0
                 ? "Elige al menos una columna para ver el reporte."
                 : acotado
-                  ? "No hay distinciones con este reporte. Prueba con otra búsqueda o incluye más distinciones."
+                  ? "No hay distinciones con este reporte. Prueba con otro año, otra búsqueda o incluye más distinciones."
                   : "Aún no hay distinciones SNII, PRODEP ni cuerpos académicos."}
             </EstadoVacio>
           ) : (
@@ -88,10 +89,11 @@ export default async function ReportesPage({ searchParams }: { searchParams: Pro
   );
 }
 
-function Constructor({ estado }: { estado: EstadoReporte }) {
+function Constructor({ estado, anios }: { estado: EstadoReporte; anios: number[] }) {
   const clave = [
     estado.tipos.join(","),
     estado.columnas.join(","),
+    estado.anio ?? "",
     estado.consulta.q,
     estado.consulta.filtros.semaforo,
     estado.consulta.orden,
@@ -132,6 +134,14 @@ function Constructor({ estado }: { estado: EstadoReporte }) {
           <input name="q" type="search" defaultValue={estado.consulta.q} maxLength={200}
             placeholder="Nombre, departamento o estado" aria-invalid={Boolean(estado.errores.q)}
             className={claseCampo(Boolean(estado.errores.q))} />
+        </label>
+        <label className={claseEtiqueta}>
+          Año de vencimiento
+          <select name="anio" defaultValue={estado.anio ?? ""}
+            aria-invalid={Boolean(estado.errores.anio)} className={claseCampo(Boolean(estado.errores.anio))}>
+            <option value="">Todos</option>
+            {anios.map((anio) => <option key={anio} value={anio}>{anio}</option>)}
+          </select>
         </label>
         <label className={claseEtiqueta}>
           Semáforo
