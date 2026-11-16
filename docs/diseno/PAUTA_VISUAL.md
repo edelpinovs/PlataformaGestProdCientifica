@@ -200,7 +200,7 @@ Todo listado de registros sigue estas tres reglas (acuerdo D-009). El estado viv
 - **Pieza compartida:** no repitas el código. Las reglas puras están en `src/lib/listados/consulta.ts` (con su prueba) y las piezas de interfaz en `src/components/listado.tsx`. Cada módulo solo declara sus columnas, filtros y campos de búsqueda en `src/modules/<módulo>/`. Ejemplo completo: `src/app/catalogos/grados/page.tsx` y `src/modules/catalogos/grados-listado.ts`.
 ### Aspecto del listado (D-233)
 
-- **Barra:** búsqueda con icono y filtros en línea («Departamento Todos ▾») que aplican al elegir; sin JavaScript aparece «Buscar». «Limpiar» solo con filtros activos. Un filtro de pocas opciones se declara con `segmentado` en `<BarraListado>` (grupo Todos, Activos…); necesita `definicion` y sus opciones son enlaces que conservan el estado.
+- **Barra:** búsqueda con icono y filtros en línea («Departamento Todos ▾») que aplican al elegir con ratón o toque; con teclado (y sin JavaScript) se aplican con «Buscar», que siempre está visible: enviar en cada flecha atraparía al teclado (WCAG 3.2.2). «Limpiar» solo con filtros activos. Un filtro de pocas opciones se declara con `segmentado` en `<BarraListado>` (grupo Todos, Activos…); necesita `definicion` y sus opciones son enlaces que conservan el estado.
 - **Tabla:** encabezados en mayúsculas pequeñas, hover en la fila y acciones con icono (lápiz y papelera) con `aria-label` y `title`. Para personas, `<Avatar nombre=…>` de `@/components/ui` (solo iniciales, colores con nombre).
 - **Paginación:** «Mostrando a–b de N» y números de página con «…» (`paginasVisibles`); la actual se anuncia con `aria-current="page"`.
 - **Exportar:** no hay botón hasta que exista una exportación autorizada e implementada.

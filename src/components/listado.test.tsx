@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { analizarListado, paginar, type DefinicionListado } from "@/lib/listados/consulta";
 import { BarraListado, EncabezadoOrdenable, PaginacionListado } from "./listado";
+import { SelectorFiltro } from "./listado-cliente";
 
 const definicion: DefinicionListado = {
   columnas: ["nombre", "division"],
@@ -95,10 +96,11 @@ describe("componentes de listado", () => {
     expect(html).toContain('type="hidden" name="estatus" value="BAJA"');
   });
 
-  it("BarraListado solo ofrece Limpiar con búsqueda o filtros y el botón Buscar solo sin JavaScript", () => {
+  it("BarraListado solo ofrece Limpiar con búsqueda o filtros y siempre muestra el botón Buscar", () => {
     const sin = renderToStaticMarkup(<BarraListado {...contexto()} columnas={columnas} />);
     expect(sin).not.toContain("Limpiar");
-    expect(sin).toMatch(/<noscript>.*Buscar.*<\/noscript>/);
+    expect(sin).toMatch(/<button[^>]*type="submit"[^>]*>Buscar<\/button>/);
+    expect(sin).not.toContain("<noscript>");
     const con = renderToStaticMarkup(<BarraListado {...contexto({ q: "x" })} columnas={columnas} />);
     expect(con).toContain("Limpiar");
   });
@@ -125,5 +127,53 @@ describe("componentes de listado", () => {
     expect(renderToStaticMarkup(<PaginacionListado {...primera} paginacion={paginar(25, primera.consulta)} />)).toMatch(/<span aria-disabled="true"[^>]*>Anterior<\/span>/);
     const ultima = contexto({ pagina: "3" });
     expect(renderToStaticMarkup(<PaginacionListado {...ultima} paginacion={paginar(25, ultima.consulta)} />)).toMatch(/<span aria-disabled="true"[^>]*>Siguiente<\/span>/);
+  });
+});
+
+describe("SelectorFiltro: aplica al elegir sin atrapar al teclado", () => {
+  // Sin DOM: se llaman los manejadores del <select> con un evento mínimo. La marca de teclado vive
+  // en `dataset`, como en el navegador.
+  function selector(extra: Record<string, unknown> = {}) {
+    const requestSubmit = vi.fn();
+    const evento = { currentTarget: { dataset: {} as Record<string, string>, form: { requestSubmit } } };
+    const { props } = SelectorFiltro({ name: "estatus", ...extra }) as React.ReactElement<Record<string, (e: unknown) => void>>;
+    return { requestSubmit, evento, props };
+  }
+
+  it("aplica el cambio al elegir con ratón o toque", () => {
+    const { requestSubmit, evento, props } = selector();
+    props.onPointerDown(evento);
+    props.onChange(evento);
+    expect(requestSubmit).toHaveBeenCalledTimes(1);
+  });
+
+  it("con teclado no envía en cada cambio: las flechas recorren las opciones", () => {
+    const { requestSubmit, evento, props } = selector();
+    for (let i = 0; i < 3; i++) {
+      props.onKeyDown(evento);
+      props.onChange(evento);
+    }
+    expect(requestSubmit).not.toHaveBeenCalled();
+  });
+
+  it("vuelve a aplicar al elegir tras usar el ratón o al salir del campo", () => {
+    const { requestSubmit, evento, props } = selector();
+    props.onKeyDown(evento);
+    props.onPointerDown(evento);
+    props.onChange(evento);
+    expect(requestSubmit).toHaveBeenCalledTimes(1);
+
+    props.onKeyDown(evento);
+    props.onBlur(evento);
+    props.onChange(evento);
+    expect(requestSubmit).toHaveBeenCalledTimes(2);
+  });
+
+  it("sin formulario no falla y conserva los manejadores que reciba", () => {
+    const alCambiar = vi.fn();
+    const { evento, props } = selector({ onChange: alCambiar });
+    evento.currentTarget.form = null as never;
+    expect(() => props.onChange(evento)).not.toThrow();
+    expect(alCambiar).toHaveBeenCalledOnce();
   });
 });
