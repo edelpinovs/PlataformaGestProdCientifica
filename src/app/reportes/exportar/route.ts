@@ -1,15 +1,18 @@
 import { NextResponse } from "next/server";
 import { requireModulo } from "@/lib/auth/session";
 import type { ParametrosListado } from "@/lib/listados/consulta";
+import { cargarCompleto } from "@/modules/reportes/cargar-completo";
 import { cargarConvocatoria } from "@/modules/reportes/cargar-convocatoria";
 import { cargarMatriz } from "@/modules/reportes/cargar-matriz";
 import { cargarVigencias } from "@/modules/reportes/cargar-vigencias";
+import { analizarCompleto } from "@/modules/reportes/completo";
 import { analizarConvocatoria } from "@/modules/reportes/convocatoria";
 import {
   generarExcel,
   generarPdf,
   leerExportacion,
   nombreArchivo,
+  tablaCompleto,
   tablaConvocatoria,
   tablaMatriz,
   tablaVigencias,
@@ -31,7 +34,7 @@ function texto(mensaje: string, estado: number) {
   return new NextResponse(mensaje, { status: estado, headers: { "Content-Type": "text/plain; charset=utf-8" } });
 }
 
-async function armar(reporte: "vigencias" | "convocatoria" | "matriz", parametros: ParametrosListado): Promise<TablaExportable> {
+async function armar(reporte: "vigencias" | "convocatoria" | "matriz" | "completo", parametros: ParametrosListado): Promise<TablaExportable> {
   if (reporte === "vigencias") {
     const estado = analizarReporte(parametros);
     return tablaVigencias(await cargarVigencias(estado.tipos), estado);
@@ -40,6 +43,14 @@ async function armar(reporte: "vigencias" | "convocatoria" | "matriz", parametro
     const estado = analizarConvocatoria(parametros);
     const carga = await cargarConvocatoria();
     return tablaConvocatoria(carga.dictamenes, carga.participaciones, carga.historialSnii, estado);
+  }
+  if (reporte === "completo") {
+    const carga = await cargarCompleto();
+    const estado = analizarCompleto(parametros, {
+      departamentos: carga.departamentos.map((fila) => fila.id),
+      programas: carga.programas.map((fila) => fila.id),
+    });
+    return tablaCompleto(carga.filas, estado);
   }
   const carga = await cargarMatriz();
   const estado = analizarMatriz(parametros, {

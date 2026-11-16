@@ -3,6 +3,14 @@ import { z } from "zod";
 
 import type { ParametrosListado } from "@/lib/listados/consulta";
 import {
+  COLUMNAS_COMPLETO,
+  consultarCompleto,
+  ETIQUETA_COLUMNA_COMPLETO,
+  textoCompleto,
+  type EstadoCompleto,
+  type FilaCompleto,
+} from "./completo";
+import {
   COLUMNAS_CONVOCATORIA,
   consultarConvocatoria,
   ETIQUETA_COLUMNA_CONVOCATORIA,
@@ -32,7 +40,7 @@ import {
 // RF-030: el reporte que la persona armó (columnas, filtros y orden) se descarga
 // completo, no solo la página visible. El PDF se escribe aquí, sin librería nueva.
 
-export const REPORTES_EXPORTABLES = ["vigencias", "convocatoria", "matriz"] as const;
+export const REPORTES_EXPORTABLES = ["vigencias", "convocatoria", "matriz", "completo"] as const;
 export type ReporteExportable = (typeof REPORTES_EXPORTABLES)[number];
 
 export const FORMATOS_EXPORTABLES = ["xlsx", "pdf"] as const;
@@ -49,6 +57,7 @@ const NOMBRE_ARCHIVO: Record<ReporteExportable, string> = {
   vigencias: "vigencias",
   convocatoria: "convocatoria-anual",
   matriz: "matriz-acreditacion",
+  completo: "reporte-completo",
 };
 
 export function nombreArchivo(reporte: ReporteExportable, formato: FormatoExportable) {
@@ -99,6 +108,17 @@ export function tablaConvocatoria(
     hoja: "Convocatoria",
     columnas: columnas.map((columna) => ETIQUETA_COLUMNA_CONVOCATORIA[columna]),
     filas: filas.map((fila) => columnas.map((columna) => textoConvocatoria(fila, columna))),
+  };
+}
+
+export function tablaCompleto(filas: FilaCompleto[], estado: EstadoCompleto): TablaExportable {
+  const columnas = COLUMNAS_COMPLETO.filter((columna) => estado.columnas.includes(columna));
+  const { filas: todas } = consultarCompleto(filas, estado, true);
+  return {
+    titulo: "Reporte completo",
+    hoja: "Completo",
+    columnas: columnas.map((columna) => ETIQUETA_COLUMNA_COMPLETO[columna]),
+    filas: todas.map((fila) => columnas.map((columna) => textoCompleto(fila, columna))),
   };
 }
 

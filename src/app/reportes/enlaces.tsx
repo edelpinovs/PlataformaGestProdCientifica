@@ -4,6 +4,7 @@ const ENLACES = [
   { id: "vigencias", href: "/reportes", texto: "Vigencias" },
   { id: "convocatoria", href: "/reportes/convocatoria", texto: "Convocatoria anual" },
   { id: "matriz", href: "/reportes/matriz", texto: "Matriz de acreditación" },
+  { id: "completo", href: "/reportes/completo", texto: "Reporte completo" },
 ] as const;
 
 export function EnlacesReportes({ actual }: { actual: (typeof ENLACES)[number]["id"] }) {
