@@ -15,6 +15,9 @@ import {
 // Piezas de interfaz de los listados (regla D-009 y pauta visual). Se usan con las funciones
 // puras de src/lib/listados/consulta.ts; ver el ejemplo en src/app/catalogos/grados/.
 
+/** La lista desplegable nativa no hereda el fondo transparente del selector: sin esto se ve clara en el tema oscuro. */
+const claseOpcion = "bg-superficie text-texto";
+
 type Contexto = { base: string; definicion: DefinicionListado; consulta: ConsultaListado };
 
 export type FiltroUi = {
@@ -82,8 +85,8 @@ export function BarraListado({ base, definicion, consulta, filtros = [], segment
                 {filtro.etiqueta}
                 <SelectorFiltro name={filtro.clave} defaultValue={consulta.filtros[filtro.clave] ?? ""}
                   aria-invalid={Boolean(errores[filtro.clave])} className={claseSelector(filtro.clave)}>
-                  <option value="">Todos</option>
-                  {filtro.opciones.map((opcion) => <option key={opcion.valor} value={opcion.valor}>{opcion.texto}</option>)}
+                  <option value="" className={claseOpcion}>Todos</option>
+                  {filtro.opciones.map((opcion) => <option className={claseOpcion} key={opcion.valor} value={opcion.valor}>{opcion.texto}</option>)}
                 </SelectorFiltro>
               </label>
             )
