@@ -9,49 +9,31 @@ import {
   EtiquetaEstado,
 } from "@/components/ui";
 import {
-  RESULTADOS_PRODEP,
-  TIPOS_SOLICITUD_PRODEP,
+  ETIQUETAS_RESULTADO_PRODEP,
+  ETIQUETAS_TIPO_SOLICITUD_PRODEP,
 } from "@/modules/reconocimientos/prodep";
 import { eliminarReconocimientoProdep, type EstadoProdep } from "./actions";
-import { FormularioEdicionProdep } from "./formulario-edicion";
-import type {
-  HistorialConProfesor,
-  ProfesorProdep,
-} from "./formulario-campos";
+import { FormularioEdicionProdep, type ReconocimientoProdepEdicion } from "./formulario-edicion";
+import type { ProfesorProdep } from "./formulario-campos";
 
-type ReconocimientoListado = {
-  id: number;
-  tipoSolicitud: (typeof TIPOS_SOLICITUD_PRODEP)[number];
-  resultado: (typeof RESULTADOS_PRODEP)[number];
-  inicio: Date;
-  fin: Date;
-  convocatoriaId: number | null;
-  profesor: ProfesorProdep;
-};
+function mostrarFecha(fecha: Date) {
+  return fecha.toISOString().slice(0, 10);
+}
 
-const ETIQUETAS_TIPO: Record<ReconocimientoListado["tipoSolicitud"], string> = {
-  PRIMER_RECONOCIMIENTO: "Primer reconocimiento",
-  RENOVACION: "Renovación",
-};
-
-const ETIQUETAS_RESULTADO: Record<ReconocimientoListado["resultado"], string> = {
-  APROBADO: "Aprobado",
-  NO_APROBADO: "No aprobado",
-  EN_RECONSIDERACION: "En reconsideración",
-};
-
-export function FilaProdep({ reconocimiento, profesores, historial }: {
-  reconocimiento: ReconocimientoListado;
+export function FilaProdep({ reconocimiento, profesores }: {
+  reconocimiento: ReconocimientoProdepEdicion;
   profesores: ProfesorProdep[];
-  historial: HistorialConProfesor[];
 }) {
   const [modo, setModo] = useState<"ver" | "editar" | "eliminar">("ver");
   const persona = `${reconocimiento.profesor.nombres} ${reconocimiento.profesor.apellidos}`;
 
   if (modo === "editar") {
     return (
-      <FormularioEdicionProdep reconocimiento={reconocimiento} profesores={profesores} historial={historial}
-        cerrar={() => setModo("ver")} />
+      <tr className="border-b border-linea">
+        <td colSpan={6} className="py-3">
+          <FormularioEdicionProdep reconocimiento={reconocimiento} profesores={profesores} cerrar={() => setModo("ver")} />
+        </td>
+      </tr>
     );
   }
   if (modo === "eliminar") {
@@ -62,45 +44,50 @@ export function FilaProdep({ reconocimiento, profesores, historial }: {
     : reconocimiento.resultado === "NO_APROBADO" ? "error" : "exito";
 
   return (
-    <tr>
-      <td className="max-w-0 break-words">
-        <p className="text-sm font-medium">{persona}</p>
-        <p className="text-xs text-texto-3">{reconocimiento.profesor.codigo}</p>
-        <p className="text-xs text-texto-3 sm:hidden">
-          {ETIQUETAS_TIPO[reconocimiento.tipoSolicitud]} · {reconocimiento.inicio.toISOString().slice(0, 10)} al{" "}
-          {reconocimiento.fin.toISOString().slice(0, 10)} · {ETIQUETAS_RESULTADO[reconocimiento.resultado]}
-        </p>
+    <tr className="grid grid-cols-2 gap-x-3 border-b border-linea last:border-0 sm:table-row">
+      <td className="min-w-0 break-words py-3 pr-2 text-sm sm:table-cell sm:pr-3">
+        <span className="mb-1 block text-xs text-texto-3 sm:hidden">Profesor</span>
+        <span className="font-medium">{persona}</span>
+        <span className="block text-xs text-texto-3">{reconocimiento.profesor.codigo}</span>
       </td>
-      <td className="hidden break-words text-sm sm:table-cell">{ETIQUETAS_TIPO[reconocimiento.tipoSolicitud]}</td>
-      <td className="hidden text-sm sm:table-cell">{reconocimiento.inicio.toISOString().slice(0, 10)}</td>
-      <td className="hidden text-sm sm:table-cell">{reconocimiento.fin.toISOString().slice(0, 10)}</td>
-      <td className="hidden sm:table-cell">
-        <EtiquetaEstado tipo={tipoEstado}>{ETIQUETAS_RESULTADO[reconocimiento.resultado]}</EtiquetaEstado>
+      <td className="min-w-0 break-words py-3 pr-2 text-sm sm:table-cell sm:pr-3">
+        <span className="mb-1 block text-xs text-texto-3 sm:hidden">Tipo de solicitud</span>
+        {ETIQUETAS_TIPO_SOLICITUD_PRODEP[reconocimiento.tipoSolicitud]}
       </td>
-      <td className="text-right">
-        {reconocimiento.convocatoriaId === null ? (
-          <div className="flex flex-wrap justify-end gap-1">
-            <button type="button" onClick={() => setModo("editar")} className={claseAccionFila()}
-              aria-label={`Editar reconocimiento PRODEP de ${persona}`}>Editar</button>
-            <button type="button" onClick={() => setModo("eliminar")} className={claseAccionFila(true)}
-              aria-label={`Eliminar reconocimiento PRODEP de ${persona}`}>Eliminar</button>
-          </div>
-        ) : <p className="text-xs text-texto-3">Resultado oficial</p>}
+      <td className="min-w-0 py-3 pr-2 text-sm sm:table-cell sm:pr-3">
+        <span className="mb-1 block text-xs text-texto-3 sm:hidden">Resultado</span>
+        <EtiquetaEstado tipo={tipoEstado}>{ETIQUETAS_RESULTADO_PRODEP[reconocimiento.resultado]}</EtiquetaEstado>
+      </td>
+      <td className="min-w-0 py-3 pr-2 text-sm sm:table-cell sm:pr-3">
+        <span className="mb-1 block text-xs text-texto-3 sm:hidden">Inicio</span>
+        {mostrarFecha(reconocimiento.inicio)}
+      </td>
+      <td className="min-w-0 py-3 pr-2 text-sm sm:table-cell sm:pr-3">
+        <span className="mb-1 block text-xs text-texto-3 sm:hidden">Fin</span>
+        {mostrarFecha(reconocimiento.fin)}
+      </td>
+      <td className="col-span-2 flex gap-1 py-3 sm:table-cell sm:text-right">
+        {reconocimiento.convocatoriaId === null && (
+          <button type="button" onClick={() => setModo("editar")} className={claseAccionFila()}
+            aria-label={`Editar reconocimiento PRODEP de ${persona}`}>Editar</button>
+        )}
+        <button type="button" onClick={() => setModo("eliminar")} className={claseAccionFila(true)}
+          aria-label={`Eliminar reconocimiento PRODEP de ${persona}`}>Eliminar</button>
       </td>
     </tr>
   );
 }
 
 function ConfirmarEliminacion({ reconocimiento, cerrar }: {
-  reconocimiento: ReconocimientoListado;
+  reconocimiento: ReconocimientoProdepEdicion;
   cerrar: () => void;
 }) {
   const [estado, accion, eliminando] = useActionState<EstadoProdep, FormData>(eliminarReconocimientoProdep, {});
   const persona = `${reconocimiento.profesor.nombres} ${reconocimiento.profesor.apellidos}`;
 
   return (
-    <tr>
-      <td colSpan={6} className="p-3">
+    <tr className="border-b border-linea">
+      <td colSpan={6} className="py-3">
         <form action={accion} className="flex flex-col gap-3 rounded-xl bg-peligro-suave p-4">
           <input type="hidden" name="id" value={reconocimiento.id} />
           {estado.error ? <Aviso tipo="error">{estado.error}</Aviso> : (

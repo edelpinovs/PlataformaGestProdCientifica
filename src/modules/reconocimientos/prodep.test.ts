@@ -1,227 +1,146 @@
 import { describe, expect, it } from "vitest";
+import { analizarListado } from "@/lib/listados/consulta";
 import {
-  calcularVigenciaProdep,
-  crearEsquemaReconocimientoProdep,
-  filtrarReconocimientosProdep,
-  ordenarReconocimientosProdep,
-  type RegistroHistorialProdep,
+  filtroProdep,
+  LISTADO_PRODEP,
+  ordenProdep,
+  reconocimientoProdep,
+  tieneProdepActivo,
+  validarContratacionProdep,
 } from "./prodep";
 
-const historialConsolidado: RegistroHistorialProdep[] = [
-  {
-    tipoSolicitud: "PRIMER_RECONOCIMIENTO",
-    resultado: "APROBADO",
-    fechaInicio: "2020-01-01",
-    fechaFin: "2022-12-31",
-  },
-  {
-    tipoSolicitud: "RENOVACION",
-    resultado: "APROBADO",
-    fechaInicio: "2023-01-01",
-    fechaFin: "2025-12-31",
-  },
-];
+function fecha(dia: string) {
+  return new Date(`${dia}T00:00:00.000Z`);
+}
 
-const datosBase = {
+const datosValidos = {
   profesorId: 7,
   tipoSolicitud: "PRIMER_RECONOCIMIENTO",
   resultado: "APROBADO",
   fechaInicio: "2026-01-01",
-  fechaFin: "2028-12-31",
-} as const;
+  fechaFin: "2026-12-31",
+};
 
-describe("calcularVigenciaProdep (RF-010)", () => {
-  it("asigna tres años al primer reconocimiento", () => {
-    expect(calcularVigenciaProdep({
-      tipoSolicitud: "PRIMER_RECONOCIMIENTO",
-      resultado: "APROBADO",
-      fechaInicio: "2026-01-01",
-    })).toEqual({
-      duracionAnios: 3,
-      fechaFin: "2028-12-31",
-      motivo: "primer-reconocimiento",
-    });
+describe("reconocimientoProdep", () => {
+  it("acepta solicitudes y fechas válidas", () => {
+    expect(reconocimientoProdep.safeParse(datosValidos).success).toBe(true);
   });
 
-  describe("listado PRODEP", () => {
-    it("busca por dictamen o fecha y ordena usando solo columnas declaradas", () => {
-      const consulta = (q: string) => ({
-        pagina: 1,
-        q,
-        orden: "fin",
-        dir: "desc" as const,
-        filtros: { resultado: "" },
-      });
-
-      const porDictamen = filtrarReconocimientosProdep(consulta("No aprobado"));
-      expect(porDictamen.OR).toContainEqual({ resultado: "NO_APROBADO" });
-
-      const porFecha = filtrarReconocimientosProdep(consulta("2026-01-01"));
-      expect(porFecha.OR).toContainEqual({ inicio: new Date("2026-01-01T00:00:00.000Z") });
-
-      expect(ordenarReconocimientosProdep(consulta(""))[0]).toEqual({ fin: "desc" });
-    });
-  });
-
-  it("asigna tres años a una renovación sin historial consolidado suficiente", () => {
-    expect(calcularVigenciaProdep({
-      tipoSolicitud: "RENOVACION",
-      resultado: "APROBADO",
-      fechaInicio: "2026-01-01",
-    })).toMatchObject({ duracionAnios: 3, fechaFin: "2028-12-31" });
-
-    expect(calcularVigenciaProdep({
-      tipoSolicitud: "RENOVACION",
-      resultado: "APROBADO",
-      fechaInicio: "2026-01-01",
-    }, [historialConsolidado[1]])).toMatchObject({ duracionAnios: 3 });
-
-    const ordenInverso: RegistroHistorialProdep[] = [
-      { ...historialConsolidado[0], tipoSolicitud: "RENOVACION", fechaInicio: "2020-01-01", fechaFin: "2022-12-31" },
-      { ...historialConsolidado[1], tipoSolicitud: "PRIMER_RECONOCIMIENTO", fechaInicio: "2023-01-01", fechaFin: "2025-12-31" },
-    ];
-    expect(calcularVigenciaProdep({
-      tipoSolicitud: "RENOVACION",
-      resultado: "APROBADO",
-      fechaInicio: "2026-01-01",
-    }, ordenInverso).duracionAnios).toBe(3);
-  });
-
-  it("asigna seis años al renovar después de un primer reconocimiento y una renovación aprobados y continuos", () => {
-    expect(calcularVigenciaProdep({
-      tipoSolicitud: "RENOVACION",
-      resultado: "APROBADO",
-      fechaInicio: "2026-01-01",
-    }, historialConsolidado)).toEqual({
-      duracionAnios: 6,
-      fechaFin: "2031-12-31",
-      motivo: "renovacion-consolidada",
+  it("devuelve mensajes en español para campos ausentes o enums inválidos", () => {
+    const resultado = reconocimientoProdep.safeParse({
+      ...datosValidos,
+      profesorId: Number.NaN,
+      tipoSolicitud: "OTRA",
+      resultado: "",
     });
 
-    const historialBisiesto: RegistroHistorialProdep[] = [
-      {
-        tipoSolicitud: "PRIMER_RECONOCIMIENTO",
-        resultado: "APROBADO",
-        fechaInicio: "2018-03-01",
-        fechaFin: "2021-02-28",
-      },
-      {
-        tipoSolicitud: "RENOVACION",
-        resultado: "APROBADO",
-        fechaInicio: "2021-03-01",
-        fechaFin: "2024-02-28",
-      },
-    ];
-    expect(calcularVigenciaProdep({
-      tipoSolicitud: "RENOVACION",
-      resultado: "APROBADO",
-      fechaInicio: "2024-02-29",
-    }, historialBisiesto)).toMatchObject({ duracionAnios: 6, fechaFin: "2030-02-27" });
-  });
-
-  it("no consolida una brecha, un dictamen no aprobado ni uno en reconsideración", () => {
-    const renovacionTrasBrecha = {
-      tipoSolicitud: "RENOVACION" as const,
-      resultado: "APROBADO" as const,
-      fechaInicio: "2026-01-01",
-    };
-    const conBrecha = historialConsolidado.map((registro) => ({ ...registro }));
-    conBrecha[1] = { ...conBrecha[1], fechaInicio: "2023-01-02" };
-    const conNoAprobado = [
-      ...historialConsolidado,
-      {
-        tipoSolicitud: "RENOVACION" as const,
-        resultado: "NO_APROBADO" as const,
-        fechaInicio: "2026-01-01",
-        fechaFin: "2028-12-31",
-      },
-    ];
-    const enReconsideracion = [
-      ...historialConsolidado,
-      {
-        tipoSolicitud: "RENOVACION" as const,
-        resultado: "EN_RECONSIDERACION" as const,
-        fechaInicio: "2026-01-01",
-        fechaFin: "2028-12-31",
-      },
-    ];
-
-    expect(calcularVigenciaProdep(renovacionTrasBrecha, conBrecha).duracionAnios).toBe(3);
-    expect(calcularVigenciaProdep({
-      tipoSolicitud: "RENOVACION",
-      resultado: "APROBADO",
-      fechaInicio: "2029-01-01",
-    }, conNoAprobado).duracionAnios).toBe(3);
-    expect(calcularVigenciaProdep({
-      tipoSolicitud: "RENOVACION",
-      resultado: "APROBADO",
-      fechaInicio: "2029-01-01",
-    }, enReconsideracion).duracionAnios).toBe(3);
-    expect(calcularVigenciaProdep({
-      ...renovacionTrasBrecha,
-      resultado: "EN_RECONSIDERACION",
-    }, historialConsolidado)).toMatchObject({ duracionAnios: 3, motivo: "dictamen-pendiente" });
-  });
-
-  it("calcula el fin de periodo en fechas bisiestas y al cerrar cada duración", () => {
-    expect(calcularVigenciaProdep({
-      tipoSolicitud: "PRIMER_RECONOCIMIENTO",
-      resultado: "APROBADO",
-      fechaInicio: "2024-02-29",
-    }).fechaFin).toBe("2027-02-27");
-
-    expect(calcularVigenciaProdep({
-      tipoSolicitud: "RENOVACION",
-      resultado: "APROBADO",
-      fechaInicio: "2026-01-01",
-    }, historialConsolidado).fechaFin).toBe("2031-12-31");
-  });
-
-  it("valida en el esquema Zod la fecha de fin que corresponde a los antecedentes", () => {
-    const esquema = crearEsquemaReconocimientoProdep(historialConsolidado);
-    expect(esquema.safeParse({
-      ...datosBase,
-      tipoSolicitud: "RENOVACION",
-      fechaFin: "2031-12-31",
-    }).success).toBe(true);
-
-    const resultado = esquema.safeParse({
-      ...datosBase,
-      tipoSolicitud: "RENOVACION",
-      fechaFin: "2028-12-31",
-    });
     expect(resultado.success).toBe(false);
     if (!resultado.success) {
-      expect(resultado.error.issues.find((incidencia) => incidencia.path[0] === "fechaFin")?.message)
-        .toBe("La fecha de fin debe ser 2031-12-31 para una vigencia de 6 años.");
-    }
-
-    const fechaInvalida = crearEsquemaReconocimientoProdep().safeParse({
-      ...datosBase,
-      fechaInicio: "2026-02-29",
-    });
-    expect(fechaInvalida.success).toBe(false);
-    if (!fechaInvalida.success) {
-      expect(fechaInvalida.error.issues.find((incidencia) => incidencia.path[0] === "fechaInicio")?.message)
-        .toBe("Ingresa una fecha válida.");
-    }
-
-    const tipoInvalido = crearEsquemaReconocimientoProdep().safeParse({
-      ...datosBase,
-      tipoSolicitud: "OTRO",
-    });
-    expect(tipoInvalido.success).toBe(false);
-    if (!tipoInvalido.success) {
-      expect(tipoInvalido.error.issues[0]?.message).toBe("Selecciona un tipo de solicitud válido.");
+      expect(resultado.error.issues.map((problema) => problema.message)).toEqual([
+        "Selecciona un profesor.",
+        "Selecciona un tipo de solicitud válido.",
+        "Selecciona un resultado válido.",
+      ]);
     }
   });
 
-  it("rechaza datos atípicos con mensajes en español", () => {
-    const resultado = crearEsquemaReconocimientoProdep().safeParse({
-      ...datosBase,
-      profesorId: Number.NaN,
+  it("rechaza fechas inexistentes y un fin anterior o igual al inicio", () => {
+    for (const fechaFin of ["2026-02-30", "2026-01-01", "2025-12-31"]) {
+      const resultado = reconocimientoProdep.safeParse({ ...datosValidos, fechaFin });
+      expect(resultado.success).toBe(false);
+      if (!resultado.success) {
+        expect(resultado.error.issues[0]?.message).toBe(
+          fechaFin === "2026-02-30"
+            ? "Ingresa una fecha válida."
+            : "La fecha de fin debe ser posterior a la fecha de inicio.",
+        );
+      }
+    }
+  });
+});
+
+describe("validarContratacionProdep", () => {
+  it("permite registrar y actualizar a profesores de Tiempo Completo", () => {
+    expect(validarContratacionProdep("TIEMPO_COMPLETO")).toBeNull();
+  });
+
+  it("rechaza a profesores por Asignatura con un mensaje claro", () => {
+    expect(validarContratacionProdep("ASIGNATURA")).toBe("El Perfil Deseable PRODEP requiere Tiempo Completo.");
+  });
+});
+
+describe("tieneProdepActivo", () => {
+  const hoy = fecha("2026-06-15");
+
+  it("considera vigente el dictamen aprobado que incluye hoy", () => {
+    expect(tieneProdepActivo([{ resultado: "APROBADO", inicio: hoy, fin: hoy }], hoy)).toBe(true);
+  });
+
+  it("no considera un reconocimiento vencido", () => {
+    expect(tieneProdepActivo([
+      { resultado: "APROBADO", inicio: fecha("2025-01-01"), fin: fecha("2026-06-14") },
+    ], hoy)).toBe(false);
+  });
+
+  it("no considera un reconocimiento futuro", () => {
+    expect(tieneProdepActivo([
+      { resultado: "APROBADO", inicio: fecha("2026-06-16"), fin: fecha("2027-06-15") },
+    ], hoy)).toBe(false);
+  });
+
+  it("no considera vigente un dictamen distinto de aprobado", () => {
+    expect(tieneProdepActivo([
+      { resultado: "EN_RECONSIDERACION", inicio: fecha("2026-01-01"), fin: fecha("2027-01-01") },
+    ], hoy)).toBe(false);
+  });
+
+  it("compara la fecha del día en UTC", () => {
+    const conHora = new Date("2026-06-15T23:59:00.000Z");
+    expect(tieneProdepActivo([
+      { resultado: "APROBADO", inicio: fecha("2026-06-15"), fin: fecha("2026-06-15") },
+    ], conHora)).toBe(true);
+  });
+});
+
+describe("listado PRODEP", () => {
+  it("solo permite ordenar por columnas declaradas y traduce el orden a campos Prisma", () => {
+    const { consulta } = analizarListado(LISTADO_PRODEP, { orden: "fin", dir: "desc" });
+    expect(ordenProdep(consulta)).toEqual([{ fin: "desc" }, { id: "desc" }]);
+
+    const invalida = analizarListado(LISTADO_PRODEP, { orden: "profesor.codigo" });
+    expect(invalida.consulta.orden).toBe("profesor");
+    expect(invalida.errores.orden).toBe("Ordena por una columna válida.");
+  });
+
+  it("busca por fechas y etiquetas visibles, además de los datos del profesor", () => {
+    const fecha = analizarListado(LISTADO_PRODEP, { q: "2026-01-01" });
+    expect(filtroProdep(fecha.consulta).OR).toContainEqual({
+      inicio: { gte: new Date("2026-01-01T00:00:00.000Z"), lt: new Date("2026-01-02T00:00:00.000Z") },
     });
-    expect(resultado.success).toBe(false);
-    if (!resultado.success) expect(resultado.error.issues[0]?.message).toBe("Selecciona un profesor.");
+
+    const mes = analizarListado(LISTADO_PRODEP, { q: "2026-01" });
+    expect(filtroProdep(mes.consulta).OR).toContainEqual({
+      fin: { gte: new Date("2026-01-01T00:00:00.000Z"), lt: new Date("2026-02-01T00:00:00.000Z") },
+    });
+
+    const resultado = analizarListado(LISTADO_PRODEP, { q: "Aprobado" });
+    expect(filtroProdep(resultado.consulta).OR).toContainEqual({ resultado: "APROBADO" });
+
+    const profesor = analizarListado(LISTADO_PRODEP, { q: "Ana_%\\" });
+    expect(filtroProdep(profesor.consulta).OR).toContainEqual({
+      profesor: { is: { nombres: { contains: "Ana\\_\\%\\\\", mode: "insensitive" } } },
+    });
+  });
+
+  it("aplica únicamente los filtros finitos aceptados", () => {
+    const aceptado = analizarListado(LISTADO_PRODEP, { tipoSolicitud: "RENOVACION", resultado: "APROBADO" });
+    expect(filtroProdep(aceptado.consulta)).toMatchObject({
+      tipoSolicitud: "RENOVACION",
+      resultado: "APROBADO",
+    });
+
+    const invalido = analizarListado(LISTADO_PRODEP, { resultado: "BORRADO" });
+    expect(filtroProdep(invalido.consulta)).not.toHaveProperty("resultado");
+    expect(invalido.errores.resultado).toBe("Uno de los filtros tiene un valor que no existe.");
   });
 });

@@ -6,16 +6,22 @@ import { Prisma } from "@/generated/prisma/client";
 import { requireModulo } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import {
+  calcularVigenciaProdep,
   camposReconocimientoProdep,
   crearEsquemaReconocimientoProdep,
+  reconocimientoProdep,
+  textoVigenciaProdep,
+  validarContratacionProdep,
   type ReconocimientoProdep,
   type RegistroHistorialProdep,
 } from "@/modules/reconocimientos/prodep";
-import { hayTraslape } from "@/modules/reconocimientos/vigencia";
+import { z } from "zod";
+
+type CampoProdep = "profesorId" | "tipoSolicitud" | "resultado" | "fechaInicio" | "fechaFin";
 
 export type EstadoProdep = {
   error?: string;
-  campo?: "profesorId" | "tipoSolicitud" | "resultado" | "fechaInicio" | "fechaFin";
+  campo?: CampoProdep;
   valores?: {
     profesorId: string;
     tipoSolicitud: string;
@@ -23,7 +29,7 @@ export type EstadoProdep = {
     fechaInicio: string;
     fechaFin: string;
   };
-  registrado?: string;
+  registrado?: boolean;
 };
 
 function leerValores(formData: FormData) {
@@ -41,37 +47,45 @@ function leerId(formData: FormData) {
   return Number.isInteger(id) && id > 0 ? id : null;
 }
 
-function valorCampo(valor: PropertyKey | undefined): EstadoProdep["campo"] {
-  if (valor === "profesorId" || valor === "tipoSolicitud" || valor === "resultado"
-    || valor === "fechaInicio" || valor === "fechaFin") return valor;
-  return undefined;
-}
-
-function errorValidacion(
-  datos: ReturnType<typeof leerValores>,
-  mensaje: string,
-  campo?: EstadoProdep["campo"],
-): EstadoProdep {
+function errorValidacion(datos: ReturnType<typeof leerValores>, mensaje: string, campo?: CampoProdep): EstadoProdep {
   return {
     error: mensaje,
     campo,
-    valores: {
-      ...datos,
-      profesorId: Number.isFinite(datos.profesorId) ? String(datos.profesorId) : "",
-    },
+    valores: { ...datos, profesorId: Number.isFinite(datos.profesorId) ? String(datos.profesorId) : "" },
   };
 }
 
-function obtenerHistorial(
-  historial: {
-    id: number;
-    tipoSolicitud: RegistroHistorialProdep["tipoSolicitud"];
-    resultado: RegistroHistorialProdep["resultado"];
-    inicio: Date;
-    fin: Date;
-  }[],
-): RegistroHistorialProdep[] {
-  return historial.map((registro) => ({
+function campoDe(problema: PropertyKey | undefined): CampoProdep | undefined {
+  if (problema === "profesorId" || problema === "tipoSolicitud" || problema === "resultado"
+    || problema === "fechaInicio" || problema === "fechaFin") return problema;
+  return undefined;
+}
+
+function validar(formData: FormData) {
+  const valores = leerValores(formData);
+  const datos = reconocimientoProdep.safeParse(valores);
+  if (!datos.success) {
+    const problema = datos.error.issues[0];
+    return {
+      error: errorValidacion(
+        valores,
+        problema?.message ?? "Revisa los datos ingresados.",
+        campoDe(problema?.path[0]),
+      ),
+    };
+  }
+  return { datos: datos.data, valores };
+}
+
+// Historial del profesor que decide si una renovación consolida los seis años. Al editar, el registro
+// que se edita no cuenta como antecedente de sí mismo.
+async function historialDelProfesor(profesorId: number, excluirId?: number): Promise<RegistroHistorialProdep[]> {
+  const registros = await prisma.reconocimientoProdep.findMany({
+    where: { profesorId, ...(excluirId === undefined ? {} : { id: { not: excluirId } }) },
+    select: { id: true, tipoSolicitud: true, resultado: true, inicio: true, fin: true },
+    orderBy: [{ inicio: "asc" }, { id: "asc" }],
+  });
+  return registros.map((registro) => ({
     id: registro.id,
     tipoSolicitud: registro.tipoSolicitud,
     resultado: registro.resultado,
@@ -80,105 +94,78 @@ function obtenerHistorial(
   }));
 }
 
-async function validarYGuardar(datos: ReconocimientoProdep, id?: number) {
+async function guardarProdep(datos: ReconocimientoProdep, id?: number) {
   const profesor = await prisma.profesor.findUnique({
     where: { id: datos.profesorId },
-    select: { id: true },
+    select: { id: true, tipoContratacion: true },
   });
-  if (!profesor) return { error: "El profesor seleccionado ya no existe." };
+  if (!profesor) return { error: "El profesor seleccionado ya no existe.", campo: "profesorId" as const };
 
-  const historialRegistros = await prisma.reconocimientoProdep.findMany({
-    where: { profesorId: datos.profesorId, ...(id === undefined ? {} : { id: { not: id } }) },
-    select: { id: true, tipoSolicitud: true, resultado: true, inicio: true, fin: true },
-    orderBy: [{ inicio: "asc" }, { id: "asc" }],
-  });
-  const historial = obtenerHistorial(historialRegistros);
-  const validacion = crearEsquemaReconocimientoProdep(historial).safeParse(datos);
-  if (!validacion.success) {
-    const problema = validacion.error.issues[0];
+  const errorContratacion = validarContratacionProdep(profesor.tipoContratacion);
+  if (errorContratacion) {
+    return { error: errorContratacion, campo: "profesorId" as const };
+  }
+
+  // RF-010: la fecha de fin la fija la regla de vigencia (3 o 6 años), no la persona.
+  const historial = await historialDelProfesor(datos.profesorId, id);
+  const vigencia = crearEsquemaReconocimientoProdep(historial).safeParse(datos);
+  if (!vigencia.success) {
+    const problema = vigencia.error.issues[0];
     return {
       error: problema?.message ?? "Revisa los datos ingresados.",
-      campo: valorCampo(problema?.path[0]),
+      campo: campoDe(problema?.path[0]),
     };
   }
 
-  const inicio = new Date(`${datos.fechaInicio}T00:00:00.000Z`);
-  const fin = new Date(`${datos.fechaFin}T00:00:00.000Z`);
-  const resultado = datos.resultado;
-  if (resultado !== "NO_APROBADO") {
-    const periodos = historialRegistros
-      .filter((registro) => registro.resultado !== "NO_APROBADO")
-      .map((registro) => ({ id: registro.id, inicio: registro.inicio, fin: registro.fin }));
-    const choque = hayTraslape(periodos, { inicio, fin }, id);
-    if (choque) {
-      return {
-        error: "Ese periodo se traslapa con otro reconocimiento PRODEP del mismo profesor. Ajusta las fechas.",
-        campo: "fechaInicio" as const,
-      };
-    }
-  }
-
-  const datosGuardar = {
+  const data = {
     profesorId: datos.profesorId,
     tipoSolicitud: datos.tipoSolicitud,
     resultado: datos.resultado,
-    inicio,
-    fin,
+    inicio: new Date(`${datos.fechaInicio}T00:00:00.000Z`),
+    fin: new Date(`${datos.fechaFin}T00:00:00.000Z`),
   };
 
   if (id === undefined) {
-    await prisma.reconocimientoProdep.create({ data: datosGuardar });
-  } else {
-    const actualizacion = await prisma.reconocimientoProdep.updateMany({
-      where: { id, convocatoriaId: null },
-      data: datosGuardar,
-    });
-    if (actualizacion.count === 0) {
-      const reconocimiento = await prisma.reconocimientoProdep.findUnique({
-        where: { id },
-        select: { id: true },
-      });
-      return {
-        error: reconocimiento
-          ? "No se puede editar: este reconocimiento forma parte de un resultado oficial de convocatoria."
-          : "Ese reconocimiento ya no existe. Recarga la página.",
-      };
-    }
+    await prisma.reconocimientoProdep.create({ data });
+    return { error: null };
   }
 
-  return { error: null };
-}
-
-function validarCampos(datos: ReturnType<typeof leerValores>) {
-  const validacion = camposReconocimientoProdep.safeParse(datos);
-  if (!validacion.success) {
-    const problema = validacion.error.issues[0];
+  const actualizacion = await prisma.reconocimientoProdep.updateMany({
+    where: { id, convocatoriaId: null },
+    data,
+  });
+  if (actualizacion.count === 0) {
+    const reconocimiento = await prisma.reconocimientoProdep.findUnique({
+      where: { id },
+      select: { id: true },
+    });
     return {
-      error: errorValidacion(datos, problema?.message ?? "Revisa los datos ingresados.", valorCampo(problema?.path[0])),
+      error: reconocimiento
+        ? "No se puede editar: este reconocimiento forma parte de un resultado oficial de convocatoria."
+        : "Ese reconocimiento ya no existe. Recarga la página.",
     };
   }
-  return { datos: validacion.data, valores: datos };
+  return { error: null };
 }
 
 export async function registrarReconocimientoProdep(_: EstadoProdep, formData: FormData): Promise<EstadoProdep> {
   await requireModulo("reconocimientos");
 
-  const valores = leerValores(formData);
-  const validacion = validarCampos(valores);
+  const validacion = validar(formData);
   if (validacion.error) return validacion.error;
 
   try {
-    const guardado = await validarYGuardar(validacion.datos);
-    if (guardado.error) return errorValidacion(valores, guardado.error, guardado.campo);
+    const guardado = await guardarProdep(validacion.datos);
+    if (guardado.error) return errorValidacion(validacion.valores, guardado.error, guardado.campo);
   } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
-      return errorValidacion(valores, "No se pudo guardar: revisa el profesor y los datos relacionados.");
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+      return errorValidacion(validacion.valores, "El profesor seleccionado ya no existe.", "profesorId");
     }
     throw error;
   }
 
   revalidatePath("/reconocimientos/prodep");
-  return { registrado: String(validacion.datos.profesorId) };
+  return { registrado: true };
 }
 
 export async function editarReconocimientoProdep(_: EstadoProdep, formData: FormData): Promise<EstadoProdep> {
@@ -186,6 +173,7 @@ export async function editarReconocimientoProdep(_: EstadoProdep, formData: Form
 
   const id = leerId(formData);
   if (!id) return { error: "Ese reconocimiento ya no existe. Recarga la página." };
+
   const reconocimiento = await prisma.reconocimientoProdep.findUnique({
     where: { id },
     select: { convocatoriaId: true },
@@ -195,16 +183,15 @@ export async function editarReconocimientoProdep(_: EstadoProdep, formData: Form
     return { error: "No se puede editar: este reconocimiento forma parte de un resultado oficial de convocatoria." };
   }
 
-  const valores = leerValores(formData);
-  const validacion = validarCampos(valores);
+  const validacion = validar(formData);
   if (validacion.error) return validacion.error;
 
   try {
-    const guardado = await validarYGuardar(validacion.datos, id);
-    if (guardado.error) return errorValidacion(valores, guardado.error, guardado.campo);
+    const guardado = await guardarProdep(validacion.datos, id);
+    if (guardado.error) return errorValidacion(validacion.valores, guardado.error, guardado.campo);
   } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
-      return errorValidacion(valores, "No se pudo guardar: revisa el profesor y los datos relacionados.");
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+      return errorValidacion(validacion.valores, "El profesor seleccionado ya no existe.", "profesorId");
     }
     throw error;
   }
@@ -238,4 +225,27 @@ export async function eliminarReconocimientoProdep(_: EstadoProdep, formData: Fo
 
   revalidatePath("/reconocimientos/prodep");
   redirect("/reconocimientos/prodep?eliminado=1", RedirectType.replace);
+}
+
+export type VigenciaCalculada = { fechaFin: string; duracionAnios: 3 | 6; texto: string };
+
+const entradaVigencia = camposReconocimientoProdep
+  .pick({ profesorId: true, tipoSolicitud: true, resultado: true, fechaInicio: true })
+  .extend({ excluirId: z.number().int().positive().optional() });
+
+// Vista previa de la vigencia mientras se llena el formulario. El historial se consulta aquí, en el
+// servidor, para no enviar al navegador los reconocimientos de todos los profesores.
+export async function consultarVigenciaProdep(entrada: unknown): Promise<VigenciaCalculada | null> {
+  await requireModulo("reconocimientos");
+
+  const datos = entradaVigencia.safeParse(entrada);
+  if (!datos.success) return null;
+
+  const { excluirId, ...reconocimiento } = datos.data;
+  const vigencia = calcularVigenciaProdep(reconocimiento, await historialDelProfesor(reconocimiento.profesorId, excluirId));
+  return {
+    fechaFin: vigencia.fechaFin,
+    duracionAnios: vigencia.duracionAnios,
+    texto: textoVigenciaProdep(vigencia),
+  };
 }

@@ -1,17 +1,23 @@
 "use client";
 
-import { useState } from "react";
-import { Aviso, claseCampo, claseEtiqueta } from "@/components/ui";
+import { useRef, useState } from "react";
+import { claseCampo, claseEtiqueta } from "@/components/ui";
 import {
-  calcularVigenciaProdep,
+  ETIQUETAS_RESULTADO_PRODEP,
+  ETIQUETAS_TIPO_SOLICITUD_PRODEP,
   RESULTADOS_PRODEP,
   TIPOS_SOLICITUD_PRODEP,
-  type RegistroHistorialProdep,
 } from "@/modules/reconocimientos/prodep";
-import type { EstadoProdep } from "./actions";
+import { consultarVigenciaProdep, type EstadoProdep, type VigenciaCalculada } from "./actions";
 
-export type ProfesorProdep = { id: number; codigo: string; nombres: string; apellidos: string };
-export type HistorialConProfesor = RegistroHistorialProdep & { profesorId: number };
+export type ProfesorProdep = {
+  id: number;
+  codigo: string;
+  nombres: string;
+  apellidos: string;
+  tipoContratacion: "TIEMPO_COMPLETO" | "ASIGNATURA";
+};
+
 export type ValoresProdep = {
   profesorId: string;
   tipoSolicitud: string;
@@ -20,110 +26,101 @@ export type ValoresProdep = {
   fechaFin: string;
 };
 
-const ETIQUETAS_TIPO: Record<(typeof TIPOS_SOLICITUD_PRODEP)[number], string> = {
-  PRIMER_RECONOCIMIENTO: "Primer reconocimiento",
-  RENOVACION: "Renovación",
-};
+type Campos = Pick<ValoresProdep, "profesorId" | "tipoSolicitud" | "resultado" | "fechaInicio">;
 
-const ETIQUETAS_RESULTADO: Record<(typeof RESULTADOS_PRODEP)[number], string> = {
-  APROBADO: "Aprobado",
-  NO_APROBADO: "No aprobado",
-  EN_RECONSIDERACION: "En reconsideración",
-};
-
-function textoVigencia(duracion: 3 | 6, motivo: string) {
-  if (duracion === 6) {
-    return "El primer reconocimiento y la renovación previos están aprobados y sin brechas; a esta renovación aprobada se le aplican seis años.";
-  }
-  if (motivo === "primer-reconocimiento") return "Primer reconocimiento: se aplican tres años de vigencia.";
-  if (motivo === "dictamen-pendiente") {
-    return "Mientras el dictamen no esté aprobado, se aplican tres años; la renovación consolidada requiere aprobación.";
-  }
-  if (motivo === "dictamen-no-aprobado") {
-    return "El dictamen no aprobado no otorga vigencia ni consolida renovaciones; el registro conserva el cálculo de tres años.";
-  }
-  return "No hay una secuencia consolidada de renovaciones aprobadas sin interrupciones: se aplican tres años.";
-}
-
-function esTipoSolicitud(valor: string): valor is (typeof TIPOS_SOLICITUD_PRODEP)[number] {
-  return TIPOS_SOLICITUD_PRODEP.some((tipo) => tipo === valor);
-}
-
-function esResultado(valor: string): valor is (typeof RESULTADOS_PRODEP)[number] {
-  return RESULTADOS_PRODEP.some((resultado) => resultado === valor);
-}
-
-function esFecha(valor: string) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(valor)) return false;
-  const fecha = new Date(`${valor}T00:00:00.000Z`);
-  return !Number.isNaN(fecha.getTime()) && fecha.toISOString().slice(0, 10) === valor;
-}
-
-export function FormularioProdepCampos({ profesores, historial, valores, estado, excluirId }: {
+export function FormularioProdepCampos({ profesores, valores, estado, excluirId }: {
   profesores: ProfesorProdep[];
-  historial: HistorialConProfesor[];
   valores?: Partial<ValoresProdep>;
   estado: EstadoProdep;
+  /** Al editar, el registro que se edita no cuenta como antecedente de sí mismo. */
   excluirId?: number;
 }) {
-  const [profesorId, setProfesorId] = useState(valores?.profesorId ?? "");
-  const [tipoSolicitud, setTipoSolicitud] = useState(valores?.tipoSolicitud ?? "");
-  const [resultado, setResultado] = useState(valores?.resultado ?? "");
-  const [fechaInicio, setFechaInicio] = useState(valores?.fechaInicio ?? "");
-  const vigencia = esTipoSolicitud(tipoSolicitud) && esResultado(resultado) && esFecha(fechaInicio)
-    ? calcularVigenciaProdep({
-      tipoSolicitud,
-      resultado,
-      fechaInicio,
-    }, historial.filter((registro) => registro.profesorId === Number(profesorId) && registro.id !== excluirId))
-    : null;
+  const [campos, setCampos] = useState<Campos>({
+    profesorId: valores?.profesorId ?? "",
+    tipoSolicitud: valores?.tipoSolicitud ?? "",
+    resultado: valores?.resultado ?? "",
+    fechaInicio: valores?.fechaInicio ?? "",
+  });
+  const [fechaFin, setFechaFin] = useState(valores?.fechaFin ?? "");
+  const [vigencia, setVigencia] = useState<VigenciaCalculada | null>(null);
+  const solicitud = useRef(0);
+
+  // La vigencia (3 o 6 años) la calcula el servidor con el historial del profesor; si llegan dos
+  // respuestas desordenadas, solo cuenta la de la última solicitud.
+  function cambiar(cambio: Partial<Campos>) {
+    const siguiente = { ...campos, ...cambio };
+    setCampos(siguiente);
+    const numero = ++solicitud.current;
+    const aplicar = (resultado: VigenciaCalculada | null) => {
+      if (numero !== solicitud.current) return;
+      setVigencia(resultado);
+      setFechaFin(resultado?.fechaFin ?? "");
+    };
+    if (!siguiente.profesorId || !siguiente.tipoSolicitud || !siguiente.resultado || !siguiente.fechaInicio) {
+      aplicar(null);
+      return;
+    }
+    consultarVigenciaProdep({ ...siguiente, profesorId: Number(siguiente.profesorId), excluirId })
+      .then(aplicar, () => aplicar(null));
+  }
 
   return (
     <>
       <div className="grid gap-4 sm:grid-cols-2">
-        <label className={claseEtiqueta}>
-          Profesor
-          <select name="profesorId" required value={profesorId}
-            onChange={(evento) => setProfesorId(evento.currentTarget.value)}
-            aria-invalid={estado.campo === "profesorId"} className={claseCampo(estado.campo === "profesorId")}>
+        <label className={`${claseEtiqueta} min-w-0`}>
+          Profesor de Tiempo Completo
+          <select name="profesorId" required value={campos.profesorId}
+            onChange={(evento) => cambiar({ profesorId: evento.currentTarget.value })}
+            aria-invalid={estado.campo === "profesorId"}
+            className={`${claseCampo(estado.campo === "profesorId")} min-w-0 w-full`}>
             <option value="" disabled>Selecciona un profesor</option>
             {profesores.map((profesor) => (
-              <option key={profesor.id} value={profesor.id}>{profesor.apellidos}, {profesor.nombres} ({profesor.codigo})</option>
+              <option key={profesor.id} value={profesor.id}>
+                {profesor.apellidos}, {profesor.nombres} ({profesor.codigo})
+                {profesor.tipoContratacion === "ASIGNATURA" ? " · Asignatura" : ""}
+              </option>
             ))}
           </select>
         </label>
-        <label className={claseEtiqueta}>
+        <label className={`${claseEtiqueta} min-w-0`}>
           Tipo de solicitud
-          <select name="tipoSolicitud" required value={tipoSolicitud}
-            onChange={(evento) => setTipoSolicitud(evento.currentTarget.value)}
-            aria-invalid={estado.campo === "tipoSolicitud"} className={claseCampo(estado.campo === "tipoSolicitud")}>
+          <select name="tipoSolicitud" required value={campos.tipoSolicitud}
+            onChange={(evento) => cambiar({ tipoSolicitud: evento.currentTarget.value })}
+            aria-invalid={estado.campo === "tipoSolicitud"}
+            className={`${claseCampo(estado.campo === "tipoSolicitud")} min-w-0 w-full`}>
             <option value="" disabled>Selecciona un tipo</option>
-            {TIPOS_SOLICITUD_PRODEP.map((tipo) => <option key={tipo} value={tipo}>{ETIQUETAS_TIPO[tipo]}</option>)}
+            {TIPOS_SOLICITUD_PRODEP.map((tipo) => (
+              <option key={tipo} value={tipo}>{ETIQUETAS_TIPO_SOLICITUD_PRODEP[tipo]}</option>
+            ))}
           </select>
         </label>
-        <label className={claseEtiqueta}>
-          Dictamen
-          <select name="resultado" required value={resultado}
-            onChange={(evento) => setResultado(evento.currentTarget.value)}
-            aria-invalid={estado.campo === "resultado"} className={claseCampo(estado.campo === "resultado")}>
-            <option value="" disabled>Selecciona un dictamen</option>
-            {RESULTADOS_PRODEP.map((valor) => <option key={valor} value={valor}>{ETIQUETAS_RESULTADO[valor]}</option>)}
+        <label className={`${claseEtiqueta} min-w-0`}>
+          Resultado
+          <select name="resultado" required value={campos.resultado}
+            onChange={(evento) => cambiar({ resultado: evento.currentTarget.value })}
+            aria-invalid={estado.campo === "resultado"}
+            className={`${claseCampo(estado.campo === "resultado")} min-w-0 w-full`}>
+            <option value="" disabled>Selecciona un resultado</option>
+            {RESULTADOS_PRODEP.map((resultado) => (
+              <option key={resultado} value={resultado}>{ETIQUETAS_RESULTADO_PRODEP[resultado]}</option>
+            ))}
           </select>
         </label>
-        <label className={claseEtiqueta}>
-          Fecha de inicio
-          <input type="date" name="fechaInicio" required value={fechaInicio}
-            onChange={(evento) => setFechaInicio(evento.currentTarget.value)}
-            aria-invalid={estado.campo === "fechaInicio"} className={claseCampo(estado.campo === "fechaInicio")} />
+        <label className={`${claseEtiqueta} min-w-0`}>
+          Inicio de vigencia
+          <input type="date" name="fechaInicio" required value={campos.fechaInicio}
+            onChange={(evento) => cambiar({ fechaInicio: evento.currentTarget.value })}
+            aria-invalid={estado.campo === "fechaInicio"}
+            className={`${claseCampo(estado.campo === "fechaInicio")} min-w-0 w-full`} />
         </label>
-        <label className={claseEtiqueta}>
-          Fecha de fin calculada
-          <input type="date" name="fechaFin" required readOnly value={vigencia?.fechaFin ?? ""}
-            aria-invalid={estado.campo === "fechaFin"} className={claseCampo(estado.campo === "fechaFin")} />
+        <label className={`${claseEtiqueta} min-w-0`}>
+          Fin de vigencia (se calcula solo)
+          <input type="date" name="fechaFin" required readOnly value={fechaFin}
+            aria-invalid={estado.campo === "fechaFin"}
+            className={`${claseCampo(estado.campo === "fechaFin")} min-w-0 w-full`} />
         </label>
       </div>
-      {vigencia && <p className="text-xs text-texto-3">{textoVigencia(vigencia.duracionAnios, vigencia.motivo)}</p>}
-      {estado.campo === "fechaFin" && estado.error && <Aviso tipo="error">{estado.error}</Aviso>}
+      {vigencia && <p className="text-xs text-texto-3">{vigencia.texto}</p>}
     </>
   );
 }
