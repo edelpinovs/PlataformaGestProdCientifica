@@ -6,17 +6,25 @@ const definicion = listadoProfesores([4, 8], [2]);
 const analizar = (parametros: Record<string, string> = {}) => analizarListado(definicion, parametros);
 
 describe("listado de profesores", () => {
-  it("estatus, departamento y grado solo aceptan valores que existen", () => {
-    expect(analizar({ estatus: "LICENCIA", departamento: "8", grado: "2" }).consulta.filtros).toEqual({
-      estatus: "LICENCIA",
+  it("situación, departamento y grado solo aceptan valores que existen", () => {
+    expect(analizar({ situacion: "inactivos", departamento: "8", grado: "2" }).consulta.filtros).toEqual({
+      situacion: "inactivos",
       departamento: "8",
       grado: "2",
     });
-    const invalido = analizar({ estatus: "JUBILADO", departamento: "99", grado: "5" });
-    expect(invalido.consulta.filtros).toEqual({ estatus: "", departamento: "", grado: "" });
-    expect(invalido.errores.estatus).toBe("Uno de los filtros tiene un valor que no existe.");
+    const invalido = analizar({ situacion: "jubilados", departamento: "99", grado: "5" });
+    expect(invalido.consulta.filtros).toEqual({ situacion: "", departamento: "", grado: "" });
+    expect(invalido.errores.situacion).toBe("Uno de los filtros tiene un valor que no existe.");
     expect(invalido.errores.departamento).toBeDefined();
     expect(invalido.errores.grado).toBeDefined();
+  });
+
+  it("«activos» filtra el estatus ACTIVO y «inactivos» todos los demás", () => {
+    expect(filtroProfesores(analizar({ situacion: "activos" }).consulta)).toEqual({ estatusLaboral: "ACTIVO" });
+    expect(filtroProfesores(analizar({ situacion: "inactivos" }).consulta)).toEqual({
+      estatusLaboral: { not: "ACTIVO" },
+    });
+    expect(filtroProfesores(analizar().consulta)).toEqual({});
   });
 
   it("una columna que no está en la lista no se usa para ordenar", () => {
@@ -86,6 +94,11 @@ describe("listado de profesores", () => {
       { id: "desc" },
     ]);
     expect(ordenProfesores(analizar({ orden: "correo" }).consulta)).toEqual([{ correo: "asc" }, { id: "asc" }]);
+    expect(ordenProfesores(analizar({ orden: "grado" }).consulta)).toEqual([{ grado: { nombre: "asc" } }, { id: "asc" }]);
+    expect(ordenProfesores(analizar({ orden: "departamento", dir: "desc" }).consulta)).toEqual([
+      { departamento: { nombre: "desc" } },
+      { id: "desc" },
+    ]);
     expect(ordenProfesores(analizar({ orden: "estatus", dir: "desc" }).consulta)).toEqual([
       { estatusLaboral: "desc" },
       { id: "desc" },

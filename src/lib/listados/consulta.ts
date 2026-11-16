@@ -191,3 +191,20 @@ export function siguienteOrden(consulta: ConsultaListado, columna: string): { or
 export function hayFiltrosActivos(consulta: ConsultaListado) {
   return Boolean(consulta.q) || Object.values(consulta.filtros).some(Boolean);
 }
+
+/**
+ * Números de página que se muestran en la navegación: siempre la primera, la última y las
+ * vecinas de la actual; los huecos se resumen con «…». Con pocas páginas se muestran todas.
+ */
+export function paginasVisibles(pagina: number, totalPaginas: number): (number | "…")[] {
+  if (totalPaginas <= 7) return Array.from({ length: totalPaginas }, (_, i) => i + 1);
+  const numeros = new Set([1, totalPaginas, pagina - 1, pagina, pagina + 1]);
+  if (pagina <= 3) [2, 3, 4].forEach((n) => numeros.add(n));
+  if (pagina >= totalPaginas - 2) [totalPaginas - 3, totalPaginas - 2, totalPaginas - 1].forEach((n) => numeros.add(n));
+  const ordenados = [...numeros].filter((n) => n >= 1 && n <= totalPaginas).sort((a, b) => a - b);
+  return ordenados.flatMap((n, i): (number | "…")[] => {
+    const hueco = i > 0 ? n - ordenados[i - 1] : 1;
+    if (hueco === 2) return [n - 1, n]; // un hueco de una sola página se muestra completo
+    return hueco > 2 ? ["…", n] : [n];
+  });
+}

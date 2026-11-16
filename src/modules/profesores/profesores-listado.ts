@@ -1,26 +1,31 @@
 import { condicionTexto, ordenarPor, type ConsultaListado, type DefinicionListado } from "@/lib/listados/consulta";
-import { ESTATUS_LABORALES, ETIQUETA_CONTRATACION, ETIQUETA_ESTATUS } from "./profesores";
+import { ETIQUETA_CONTRATACION, ETIQUETA_ESTATUS } from "./profesores";
 
 // Listado del directorio: búsqueda, filtros, orden y paginación (D-009, issue #110).
 
 /** Estatus, departamentos y grados existentes son los valores permitidos de cada filtro. */
 export function listadoProfesores(idsDepartamento: number[], idsGrado: number[]): DefinicionListado {
   return {
-    columnas: ["codigo", "nombre", "correo", "estatus"],
+    columnas: ["nombre", "codigo", "grado", "departamento", "estatus", "correo"],
     ordenInicial: { columna: "nombre", dir: "asc" },
     filtros: {
-      estatus: ESTATUS_LABORALES,
+      situacion: SITUACIONES,
       departamento: idsDepartamento.map(String),
       grado: idsGrado.map(String),
     },
   };
 }
 
+/** Situación laboral resumida: «activos» son los de estatus ACTIVO; «inactivos» todos los demás. */
+export const SITUACIONES = ["activos", "inactivos"] as const;
+
 export const COLUMNAS_PROFESORES = [
+  { clave: "nombre", texto: "Profesor" },
   { clave: "codigo", texto: "Código" },
-  { clave: "nombre", texto: "Nombre" },
-  { clave: "correo", texto: "Correo" },
+  { clave: "grado", texto: "Grado" },
+  { clave: "departamento", texto: "Departamento" },
   { clave: "estatus", texto: "Estatus" },
+  { clave: "correo", texto: "Correo" },
 ];
 
 const MAX_PALABRAS = 5;
@@ -57,9 +62,8 @@ export function filtroProfesores(consulta: ConsultaListado) {
   );
   return {
     ...(porPalabra.length ? { AND: porPalabra } : {}),
-    ...(consulta.filtros.estatus
-      ? { estatusLaboral: consulta.filtros.estatus as (typeof ESTATUS_LABORALES)[number] }
-      : {}),
+    ...(consulta.filtros.situacion === "activos" ? { estatusLaboral: "ACTIVO" as const } : {}),
+    ...(consulta.filtros.situacion === "inactivos" ? { estatusLaboral: { not: "ACTIVO" as const } } : {}),
     ...(consulta.filtros.departamento ? { departamentoId: Number(consulta.filtros.departamento) } : {}),
     ...(consulta.filtros.grado ? { gradoId: Number(consulta.filtros.grado) } : {}),
   };
@@ -70,6 +74,8 @@ export function ordenProfesores(consulta: ConsultaListado) {
   const [principal, desempate] = ordenarPor(consulta, {
     codigo: (dir) => ({ codigo: dir }),
     nombre: (dir) => ({ apellidos: dir }),
+    grado: (dir) => ({ grado: { nombre: dir } }),
+    departamento: (dir) => ({ departamento: { nombre: dir } }),
     correo: (dir) => ({ correo: dir }),
     estatus: (dir) => ({ estatusLaboral: dir }),
   });

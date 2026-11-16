@@ -3,13 +3,15 @@
 import { useActionState, useState } from "react";
 import {
   Aviso,
-  claseAccionFila,
+  claseAccionIcono,
   claseBoton,
   claseBotonPeligro,
   claseBotonSecundario,
   claseCampo,
   claseEtiqueta,
   claseTabla,
+  Icono,
+  ICONOS,
 } from "./ui";
 
 // Fila de listado con Editar y Eliminar (regla de AGENTS.md, issue #59).
@@ -63,13 +65,13 @@ export function FilaEditable(props: Props) {
         <td key={i} className={`${claseTabla.celda} ${celda.className ?? ""}`}>{celda.contenido}</td>
       ))}
       <td className={`${claseTabla.celda} pr-0 text-right whitespace-nowrap`}>
-        <button type="button" onClick={() => setModo("editar")} className={claseAccionFila()}
-          aria-label={`Editar ${props.nombre}`}>
-          Editar
+        <button type="button" onClick={() => setModo("editar")} className={claseAccionIcono()}
+          aria-label={`Editar ${props.nombre}`} title="Editar">
+          <Icono d={ICONOS.editar} />
         </button>
-        <button type="button" onClick={() => setModo("eliminar")} className={claseAccionFila(true)}
-          aria-label={`Eliminar ${props.nombre}`}>
-          Eliminar
+        <button type="button" onClick={() => setModo("eliminar")} className={claseAccionIcono(true)}
+          aria-label={`Eliminar ${props.nombre}`} title="Eliminar">
+          <Icono d={ICONOS.eliminar} />
         </button>
       </td>
     </tr>
