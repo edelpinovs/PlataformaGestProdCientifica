@@ -6,10 +6,17 @@ import { Prisma } from "@/generated/prisma/client";
 import { requireModulo } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import {
+  calcularVigenciaProdep,
+  camposReconocimientoProdep,
+  crearEsquemaReconocimientoProdep,
+  hayTraslapeProdep,
   reconocimientoProdep,
+  textoVigenciaProdep,
   validarContratacionProdep,
   type ReconocimientoProdep,
+  type RegistroHistorialProdep,
 } from "@/modules/reconocimientos/prodep";
+import { z } from "zod";
 
 type CampoProdep = "profesorId" | "tipoSolicitud" | "resultado" | "fechaInicio" | "fechaFin";
 
@@ -71,6 +78,23 @@ function validar(formData: FormData) {
   return { datos: datos.data, valores };
 }
 
+// Historial del profesor que decide si una renovación consolida los seis años. Al editar, el registro
+// que se edita no cuenta como antecedente de sí mismo.
+async function historialDelProfesor(profesorId: number, excluirId?: number): Promise<RegistroHistorialProdep[]> {
+  const registros = await prisma.reconocimientoProdep.findMany({
+    where: { profesorId, ...(excluirId === undefined ? {} : { id: { not: excluirId } }) },
+    select: { id: true, tipoSolicitud: true, resultado: true, inicio: true, fin: true },
+    orderBy: [{ inicio: "asc" }, { id: "asc" }],
+  });
+  return registros.map((registro) => ({
+    id: registro.id,
+    tipoSolicitud: registro.tipoSolicitud,
+    resultado: registro.resultado,
+    fechaInicio: registro.inicio.toISOString().slice(0, 10),
+    fechaFin: registro.fin.toISOString().slice(0, 10),
+  }));
+}
+
 async function guardarProdep(datos: ReconocimientoProdep, id?: number) {
   const profesor = await prisma.profesor.findUnique({
     where: { id: datos.profesorId },
@@ -83,12 +107,47 @@ async function guardarProdep(datos: ReconocimientoProdep, id?: number) {
     return { error: errorContratacion, campo: "profesorId" as const };
   }
 
+  // RF-010: la fecha de fin la fija la regla de vigencia (3 o 6 años), no la persona.
+  const historial = await historialDelProfesor(datos.profesorId, id);
+  const vigencia = crearEsquemaReconocimientoProdep(historial).safeParse(datos);
+  if (!vigencia.success) {
+    const problema = vigencia.error.issues[0];
+    return {
+      error: problema?.message ?? "Revisa los datos ingresados.",
+      campo: campoDe(problema?.path[0]),
+    };
+  }
+
+  const inicio = new Date(`${datos.fechaInicio}T00:00:00.000Z`);
+  const fin = new Date(`${datos.fechaFin}T00:00:00.000Z`);
+
+  // RF-011: el periodo no puede traslaparse con otro del mismo profesor. El historial ya excluye
+  // el registro que se edita; un dictamen no aprobado no otorga vigencia y no cuenta.
+  const choque = hayTraslapeProdep(
+    historial.map((registro) => ({
+      id: registro.id,
+      resultado: registro.resultado,
+      inicio: new Date(registro.fechaInicio),
+      fin: new Date(registro.fechaFin),
+    })),
+    { inicio, fin, resultado: datos.resultado },
+    id,
+  );
+  if (choque) {
+    const del = choque.inicio.toISOString().slice(0, 10);
+    const al = choque.fin.toISOString().slice(0, 10);
+    return {
+      error: `El periodo se traslapa con una vigencia PRODEP del ${del} al ${al}. Ajusta las fechas.`,
+      campo: "fechaInicio" as const,
+    };
+  }
+
   const data = {
     profesorId: datos.profesorId,
     tipoSolicitud: datos.tipoSolicitud,
     resultado: datos.resultado,
-    inicio: new Date(`${datos.fechaInicio}T00:00:00.000Z`),
-    fin: new Date(`${datos.fechaFin}T00:00:00.000Z`),
+    inicio,
+    fin,
   };
 
   if (id === undefined) {
@@ -191,4 +250,27 @@ export async function eliminarReconocimientoProdep(_: EstadoProdep, formData: Fo
 
   revalidatePath("/reconocimientos/prodep");
   redirect("/reconocimientos/prodep?eliminado=1", RedirectType.replace);
+}
+
+export type VigenciaCalculada = { fechaFin: string; duracionAnios: 3 | 6; texto: string };
+
+const entradaVigencia = camposReconocimientoProdep
+  .pick({ profesorId: true, tipoSolicitud: true, resultado: true, fechaInicio: true })
+  .extend({ excluirId: z.number().int().positive().optional() });
+
+// Vista previa de la vigencia mientras se llena el formulario. El historial se consulta aquí, en el
+// servidor, para no enviar al navegador los reconocimientos de todos los profesores.
+export async function consultarVigenciaProdep(entrada: unknown): Promise<VigenciaCalculada | null> {
+  await requireModulo("reconocimientos");
+
+  const datos = entradaVigencia.safeParse(entrada);
+  if (!datos.success) return null;
+
+  const { excluirId, ...reconocimiento } = datos.data;
+  const vigencia = calcularVigenciaProdep(reconocimiento, await historialDelProfesor(reconocimiento.profesorId, excluirId));
+  return {
+    fechaFin: vigencia.fechaFin,
+    duracionAnios: vigencia.duracionAnios,
+    texto: textoVigenciaProdep(vigencia),
+  };
 }

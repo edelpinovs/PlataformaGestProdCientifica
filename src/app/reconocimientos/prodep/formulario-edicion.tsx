@@ -36,7 +36,7 @@ export function FormularioEdicionProdep({ reconocimiento, profesores, cerrar }: 
   return (
     <form action={accion} className="flex flex-col gap-4 rounded-xl bg-superficie-alt p-4">
       <input type="hidden" name="id" value={reconocimiento.id} />
-      <FormularioProdepCampos profesores={opciones} valores={valores} estado={estado} />
+      <FormularioProdepCampos profesores={opciones} valores={valores} estado={estado} excluirId={reconocimiento.id} />
       {estado.error && <Aviso tipo="error">{estado.error}</Aviso>}
       <div className="flex flex-wrap gap-2">
         <button type="submit" disabled={guardando} className={claseBoton}>
