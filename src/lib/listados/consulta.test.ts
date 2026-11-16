@@ -7,6 +7,7 @@ import {
   hayFiltrosActivos,
   ordenarPor,
   paginar,
+  paginasVisibles,
   siguienteOrden,
   TAMANIO_PAGINA,
   type DefinicionListado,
@@ -179,5 +180,31 @@ describe("hayFiltrosActivos", () => {
     expect(hayFiltrosActivos(inicial)).toBe(false);
     expect(hayFiltrosActivos({ ...inicial, q: "a" })).toBe(true);
     expect(hayFiltrosActivos({ ...inicial, filtros: { estatus: "BAJA", nivel: "" } })).toBe(true);
+  });
+});
+
+describe("paginasVisibles", () => {
+  it("con siete páginas o menos las muestra todas", () => {
+    expect(paginasVisibles(1, 1)).toEqual([1]);
+    expect(paginasVisibles(3, 7)).toEqual([1, 2, 3, 4, 5, 6, 7]);
+  });
+
+  it("al inicio resume el final con puntos suspensivos", () => {
+    expect(paginasVisibles(1, 20)).toEqual([1, 2, 3, 4, "…", 20]);
+    expect(paginasVisibles(3, 20)).toEqual([1, 2, 3, 4, "…", 20]);
+  });
+
+  it("en medio resume los dos lados y conserva las vecinas", () => {
+    expect(paginasVisibles(10, 20)).toEqual([1, "…", 9, 10, 11, "…", 20]);
+  });
+
+  it("al final resume el inicio", () => {
+    expect(paginasVisibles(20, 20)).toEqual([1, "…", 17, 18, 19, 20]);
+    expect(paginasVisibles(18, 20)).toEqual([1, "…", 17, 18, 19, 20]);
+  });
+
+  it("no deja huecos de una sola página", () => {
+    expect(paginasVisibles(5, 9)).toEqual([1, "…", 4, 5, 6, "…", 9]);
+    expect(paginasVisibles(4, 9)).toEqual([1, 2, 3, 4, 5, "…", 9]);
   });
 });

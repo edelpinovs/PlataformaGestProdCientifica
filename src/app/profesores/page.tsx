@@ -1,7 +1,7 @@
 import { FilaEditable } from "@/components/fila-editable";
 import { BarraListado, EncabezadoOrdenable, PaginacionListado } from "@/components/listado";
 import { Marco } from "@/components/marco";
-import { Aviso, claseTabla, EstadoVacio, EtiquetaEstado, Panel } from "@/components/ui";
+import { Aviso, Avatar, claseTabla, EstadoVacio, EtiquetaEstado, Panel } from "@/components/ui";
 import { requireModulo } from "@/lib/auth/session";
 import { analizarListado, hayFiltrosActivos, paginar } from "@/lib/listados/consulta";
 import { prisma } from "@/lib/prisma";
@@ -63,7 +63,7 @@ export default async function ProfesoresPage({ searchParams }: PageProps<"/profe
     skip: paginacion.salto,
     take: paginacion.tamanio,
     include: {
-      grado: { select: { nomenclatura: true } },
+      grado: { select: { nombre: true } },
       departamento: { select: { nombre: true } },
     },
   });
@@ -71,17 +71,26 @@ export default async function ProfesoresPage({ searchParams }: PageProps<"/profe
   const hayFiltros = hayFiltrosActivos(consulta);
 
   return (
-    <Marco correo={perfil.correo} rol={perfil.rol} activo="profesores" titulo="Directorio de profesores">
-      <Panel titulo={`Profesores registrados (${total})`}>
-        <div className="mb-4"><RegistrarProfesor grados={grados} departamentos={departamentos} /></div>
+    <Marco correo={perfil.correo} rol={perfil.rol} activo="profesores" titulo="Profesores"
+      subtitulo="Consulta, filtra y administra la plantilla docente del centro.">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full bg-marca-suave px-3 py-1 text-xs font-medium text-marca">
+          {new Intl.NumberFormat("es-MX").format(total)} {hayFiltros ? "coinciden" : "registrados"}
+        </span>
+        <RegistrarProfesor grados={grados} departamentos={departamentos} />
+      </div>
+      <Panel>
         {resultado && <div className="mb-4"><Aviso tipo="exito">{resultado}</Aviso></div>}
         <div className="flex flex-col gap-4">
           <BarraListado {...contexto} columnas={COLUMNAS_PROFESORES} errores={errores}
-            etiquetaBusqueda="Buscar profesores" placeholder="Código, nombre o correo"
+            etiquetaBusqueda="Buscar profesores" placeholder="Buscar por código, nombre o correo"
+            segmentado={{
+              clave: "situacion", etiqueta: "Situación laboral",
+              opciones: [{ valor: "activos", texto: "Activos" }, { valor: "inactivos", texto: "Inactivos" }],
+            }}
             filtros={[
-              { clave: "estatus", etiqueta: "Estatus", opciones: opcionesEstatus },
               { clave: "departamento", etiqueta: "Departamento", opciones: departamentos.map((d) => ({ valor: String(d.id), texto: d.nombre })) },
-              { clave: "grado", etiqueta: "Grado científico", opciones: grados.map((g) => ({ valor: String(g.id), texto: `${g.nombre} (${g.nomenclatura})` })) },
+              { clave: "grado", etiqueta: "Grado", opciones: grados.map((g) => ({ valor: String(g.id), texto: `${g.nombre} (${g.nomenclatura})` })) },
             ]} />
           {profesores.length === 0 ? (
             <div className="flex flex-col items-center gap-4 py-4">
@@ -95,9 +104,10 @@ export default async function ProfesoresPage({ searchParams }: PageProps<"/profe
             <table className={claseTabla.tabla}>
               <thead className={claseTabla.encabezado}>
                 <tr>
-                  <EncabezadoOrdenable {...contexto} columna="codigo" className={claseTabla.celdaEncabezado}>Código</EncabezadoOrdenable>
-                  <EncabezadoOrdenable {...contexto} columna="nombre" className={claseTabla.celdaEncabezado}>Nombre</EncabezadoOrdenable>
-                  <EncabezadoOrdenable {...contexto} columna="correo" className={`${claseTabla.celdaEncabezado} hidden sm:table-cell`}>Correo</EncabezadoOrdenable>
+                  <EncabezadoOrdenable {...contexto} columna="nombre" className={claseTabla.celdaEncabezado}>Profesor</EncabezadoOrdenable>
+                  <EncabezadoOrdenable {...contexto} columna="codigo" className={`${claseTabla.celdaEncabezado} hidden sm:table-cell`}>Código</EncabezadoOrdenable>
+                  <EncabezadoOrdenable {...contexto} columna="grado" className={`${claseTabla.celdaEncabezado} hidden sm:table-cell`}>Grado</EncabezadoOrdenable>
+                  <EncabezadoOrdenable {...contexto} columna="departamento" className={`${claseTabla.celdaEncabezado} hidden sm:table-cell`}>Departamento</EncabezadoOrdenable>
                   <EncabezadoOrdenable {...contexto} columna="estatus" className={`${claseTabla.celdaEncabezado} hidden sm:table-cell`}>Estatus</EncabezadoOrdenable>
                   <th className={`${claseTabla.celdaEncabezado} pr-0 text-right`}>
                     <span className="sr-only">Acciones</span>
@@ -117,26 +127,42 @@ export default async function ProfesoresPage({ searchParams }: PageProps<"/profe
                       id={p.id} nombre={nombre} detalle={p.codigo}
                       editar={editarProfesor} eliminar={eliminarProfesor}
                       celdas={[
-                        { contenido: p.codigo, className: "font-mono text-xs" },
                         {
                           contenido: (
-                            <span className="font-medium">
-                              {p.grado ? `${p.grado.nomenclatura}. ` : ""}
-                              {p.apellidos}, {p.nombres}
-                              <span className="mt-0.5 block text-xs font-normal text-texto-3">
-                                {ETIQUETA_CONTRATACION[p.tipoContratacion]}
-                                {p.departamento ? ` · ${p.departamento.nombre}` : ""}
-                              </span>
-                              <span className="mt-0.5 block break-all text-xs font-normal text-texto-3 sm:hidden">{p.correo}</span>
-                              <span className="mt-1 inline-flex sm:hidden">
-                                <EtiquetaEstado tipo={ESTATUS_TIPO[p.estatusLaboral]}>
-                                  {ETIQUETA_ESTATUS[p.estatusLaboral]}
-                                </EtiquetaEstado>
+                            <span className="flex items-center gap-3">
+                              <Avatar nombre={`${p.nombres} ${p.apellidos}`} />
+                              <span className="min-w-0">
+                                <span className="block font-medium">{p.apellidos}, {p.nombres}</span>
+                                <span className="block break-all text-xs font-normal text-texto-3">{p.correo}</span>
+                                {/* En celular las columnas se apilan bajo el nombre. */}
+                                <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-texto-3 sm:hidden">
+                                  <span className="font-mono">{p.codigo}</span>
+                                  {p.grado && <span>· {p.grado.nombre}</span>}
+                                  {p.departamento && <span>· {p.departamento.nombre}</span>}
+                                  {etiquetaEstatus}
+                                </span>
                               </span>
                             </span>
                           ),
                         },
-                        { contenido: p.correo, className: "hidden break-all text-texto-3 sm:table-cell" },
+                        { contenido: p.codigo, className: "hidden font-mono text-xs sm:table-cell" },
+                        {
+                          contenido: p.grado
+                            ? <span className="rounded-md bg-marca-suave px-2 py-1 text-xs font-medium text-marca">{p.grado.nombre}</span>
+                            : <span className="text-texto-3">—</span>,
+                          className: "hidden sm:table-cell",
+                        },
+                        {
+                          contenido: p.departamento ? (
+                            <span>
+                              {p.departamento.nombre}
+                              <span className="block text-xs text-texto-3">{ETIQUETA_CONTRATACION[p.tipoContratacion]}</span>
+                            </span>
+                          ) : (
+                            <span className="text-texto-3">Sin asignar</span>
+                          ),
+                          className: "hidden sm:table-cell",
+                        },
                         { contenido: etiquetaEstatus, className: "hidden sm:table-cell" },
                       ]}
                       campos={[
