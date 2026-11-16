@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Marco } from "@/components/marco";
-import { claseBoton, EtiquetaEstado, Panel } from "@/components/ui";
+import { claseBoton, Panel } from "@/components/ui";
 import { requireModulo } from "@/lib/auth/session";
 
 export default async function ReconocimientosPage() {
@@ -14,7 +14,9 @@ export default async function ReconocimientosPage() {
         </Link>
       </Panel>
       <Panel titulo="Reconocimiento PRODEP" descripcion="Perfil Deseable: solicitudes, dictámenes y vigencias.">
-        <EtiquetaEstado tipo="aviso">Próximamente</EtiquetaEstado>
+        <Link href="/reconocimientos/prodep" className={`${claseBoton} inline-flex`}>
+          Abrir registros PRODEP
+        </Link>
       </Panel>
     </Marco>
   );
