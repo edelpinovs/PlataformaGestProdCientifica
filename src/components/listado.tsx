@@ -66,7 +66,10 @@ export function BarraListado({ base, definicion, consulta, filtros = [], segment
     `min-w-0 max-w-48 cursor-pointer bg-transparent py-2.5 pr-1 text-sm font-medium focus:outline-2 focus:outline-marca ${errores[clave] ? "text-peligro" : "text-texto"}`;
   return (
     <div className="flex flex-col gap-4">
-      <form action={base} method="get" className="flex flex-col gap-3">
+      {/* La key vuelve a montar el formulario al cambiar la URL (p. ej. «Limpiar»); los campos usan
+          defaultValue y, sin ella, conservarían lo que la persona eligió antes. */}
+      <form key={JSON.stringify([consulta.q, consulta.orden, consulta.dir, consulta.filtros])}
+        action={base} method="get" className="flex flex-col gap-3">
         {segmentado && valorSegmentado && <input type="hidden" name={segmentado.clave} value={valorSegmentado} />}
         <div className="flex flex-wrap items-center gap-3">
           <label className="relative min-w-60 flex-1">

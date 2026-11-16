@@ -103,6 +103,16 @@ describe("componentes de listado", () => {
     expect(con).toContain("Limpiar");
   });
 
+  it("BarraListado sin filtros activos deja cada lista en «Todos» y la búsqueda vacía", () => {
+    const html = renderToStaticMarkup(
+      <BarraListado {...contexto()} columnas={columnas}
+        filtros={[{ clave: "estatus", etiqueta: "Estatus", opciones: [{ valor: "ACTIVO", texto: "Activo" }] }]} />,
+    );
+    expect(html).toMatch(/<option value=""[^>]*selected=""[^>]*>Todos<\/option>/);
+    expect(html).not.toMatch(/<option[^>]*selected=""[^>]*>Activo<\/option>/);
+    expect(html).not.toContain('value="ana"');
+  });
+
   it("PaginacionListado no muestra navegación con una sola página y anuncia 0–0 sin resultados", () => {
     const c = contexto();
     const html = renderToStaticMarkup(<PaginacionListado {...c} paginacion={paginar(0, c.consulta)} nombre="profesores" />);
