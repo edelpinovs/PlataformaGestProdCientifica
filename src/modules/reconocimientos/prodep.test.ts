@@ -1,98 +1,146 @@
 import { describe, expect, it } from "vitest";
-import { hayTraslapeProdep, reconocimientoProdep, type PeriodoProdep } from "./prodep";
+import { analizarListado } from "@/lib/listados/consulta";
+import {
+  filtroProdep,
+  LISTADO_PRODEP,
+  ordenProdep,
+  reconocimientoProdep,
+  tieneProdepActivo,
+  validarContratacionProdep,
+} from "./prodep";
 
 function fecha(dia: string) {
   return new Date(`${dia}T00:00:00.000Z`);
 }
 
-const nuevo: PeriodoProdep = {
-  inicio: fecha("2026-03-01"),
-  fin: fecha("2026-03-10"),
+const datosValidos = {
+  profesorId: 7,
+  tipoSolicitud: "PRIMER_RECONOCIMIENTO",
   resultado: "APROBADO",
+  fechaInicio: "2026-01-01",
+  fechaFin: "2026-12-31",
 };
 
-function periodo(
-  inicio: string,
-  fin: string,
-  resultado: PeriodoProdep["resultado"] = "APROBADO",
-  id = 1,
-): PeriodoProdep {
-  return { id, inicio: fecha(inicio), fin: fecha(fin), resultado };
-}
-
-describe("hayTraslapeProdep (RF-011)", () => {
-  it("rechaza un traslape parcial", () => {
-    expect(hayTraslapeProdep([periodo("2026-03-05", "2026-03-15")], nuevo)).not.toBeNull();
+describe("reconocimientoProdep", () => {
+  it("acepta solicitudes y fechas válidas", () => {
+    expect(reconocimientoProdep.safeParse(datosValidos).success).toBe(true);
   });
 
-  it("rechaza periodos idénticos", () => {
-    expect(hayTraslapeProdep([periodo("2026-03-01", "2026-03-10")], nuevo)).not.toBeNull();
+  it("devuelve mensajes en español para campos ausentes o enums inválidos", () => {
+    const resultado = reconocimientoProdep.safeParse({
+      ...datosValidos,
+      profesorId: Number.NaN,
+      tipoSolicitud: "OTRA",
+      resultado: "",
+    });
+
+    expect(resultado.success).toBe(false);
+    if (!resultado.success) {
+      expect(resultado.error.issues.map((problema) => problema.message)).toEqual([
+        "Selecciona un profesor.",
+        "Selecciona un tipo de solicitud válido.",
+        "Selecciona un resultado válido.",
+      ]);
+    }
   });
 
-  it("rechaza un periodo contenido dentro del existente", () => {
-    expect(hayTraslapeProdep([periodo("2026-02-20", "2026-03-20")], nuevo)).not.toBeNull();
-  });
-
-  it("rechaza periodos que comparten el día límite en cualquiera de sus extremos", () => {
-    expect(hayTraslapeProdep([periodo("2026-02-20", "2026-03-01")], nuevo)).not.toBeNull();
-    expect(hayTraslapeProdep([periodo("2026-03-10", "2026-03-20")], nuevo)).not.toBeNull();
-  });
-
-  it("permite periodos consecutivos sin compartir un día", () => {
-    const consecutivo = { inicio: fecha("2027-01-01"), fin: fecha("2027-12-31"), resultado: "APROBADO" as const };
-    expect(hayTraslapeProdep([periodo("2026-01-01", "2026-12-31")], consecutivo)).toBeNull();
-  });
-
-  it("permite editar el mismo registro sin cambiar sus fechas", () => {
-    expect(hayTraslapeProdep([periodo("2026-03-01", "2026-03-10", "APROBADO", 7)], nuevo, 7)).toBeNull();
-  });
-
-  it("ignora un registro no aprobado sin reconsideración", () => {
-    expect(hayTraslapeProdep([periodo("2026-03-01", "2026-03-10", "NO_APROBADO")], nuevo)).toBeNull();
-  });
-
-  it.each(["APROBADO", "EN_RECONSIDERACION"] as const)("rechaza un periodo existente %s", (resultado) => {
-    expect(hayTraslapeProdep([periodo("2026-03-01", "2026-03-10", resultado)], nuevo)).not.toBeNull();
-  });
-
-  it("no bloquea el registro de un dictamen nuevo no aprobado", () => {
-    expect(hayTraslapeProdep(
-      [periodo("2026-03-01", "2026-03-10")],
-      { ...nuevo, resultado: "NO_APROBADO" },
-    )).toBeNull();
+  it("rechaza fechas inexistentes y un fin anterior o igual al inicio", () => {
+    for (const fechaFin of ["2026-02-30", "2026-01-01", "2025-12-31"]) {
+      const resultado = reconocimientoProdep.safeParse({ ...datosValidos, fechaFin });
+      expect(resultado.success).toBe(false);
+      if (!resultado.success) {
+        expect(resultado.error.issues[0]?.message).toBe(
+          fechaFin === "2026-02-30"
+            ? "Ingresa una fecha válida."
+            : "La fecha de fin debe ser posterior a la fecha de inicio.",
+        );
+      }
+    }
   });
 });
 
-describe("reconocimientoProdep", () => {
-  const valido = {
-    profesorId: 7,
-    tipoSolicitud: "RENOVACION",
-    resultado: "APROBADO",
-    fechaInicio: "2026-01-01",
-    fechaFin: "2026-12-31",
-  } as const;
-
-  it("acepta datos válidos y fechas iguales", () => {
-    expect(reconocimientoProdep.safeParse(valido).success).toBe(true);
-    expect(reconocimientoProdep.safeParse({ ...valido, fechaFin: valido.fechaInicio }).success).toBe(true);
+describe("validarContratacionProdep", () => {
+  it("permite registrar y actualizar a profesores de Tiempo Completo", () => {
+    expect(validarContratacionProdep("TIEMPO_COMPLETO")).toBeNull();
   });
 
-  it("rechaza fechas inválidas o anteriores al inicio con mensajes en español", () => {
-    expect(reconocimientoProdep.safeParse({ ...valido, fechaInicio: "2026-02-30" }).success).toBe(false);
-    const resultado = reconocimientoProdep.safeParse({ ...valido, fechaFin: "2025-12-31" });
-    expect(resultado.success).toBe(false);
-    if (!resultado.success) expect(resultado.error.issues[0]?.message).toContain("posterior");
+  it("rechaza a profesores por Asignatura con un mensaje claro", () => {
+    expect(validarContratacionProdep("ASIGNATURA")).toBe("El Perfil Deseable PRODEP requiere Tiempo Completo.");
+  });
+});
+
+describe("tieneProdepActivo", () => {
+  const hoy = fecha("2026-06-15");
+
+  it("considera vigente el dictamen aprobado que incluye hoy", () => {
+    expect(tieneProdepActivo([{ resultado: "APROBADO", inicio: hoy, fin: hoy }], hoy)).toBe(true);
   });
 
-  it("rechaza profesor, tipo de solicitud o resultado inválidos con mensajes en español", () => {
-    for (const cambios of [
-      { profesorId: Number.NaN },
-      { tipoSolicitud: "OTRO" },
-      { resultado: "PENDIENTE" },
-    ]) {
-      const resultado = reconocimientoProdep.safeParse({ ...valido, ...cambios });
-      expect(resultado.success).toBe(false);
-      if (!resultado.success) expect(resultado.error.issues[0]?.message).not.toMatch(/Invalid input/);
-    }
+  it("no considera un reconocimiento vencido", () => {
+    expect(tieneProdepActivo([
+      { resultado: "APROBADO", inicio: fecha("2025-01-01"), fin: fecha("2026-06-14") },
+    ], hoy)).toBe(false);
+  });
+
+  it("no considera un reconocimiento futuro", () => {
+    expect(tieneProdepActivo([
+      { resultado: "APROBADO", inicio: fecha("2026-06-16"), fin: fecha("2027-06-15") },
+    ], hoy)).toBe(false);
+  });
+
+  it("no considera vigente un dictamen distinto de aprobado", () => {
+    expect(tieneProdepActivo([
+      { resultado: "EN_RECONSIDERACION", inicio: fecha("2026-01-01"), fin: fecha("2027-01-01") },
+    ], hoy)).toBe(false);
+  });
+
+  it("compara la fecha del día en UTC", () => {
+    const conHora = new Date("2026-06-15T23:59:00.000Z");
+    expect(tieneProdepActivo([
+      { resultado: "APROBADO", inicio: fecha("2026-06-15"), fin: fecha("2026-06-15") },
+    ], conHora)).toBe(true);
+  });
+});
+
+describe("listado PRODEP", () => {
+  it("solo permite ordenar por columnas declaradas y traduce el orden a campos Prisma", () => {
+    const { consulta } = analizarListado(LISTADO_PRODEP, { orden: "fin", dir: "desc" });
+    expect(ordenProdep(consulta)).toEqual([{ fin: "desc" }, { id: "desc" }]);
+
+    const invalida = analizarListado(LISTADO_PRODEP, { orden: "profesor.codigo" });
+    expect(invalida.consulta.orden).toBe("profesor");
+    expect(invalida.errores.orden).toBe("Ordena por una columna válida.");
+  });
+
+  it("busca por fechas y etiquetas visibles, además de los datos del profesor", () => {
+    const fecha = analizarListado(LISTADO_PRODEP, { q: "2026-01-01" });
+    expect(filtroProdep(fecha.consulta).OR).toContainEqual({
+      inicio: { gte: new Date("2026-01-01T00:00:00.000Z"), lt: new Date("2026-01-02T00:00:00.000Z") },
+    });
+
+    const mes = analizarListado(LISTADO_PRODEP, { q: "2026-01" });
+    expect(filtroProdep(mes.consulta).OR).toContainEqual({
+      fin: { gte: new Date("2026-01-01T00:00:00.000Z"), lt: new Date("2026-02-01T00:00:00.000Z") },
+    });
+
+    const resultado = analizarListado(LISTADO_PRODEP, { q: "Aprobado" });
+    expect(filtroProdep(resultado.consulta).OR).toContainEqual({ resultado: "APROBADO" });
+
+    const profesor = analizarListado(LISTADO_PRODEP, { q: "Ana_%\\" });
+    expect(filtroProdep(profesor.consulta).OR).toContainEqual({
+      profesor: { is: { nombres: { contains: "Ana\\_\\%\\\\", mode: "insensitive" } } },
+    });
+  });
+
+  it("aplica únicamente los filtros finitos aceptados", () => {
+    const aceptado = analizarListado(LISTADO_PRODEP, { tipoSolicitud: "RENOVACION", resultado: "APROBADO" });
+    expect(filtroProdep(aceptado.consulta)).toMatchObject({
+      tipoSolicitud: "RENOVACION",
+      resultado: "APROBADO",
+    });
+
+    const invalido = analizarListado(LISTADO_PRODEP, { resultado: "BORRADO" });
+    expect(filtroProdep(invalido.consulta)).not.toHaveProperty("resultado");
+    expect(invalido.errores.resultado).toBe("Uno de los filtros tiene un valor que no existe.");
   });
 });
