@@ -155,6 +155,25 @@ describe("procesarCarga (RF-017)", () => {
     expect(dobles.prisma.renglonResultado.createMany).not.toHaveBeenCalled();
   });
 
+  it("si otra lectura le quitó la reserva, no deja la carga en revisión ni la marca como fallida", async () => {
+    // Otra lectura retoma la tarea por atasco mientras esta descargaba; la transacción se revierte entera.
+    const otra = new Date(Date.now() + 1000);
+    dobles.prisma.$transaction.mockImplementation(async (fn) => {
+      tarea = { ...tarea, estado: "EN_PROCESO", actualizadoEn: otra };
+      const antes = { tarea: { ...tarea }, carga: carga && { ...carga }, renglones: [...renglones] };
+      try {
+        return await fn(dobles.prisma);
+      } catch (error) {
+        ({ tarea, carga, renglones } = antes);
+        throw error;
+      }
+    });
+    await procesarCarga(7, almacen);
+    expect(carga?.estado).toBe("PROCESANDO");
+    expect(tarea).toMatchObject({ estado: "EN_PROCESO", actualizadoEn: otra });
+    expect(renglones).toHaveLength(0);
+  });
+
   it("no lanza si la tarea no tiene una carga válida", async () => {
     tarea.datos = { otra: "cosa" };
     await expect(procesarCarga(7, almacen)).resolves.toBeUndefined();

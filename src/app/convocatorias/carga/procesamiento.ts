@@ -25,6 +25,8 @@ export type AlmacenArchivos = {
 };
 
 class ErrorLectura extends Error {}
+// Otra lectura retomó la tarea por atasco: se revierte lo hecho y la carga queda en sus manos.
+class ReservaPerdida extends Error {}
 
 const datosTarea = z.looseObject({ cargaId: z.number().int().positive() });
 
@@ -86,15 +88,17 @@ export async function procesarCarga(jobId: number, almacen: AlmacenArchivos): Pr
           data: { estado: "EN_REVISION" },
         });
         if (!count) throw new ErrorLectura(SIN_CARGA);
-        await tx.job.updateMany({
+        const cerrada = await tx.job.updateMany({
           where: reservada,
           data: { estado: "COMPLETADO", avance: 1, datos: { ...datos.data, resumen: lectura.resumen }, error: null },
         });
+        if (!cerrada.count) throw new ReservaPerdida();
       },
       // Unos 10,000 renglones tardan más que los 5 s que Prisma da por defecto a una transacción.
       { maxWait: 10_000, timeout: 120_000 },
     );
   } catch (error) {
+    if (error instanceof ReservaPerdida) return;
     const mensaje = error instanceof ErrorLectura ? error.message : ERROR_GENERAL;
     await prisma.job.updateMany({ where: reservada, data: { estado: "FALLIDO", error: mensaje } }).catch(() => {});
     if (cargaId) {
