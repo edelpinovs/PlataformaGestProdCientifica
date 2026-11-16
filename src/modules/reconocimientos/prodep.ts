@@ -15,7 +15,7 @@ function fechaValida(valor: string) {
 const fechaProdep = z.string({ error: "Ingresa una fecha válida." })
   .refine(fechaValida, "Ingresa una fecha válida.");
 
-export const reconocimientoProdep = z.object({
+export const camposReconocimientoProdep = z.object({
   profesorId: z.number({ error: "Selecciona un profesor." })
     .int("Selecciona un profesor.")
     .positive("Selecciona un profesor."),
@@ -23,7 +23,9 @@ export const reconocimientoProdep = z.object({
   resultado: z.enum(RESULTADOS_PRODEP, { error: "Selecciona un resultado válido." }),
   fechaInicio: fechaProdep,
   fechaFin: fechaProdep,
-}).superRefine((datos, contexto) => {
+});
+
+export const reconocimientoProdep = camposReconocimientoProdep.superRefine((datos, contexto) => {
   if (fechaValida(datos.fechaInicio) && fechaValida(datos.fechaFin) && datos.fechaInicio >= datos.fechaFin) {
     contexto.addIssue({
       code: "custom",
@@ -34,6 +36,133 @@ export const reconocimientoProdep = z.object({
 });
 
 export type ReconocimientoProdep = z.infer<typeof reconocimientoProdep>;
+
+// ─── RF-010 (CU-006): vigencia de 3 o 6 años ───────────────────────────────
+
+export type RegistroHistorialProdep = {
+  id?: number;
+  tipoSolicitud: (typeof TIPOS_SOLICITUD_PRODEP)[number];
+  resultado: (typeof RESULTADOS_PRODEP)[number];
+  fechaInicio: string | Date;
+  fechaFin: string | Date;
+};
+
+export type DatosVigenciaProdep = {
+  tipoSolicitud: (typeof TIPOS_SOLICITUD_PRODEP)[number];
+  resultado: (typeof RESULTADOS_PRODEP)[number];
+  fechaInicio: string;
+};
+
+export type VigenciaProdep = {
+  duracionAnios: 3 | 6;
+  fechaFin: string;
+  motivo: "primer-reconocimiento" | "historial-no-consolidado" | "renovacion-consolidada"
+    | "dictamen-pendiente" | "dictamen-no-aprobado";
+};
+
+function fechaComoTexto(fecha: string | Date) {
+  return fecha instanceof Date ? fecha.toISOString().slice(0, 10) : fecha;
+}
+
+function sumarDias(fecha: string, dias: number) {
+  const resultado = new Date(`${fecha}T00:00:00.000Z`);
+  resultado.setUTCDate(resultado.getUTCDate() + dias);
+  return resultado.toISOString().slice(0, 10);
+}
+
+function calcularFin(fechaInicio: string, duracionAnios: 3 | 6) {
+  const aniversario = new Date(`${fechaInicio}T00:00:00.000Z`);
+  const diaInicio = aniversario.getUTCDate();
+  aniversario.setUTCDate(1);
+  aniversario.setUTCFullYear(aniversario.getUTCFullYear() + duracionAnios);
+  const ultimoDiaDelMes = new Date(aniversario);
+  ultimoDiaDelMes.setUTCMonth(ultimoDiaDelMes.getUTCMonth() + 1, 0);
+  aniversario.setUTCDate(Math.min(diaInicio, ultimoDiaDelMes.getUTCDate()));
+  aniversario.setUTCDate(aniversario.getUTCDate() - 1);
+  return aniversario.toISOString().slice(0, 10);
+}
+
+function historialConsolidado(
+  historial: RegistroHistorialProdep[],
+  fechaInicio: string,
+) {
+  const anteriores = historial
+    .map((registro) => ({
+      ...registro,
+      inicio: fechaComoTexto(registro.fechaInicio),
+      fin: fechaComoTexto(registro.fechaFin),
+    }))
+    .filter((registro) => registro.fin < fechaInicio)
+    .sort((a, b) => b.fin.localeCompare(a.fin) || b.inicio.localeCompare(a.inicio));
+
+  let finEsperado = sumarDias(fechaInicio, -1);
+  let tieneRenovacionPosterior = false;
+
+  for (const registro of anteriores) {
+    if (registro.fin !== finEsperado || registro.resultado !== "APROBADO") break;
+    if (registro.tipoSolicitud === "RENOVACION") tieneRenovacionPosterior = true;
+    if (registro.tipoSolicitud === "PRIMER_RECONOCIMIENTO" && tieneRenovacionPosterior) return true;
+    finEsperado = sumarDias(registro.inicio, -1);
+  }
+
+  return false;
+}
+
+export function calcularVigenciaProdep(
+  datos: DatosVigenciaProdep,
+  historial: RegistroHistorialProdep[] = [],
+): VigenciaProdep {
+  if (!fechaValida(datos.fechaInicio)) {
+    throw new Error("La fecha de inicio del reconocimiento PRODEP no es válida.");
+  }
+
+  const consolidada = datos.resultado === "APROBADO"
+    && datos.tipoSolicitud === "RENOVACION"
+    && historialConsolidado(historial, datos.fechaInicio);
+  const duracionAnios = consolidada ? 6 : 3;
+  const motivo: VigenciaProdep["motivo"] = datos.resultado !== "APROBADO"
+    ? datos.resultado === "EN_RECONSIDERACION" ? "dictamen-pendiente" : "dictamen-no-aprobado"
+    : datos.tipoSolicitud === "PRIMER_RECONOCIMIENTO"
+      ? "primer-reconocimiento"
+      : consolidada ? "renovacion-consolidada" : "historial-no-consolidado";
+
+  return {
+    duracionAnios,
+    fechaFin: calcularFin(datos.fechaInicio, duracionAnios),
+    motivo,
+  };
+}
+
+/** Esquema del alta y la edición: además de los campos, la fecha de fin debe ser la que corresponde al historial. */
+export function crearEsquemaReconocimientoProdep(historial: RegistroHistorialProdep[] = []) {
+  return camposReconocimientoProdep.superRefine((datos, contexto) => {
+    if (!fechaValida(datos.fechaInicio) || !fechaValida(datos.fechaFin)) return;
+    const vigencia = calcularVigenciaProdep(datos, historial);
+    if (datos.fechaFin !== vigencia.fechaFin) {
+      contexto.addIssue({
+        code: "custom",
+        path: ["fechaFin"],
+        message: `La fecha de fin debe ser ${vigencia.fechaFin} para una vigencia de ${vigencia.duracionAnios} años.`,
+      });
+    }
+  });
+}
+
+/** Explica a la persona por qué se aplican tres o seis años. */
+export function textoVigenciaProdep(vigencia: VigenciaProdep) {
+  switch (vigencia.motivo) {
+    case "renovacion-consolidada":
+      return "El primer reconocimiento y la renovación previos están aprobados y sin brechas; a esta renovación aprobada se le aplican seis años.";
+    case "primer-reconocimiento":
+      return "Primer reconocimiento: se aplican tres años de vigencia.";
+    case "dictamen-pendiente":
+      return "Mientras el dictamen no esté aprobado, se aplican tres años; la renovación consolidada requiere aprobación.";
+    case "dictamen-no-aprobado":
+      return "El dictamen no aprobado no otorga vigencia ni consolida renovaciones; el registro conserva el cálculo de tres años.";
+    default:
+      return "No hay una secuencia consolidada de renovaciones aprobadas sin interrupciones: se aplican tres años.";
+  }
+}
 
 export type ResumenVigenciaProdep = {
   resultado: string;
