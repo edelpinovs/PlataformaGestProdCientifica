@@ -66,9 +66,41 @@ describe("componentes de listado", () => {
     const c = contexto({ q: "ana", pagina: "2" });
     const html = renderToStaticMarkup(<PaginacionListado {...c} paginacion={paginar(25, c.consulta)} nombre="profesores" />);
     expect(html).toContain("Mostrando 11–20 de 25 profesores.");
-    expect(html).toContain("Página 2 de 3");
+    expect(html).toContain('aria-current="page"');
     expect(html).toContain("/profesores?q=ana&amp;pagina=3");
     expect(html).toContain("/profesores?q=ana");
+  });
+
+  it("PaginacionListado numera las páginas, marca la actual y resume los huecos", () => {
+    const c = contexto({ pagina: "10" });
+    const html = renderToStaticMarkup(<PaginacionListado {...c} paginacion={paginar(200, c.consulta)} />);
+    expect(html).toMatch(/aria-current="page"[^>]*>10</);
+    expect(html).toContain('aria-label="Ir a la página 9"');
+    expect(html).toContain('aria-label="Ir a la página 20"');
+    expect(html).not.toContain('aria-label="Ir a la página 5"');
+    expect(html).toContain("…");
+  });
+
+  it("BarraListado con grupo segmentado enlaza cada opción, marca la activa y conserva la búsqueda", () => {
+    const c = contexto({ q: "ana", estatus: "BAJA", orden: "division", dir: "desc", pagina: "2" });
+    const html = renderToStaticMarkup(
+      <BarraListado {...c} columnas={columnas}
+        segmentado={{ clave: "estatus", etiqueta: "Situación", opciones: [{ valor: "ACTIVO", texto: "Activos" }, { valor: "BAJA", texto: "Inactivos" }] }} />,
+    );
+    expect(html).toContain('role="group"');
+    expect(html).toContain('aria-label="Situación"');
+    // «Todos» quita el filtro y vuelve a la página 1; la opción activa se anuncia.
+    expect(html).toContain('href="/profesores?q=ana&amp;orden=division&amp;dir=desc"');
+    expect(html).toMatch(/aria-current="true"[^>]*>Inactivos</);
+    expect(html).toContain('type="hidden" name="estatus" value="BAJA"');
+  });
+
+  it("BarraListado solo ofrece Limpiar con búsqueda o filtros y el botón Buscar solo sin JavaScript", () => {
+    const sin = renderToStaticMarkup(<BarraListado {...contexto()} columnas={columnas} />);
+    expect(sin).not.toContain("Limpiar");
+    expect(sin).toMatch(/<noscript>.*Buscar.*<\/noscript>/);
+    const con = renderToStaticMarkup(<BarraListado {...contexto({ q: "x" })} columnas={columnas} />);
+    expect(con).toContain("Limpiar");
   });
 
   it("PaginacionListado no muestra navegación con una sola página y anuncia 0–0 sin resultados", () => {

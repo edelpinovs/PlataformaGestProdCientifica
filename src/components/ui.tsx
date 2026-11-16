@@ -15,9 +15,18 @@ export const claseBotonSecundario =
 export const claseBotonPeligro =
   "rounded-xl bg-peligro px-4 py-2.5 text-sm font-medium text-superficie hover:opacity-90 disabled:opacity-60";
 
+/** Botón con contorno: navegación del listado y acciones que acompañan a la principal. */
+export const claseBotonContorno =
+  "inline-flex items-center justify-center gap-2 rounded-xl border border-linea bg-superficie px-3.5 py-2 text-sm font-medium text-texto hover:bg-hover";
+
 /** Acción compacta dentro de una fila de tabla; `peligro` para eliminar. */
 export function claseAccionFila(peligro = false) {
   return `rounded-lg px-2.5 py-1.5 text-sm font-medium hover:bg-hover ${peligro ? "text-peligro" : "text-marca"}`;
+}
+
+/** Acción de fila que solo muestra un icono (el nombre accesible va en aria-label y title). */
+export function claseAccionIcono(peligro = false) {
+  return `inline-grid h-9 w-9 place-items-center rounded-lg hover:bg-hover ${peligro ? "text-peligro" : "text-texto-2 hover:text-marca"}`;
 }
 
 /** Campo de texto; con `conError` se marca en rojo. Acompáñalo de aria-invalid. */
@@ -33,9 +42,9 @@ export const claseEtiqueta = "flex flex-col gap-1.5 text-sm font-medium text-tex
 /** Clases de tabla: <table className={claseTabla.tabla}>… */
 export const claseTabla = {
   tabla: "w-full text-left text-sm",
-  encabezado: "border-b border-linea text-xs text-texto-3",
-  celdaEncabezado: "py-2 pr-3 font-medium",
-  fila: "border-b border-linea last:border-0",
+  encabezado: "border-b border-linea text-[11px] tracking-wide text-texto-3 uppercase",
+  celdaEncabezado: "py-2.5 pr-3 font-medium",
+  fila: "border-b border-linea last:border-0 hover:bg-marca-tenue",
   celda: "py-3 pr-3",
 };
 
@@ -106,5 +115,35 @@ export function Icono({ d }: { d: string }) {
     <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
       <path d={d} strokeLinecap="round" strokeLinejoin="round" />
     </svg>
+  );
+}
+
+/** Trazados de iconos de uso común (para <Icono d={…} />). */
+export const ICONOS = {
+  buscar: "M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14M20 20l-3.5-3.5",
+  editar: "M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z",
+  eliminar: "M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6",
+  desplegar: "m6 9 6 6 6-6",
+  mas: "M12 5v14M5 12h14",
+};
+
+const TONOS_AVATAR = ["bg-marca-suave text-marca", "bg-exito-suave text-exito", "bg-aviso-suave text-aviso"];
+
+/** Iniciales de las dos primeras palabras de un nombre; sin letras devuelve «?». */
+export function inicialesDe(nombre: string) {
+  const palabras = nombre.split(/[\s,]+/).filter((p) => /^\p{L}/u.test(p));
+  const letras = [palabras[0], palabras[1]]
+    .map((p) => (p ? [...p][0] : ""))
+    .join("");
+  return (letras || "?").toLocaleUpperCase("es-MX");
+}
+
+/** Círculo con las iniciales de una persona. El tono sale del nombre, así no cambia entre cargas. */
+export function Avatar({ nombre }: { nombre: string }) {
+  const tono = TONOS_AVATAR[[...nombre].reduce((suma, c) => suma + c.charCodeAt(0), 0) % TONOS_AVATAR.length];
+  return (
+    <span aria-hidden="true" className={`grid h-10 w-10 shrink-0 place-items-center rounded-full text-xs font-semibold ${tono}`}>
+      {inicialesDe(nombre)}
+    </span>
   );
 }
