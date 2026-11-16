@@ -170,7 +170,7 @@ export function textoMatriz(fila: FilaMatriz, columna: ColumnaMatriz) {
   return fila[columna];
 }
 
-export function consultarMatriz(filas: FilaMatriz[], estado: EstadoMatriz) {
+export function consultarMatriz(filas: FilaMatriz[], estado: EstadoMatriz, completo = false) {
   if (estado.columnas.length === 0) return { filas: [] as FilaMatriz[], paginacion: paginar(0, estado.consulta) };
   const texto = estado.consulta.q.trim().toLocaleLowerCase("es-MX");
   const coinciden = filas.filter((fila) => {
@@ -186,7 +186,10 @@ export function consultarMatriz(filas: FilaMatriz[], estado: EstadoMatriz) {
     return estado.consulta.dir === "asc" ? desempatado : -desempatado;
   });
   const paginacion = paginar(coinciden.length, estado.consulta);
-  return { filas: coinciden.slice(paginacion.salto, paginacion.salto + paginacion.tamanio), paginacion };
+  return {
+    filas: completo ? coinciden : coinciden.slice(paginacion.salto, paginacion.salto + paginacion.tamanio),
+    paginacion,
+  };
 }
 
 export function enlaceMatriz(base: string, estado: EstadoMatriz, cambios: { pagina?: number; orden?: string; dir?: Sentido } = {}) {

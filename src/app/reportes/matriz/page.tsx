@@ -4,6 +4,7 @@ import { Aviso, claseBoton, claseBotonSecundario, claseCampo, claseEtiqueta, cla
 import { requireModulo } from "@/lib/auth/session";
 import { siguienteOrden, type ParametrosListado } from "@/lib/listados/consulta";
 import { cargarMatriz } from "@/modules/reportes/cargar-matriz";
+import { enlaceDescarga } from "@/modules/reportes/exportar";
 import {
   analizarMatriz,
   COLUMNAS_MATRIZ,
@@ -14,6 +15,7 @@ import {
   type ColumnaMatriz,
   type EstadoMatriz,
 } from "@/modules/reportes/matriz";
+import { Descargas } from "../descargas";
 import { EnlacesReportes } from "../enlaces";
 
 const BASE = "/reportes/matriz";
@@ -42,6 +44,12 @@ export default async function MatrizPage({ searchParams }: { searchParams: Promi
         <div className="flex flex-col gap-4">
           {mensajes.length > 0 && (
             <Aviso tipo="error"><ul>{mensajes.map((mensaje) => <li key={mensaje}>{mensaje}</li>)}</ul></Aviso>
+          )}
+          {vista.columnas.length > 0 && (
+            <Descargas
+              excel={enlaceDescarga("matriz", "xlsx", enlaceMatriz(BASE, vista))}
+              pdf={enlaceDescarga("matriz", "pdf", enlaceMatriz(BASE, vista))}
+            />
           )}
           {vista.columnas.length === 0 || filas.length === 0 ? (
             <EstadoVacio>

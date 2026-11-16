@@ -4,6 +4,7 @@ import { Aviso, claseBoton, claseBotonSecundario, claseCampo, claseEtiqueta, cla
 import { requireModulo } from "@/lib/auth/session";
 import { siguienteOrden, type ParametrosListado } from "@/lib/listados/consulta";
 import { cargarVigencias } from "@/modules/reportes/cargar-vigencias";
+import { enlaceDescarga } from "@/modules/reportes/exportar";
 import {
   COLUMNAS_VIGENCIA,
   consultarVigencias,
@@ -19,6 +20,7 @@ import {
   type EstadoReporte,
   type FilaVigencia,
 } from "@/modules/reportes/vigencias";
+import { Descargas } from "./descargas";
 import { EnlacesReportes } from "./enlaces";
 
 const BASE = "/reportes";
@@ -52,6 +54,12 @@ export default async function ReportesPage({ searchParams }: { searchParams: Pro
             <Aviso tipo="error">
               <ul>{mensajes.map((mensaje) => <li key={mensaje}>{mensaje}</li>)}</ul>
             </Aviso>
+          )}
+          {vista.columnas.length > 0 && (
+            <Descargas
+              excel={enlaceDescarga("vigencias", "xlsx", enlaceReporte(BASE, vista))}
+              pdf={enlaceDescarga("vigencias", "pdf", enlaceReporte(BASE, vista))}
+            />
           )}
           {vista.columnas.length === 0 || filas.length === 0 ? (
             <EstadoVacio>

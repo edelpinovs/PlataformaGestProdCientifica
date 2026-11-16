@@ -226,6 +226,7 @@ export function consultarConvocatoria(
   participaciones: ParticipacionReporte[],
   historial: HistorialSnii[],
   estado: EstadoConvocatoria,
+  completo = false,
 ) {
   if (estado.columnas.length === 0) return { filas: [] as FilaConvocatoria[], paginacion: paginar(0, estado.consulta) };
   const genero = estado.consulta.filtros.genero;
@@ -239,7 +240,10 @@ export function consultarConvocatoria(
   const orden = (estado.columnas as readonly string[]).includes(estado.consulta.orden) ? estado.consulta.orden : estado.columnas[0];
   filas.sort((a, b) => comparar(a, b, orden, estado.consulta.dir));
   const paginacion = paginar(filas.length, estado.consulta);
-  return { filas: filas.slice(paginacion.salto, paginacion.salto + paginacion.tamanio), paginacion };
+  return {
+    filas: completo ? filas : filas.slice(paginacion.salto, paginacion.salto + paginacion.tamanio),
+    paginacion,
+  };
 }
 
 function comparar(a: FilaConvocatoria, b: FilaConvocatoria, columna: string, dir: Sentido) {

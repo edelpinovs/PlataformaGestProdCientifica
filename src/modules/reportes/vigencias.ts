@@ -299,8 +299,8 @@ function coincide(fila: FilaVigencia, estado: EstadoReporte) {
   return estado.columnas.some((columna) => textoColumna(fila, columna).toLocaleLowerCase("es-MX").includes(texto));
 }
 
-/** Filtra, ordena y corta de 10 en 10 el reporte ya armado. */
-export function consultarVigencias(filas: FilaVigencia[], estado: EstadoReporte) {
+/** Filtra, ordena y corta de 10 en 10 el reporte ya armado. Con `completo`, devuelve todas las filas filtradas. */
+export function consultarVigencias(filas: FilaVigencia[], estado: EstadoReporte, completo = false) {
   if (estado.tipos.length === 0 || estado.columnas.length === 0) {
     return { filas: [], paginacion: paginar(0, estado.consulta) };
   }
@@ -316,7 +316,7 @@ export function consultarVigencias(filas: FilaVigencia[], estado: EstadoReporte)
   const ordenadas = [...filtradas].sort((a, b) => comparar(a, b, orden, estado.consulta.dir));
   const paginacion = paginar(ordenadas.length, estado.consulta);
   return {
-    filas: ordenadas.slice(paginacion.salto, paginacion.salto + paginacion.tamanio),
+    filas: completo ? ordenadas : ordenadas.slice(paginacion.salto, paginacion.salto + paginacion.tamanio),
     paginacion,
   };
 }
