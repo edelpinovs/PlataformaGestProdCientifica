@@ -91,6 +91,64 @@ describe("acciones de Perfil Deseable PRODEP", () => {
     await expect(registrarReconocimientoProdep({}, formulario())).rejects.toThrow("Sin permiso");
     expect(dobles.profesor.findUnique).not.toHaveBeenCalled();
   });
+  describe("periodos que no se traslapan (RF-011)", () => {
+    const fecha = (dia: string) => new Date(`${dia}T00:00:00.000Z`);
+    const otro = {
+      id: 2,
+      tipoSolicitud: "PRIMER_RECONOCIMIENTO",
+      resultado: "APROBADO",
+      inicio: fecha("2028-06-01"),
+      fin: fecha("2031-05-31"),
+    };
+
+    it("rechaza el alta que se traslapa e indica el periodo en conflicto, sin guardar", async () => {
+      dobles.reconocimientoProdep.findMany.mockResolvedValue([otro]);
+
+      const estado = await registrarReconocimientoProdep({}, formulario());
+
+      expect(estado.error).toBe("El periodo se traslapa con una vigencia PRODEP del 2028-06-01 al 2031-05-31. Ajusta las fechas.");
+      expect(estado.campo).toBe("fechaInicio");
+      expect(dobles.reconocimientoProdep.create).not.toHaveBeenCalled();
+    });
+
+    it("permite un periodo consecutivo que no comparte ningún día", async () => {
+      dobles.reconocimientoProdep.findMany.mockResolvedValue([
+        { ...otro, inicio: fecha("2023-01-01"), fin: fecha("2025-12-31") },
+      ]);
+
+      const estado = await registrarReconocimientoProdep({}, formulario());
+
+      expect(estado.registrado).toBe(true);
+    });
+
+    it("no cuenta un dictamen existente no aprobado ni bloquea uno nuevo no aprobado", async () => {
+      dobles.reconocimientoProdep.findMany.mockResolvedValue([{ ...otro, resultado: "NO_APROBADO" }]);
+      expect((await registrarReconocimientoProdep({}, formulario())).registrado).toBe(true);
+
+      dobles.reconocimientoProdep.findMany.mockResolvedValue([otro]);
+      expect((await registrarReconocimientoProdep({}, formulario({ resultado: "NO_APROBADO" }))).registrado).toBe(true);
+    });
+
+    it("rechaza una edición que choca con otro periodo, sin actualizar", async () => {
+      dobles.reconocimientoProdep.findMany.mockResolvedValue([otro]);
+
+      const estado = await editarReconocimientoProdep({}, formulario({ id: "9" }));
+
+      expect(estado.error).toMatch(/se traslapa con una vigencia PRODEP/);
+      expect(estado.campo).toBe("fechaInicio");
+      expect(dobles.reconocimientoProdep.updateMany).not.toHaveBeenCalled();
+    });
+
+    it("permite editar un registro sin chocar consigo mismo", async () => {
+      await editarReconocimientoProdep({}, formulario({ id: "9" }));
+
+      expect(dobles.reconocimientoProdep.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { profesorId: 7, id: { not: 9 } } }),
+      );
+      expect(dobles.reconocimientoProdep.updateMany).toHaveBeenCalledOnce();
+    });
+  });
+
   describe("vigencia de 3 o 6 años (RF-010)", () => {
     const fecha = (dia: string) => new Date(`${dia}T00:00:00.000Z`);
     const antecedentes = [

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { condicionTexto, ordenarPor, type ConsultaListado, type DefinicionListado } from "@/lib/listados/consulta";
 import type { Prisma } from "@/generated/prisma/client";
+import { hayTraslape, type PeriodoVigencia } from "./vigencia";
 
 export const TIPOS_SOLICITUD_PRODEP = ["PRIMER_RECONOCIMIENTO", "RENOVACION"] as const;
 export const RESULTADOS_PRODEP = ["APROBADO", "NO_APROBADO", "EN_RECONSIDERACION"] as const;
@@ -162,6 +163,28 @@ export function textoVigenciaProdep(vigencia: VigenciaProdep) {
     default:
       return "No hay una secuencia consolidada de renovaciones aprobadas sin interrupciones: se aplican tres años.";
   }
+}
+
+// ─── RF-011 (CU-006): periodos de vigencia que no se traslapan ──────────────
+
+export type PeriodoProdep = PeriodoVigencia & { resultado: (typeof RESULTADOS_PRODEP)[number] };
+
+/**
+ * Devuelve el periodo existente con el que choca el nuevo, o null. Un dictamen no aprobado no
+ * otorga vigencia: ni se compara ni cuenta como periodo existente. El día límite compartido sí
+ * es traslape; al editar, el propio registro (`excluirId`) no choca consigo mismo.
+ */
+export function hayTraslapeProdep(
+  existentes: PeriodoProdep[],
+  nuevo: PeriodoProdep,
+  excluirId?: number,
+): PeriodoVigencia | null {
+  if (nuevo.resultado === "NO_APROBADO") return null;
+  return hayTraslape(
+    existentes.filter((periodo) => periodo.resultado !== "NO_APROBADO"),
+    nuevo,
+    excluirId,
+  );
 }
 
 export type ResumenVigenciaProdep = {

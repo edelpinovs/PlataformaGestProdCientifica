@@ -9,6 +9,7 @@ import {
   calcularVigenciaProdep,
   camposReconocimientoProdep,
   crearEsquemaReconocimientoProdep,
+  hayTraslapeProdep,
   reconocimientoProdep,
   textoVigenciaProdep,
   validarContratacionProdep,
@@ -117,12 +118,36 @@ async function guardarProdep(datos: ReconocimientoProdep, id?: number) {
     };
   }
 
+  const inicio = new Date(`${datos.fechaInicio}T00:00:00.000Z`);
+  const fin = new Date(`${datos.fechaFin}T00:00:00.000Z`);
+
+  // RF-011: el periodo no puede traslaparse con otro del mismo profesor. El historial ya excluye
+  // el registro que se edita; un dictamen no aprobado no otorga vigencia y no cuenta.
+  const choque = hayTraslapeProdep(
+    historial.map((registro) => ({
+      id: registro.id,
+      resultado: registro.resultado,
+      inicio: new Date(registro.fechaInicio),
+      fin: new Date(registro.fechaFin),
+    })),
+    { inicio, fin, resultado: datos.resultado },
+    id,
+  );
+  if (choque) {
+    const del = choque.inicio.toISOString().slice(0, 10);
+    const al = choque.fin.toISOString().slice(0, 10);
+    return {
+      error: `El periodo se traslapa con una vigencia PRODEP del ${del} al ${al}. Ajusta las fechas.`,
+      campo: "fechaInicio" as const,
+    };
+  }
+
   const data = {
     profesorId: datos.profesorId,
     tipoSolicitud: datos.tipoSolicitud,
     resultado: datos.resultado,
-    inicio: new Date(`${datos.fechaInicio}T00:00:00.000Z`),
-    fin: new Date(`${datos.fechaFin}T00:00:00.000Z`),
+    inicio,
+    fin,
   };
 
   if (id === undefined) {
