@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 import { ETIQUETA_NIVEL } from "@/modules/cuerpos-academicos/cuerpo";
 import {
   analizarListado,
@@ -10,10 +12,14 @@ import {
 } from "@/lib/listados/consulta";
 import { calcularSemaforo, type Semaforo } from "./semaforo";
 
-// Reporte de vigencias que arma la coordinación (RF-026).
-// Elige distinciones y columnas; el semáforo no se guarda: se calcula al consultar,
-// con la fecha de hoy. Un cuerpo académico solo tiene año de vencimiento: el día
-// que usa el semáforo es el 31 de diciembre de ese año.
+// Reporte de vigencias que arma la coordinación (RF-026, RF-027).
+// Elige distinciones, columnas y el año de vencimiento. El semáforo no se guarda:
+// se calcula al consultar, con la fecha de hoy. Un cuerpo académico solo tiene año
+// de vencimiento: el día que usa el semáforo es el 31 de diciembre de ese año.
+
+const ANIO_MINIMO = 1990;
+const ANIO_MAXIMO = 2100;
+const MENSAJE_ANIO = "El año debe tener cuatro dígitos, entre 1990 y 2100.";
 
 export const TIPOS_DISTINCION = ["SNII", "PRODEP", "CA"] as const;
 export type TipoDistincion = (typeof TIPOS_DISTINCION)[number];
@@ -80,6 +86,8 @@ export type EstadoReporte = {
   consulta: ConsultaListado;
   tipos: TipoDistincion[];
   columnas: ColumnaVigencia[];
+  /** Año de la fecha de vencimiento. Null muestra todos los años. */
+  anio: number | null;
   errores: ErroresListado;
 };
 
@@ -240,7 +248,31 @@ export function analizarReporte(parametros: ParametrosListado): EstadoReporte {
   });
   if (tipos.error) errores.tipos = tipos.error;
   if (columnas.error) errores.columnas = columnas.error;
-  return { consulta, tipos: tipos.valores, columnas: columnas.valores, errores };
+  const anio = leerAnio(parametros.anio);
+  if (anio.error) errores.anio = anio.error;
+  return { consulta, tipos: tipos.valores, columnas: columnas.valores, anio: anio.anio, errores };
+}
+
+function leerAnio(crudo: string | string[] | undefined) {
+  if (crudo === undefined || crudo === "") return { anio: null };
+  const texto = typeof crudo === "string" ? crudo.trim() : crudo;
+  if (texto === "") return { anio: null };
+  const resultado = z.string({ error: "Elige un solo año." })
+    .regex(/^\d{4}$/, MENSAJE_ANIO)
+    .transform(Number)
+    .refine((valor) => valor >= ANIO_MINIMO && valor <= ANIO_MAXIMO, MENSAJE_ANIO)
+    .safeParse(texto);
+  if (!resultado.success) {
+    return { anio: null, error: resultado.error.issues[0]?.message ?? MENSAJE_ANIO };
+  }
+  return { anio: resultado.data };
+}
+
+/** Años de vencimiento que hay en el reporte, más el elegido si no tiene filas. */
+export function opcionesAnio(filas: FilaVigencia[], anio: number | null) {
+  const anios = filas.map((fila) => fila.fin.getUTCFullYear());
+  if (anio !== null) anios.push(anio);
+  return [...new Set(anios)].sort((a, b) => a - b);
 }
 
 function valorOrdenable(fila: FilaVigencia, columna: string) {
@@ -267,25 +299,29 @@ function coincide(fila: FilaVigencia, estado: EstadoReporte) {
   return estado.columnas.some((columna) => textoColumna(fila, columna).toLocaleLowerCase("es-MX").includes(texto));
 }
 
-/** Filtra, ordena y corta de 10 en 10 el reporte ya armado. */
-export function consultarVigencias(filas: FilaVigencia[], estado: EstadoReporte) {
+/** Filtra, ordena y corta de 10 en 10 el reporte ya armado. Con `completo`, devuelve todas las filas filtradas. */
+export function consultarVigencias(filas: FilaVigencia[], estado: EstadoReporte, completo = false) {
   if (estado.tipos.length === 0 || estado.columnas.length === 0) {
     return { filas: [], paginacion: paginar(0, estado.consulta) };
   }
   const semaforo = estado.consulta.filtros.semaforo;
-  const filtradas = filas.filter((fila) => estado.tipos.includes(fila.tipo) && coincide(fila, estado) && (!semaforo || fila.semaforo === semaforo));
+  const filtradas = filas.filter((fila) =>
+    estado.tipos.includes(fila.tipo)
+    && coincide(fila, estado)
+    && (!semaforo || fila.semaforo === semaforo)
+    && (estado.anio === null || fila.fin.getUTCFullYear() === estado.anio));
   const orden = (estado.columnas as readonly string[]).includes(estado.consulta.orden)
     ? estado.consulta.orden
     : estado.columnas[0];
   const ordenadas = [...filtradas].sort((a, b) => comparar(a, b, orden, estado.consulta.dir));
   const paginacion = paginar(ordenadas.length, estado.consulta);
   return {
-    filas: ordenadas.slice(paginacion.salto, paginacion.salto + paginacion.tamanio),
+    filas: completo ? ordenadas : ordenadas.slice(paginacion.salto, paginacion.salto + paginacion.tamanio),
     paginacion,
   };
 }
 
-/** Conserva distinciones, columnas, búsqueda y semáforo al ordenar o cambiar de página. */
+/** Conserva distinciones, columnas, año, búsqueda y semáforo al ordenar o cambiar de página. */
 export function enlaceReporte(
   base: string,
   estado: EstadoReporte,
@@ -303,6 +339,7 @@ export function enlaceReporte(
   if (estado.columnas.length > 0 && estado.columnas.length !== COLUMNAS_VIGENCIA.length) {
     parametros.set("columnas", estado.columnas.join(","));
   }
+  if (estado.anio !== null) parametros.set("anio", String(estado.anio));
   if (estado.consulta.q) parametros.set("q", estado.consulta.q);
   if (estado.consulta.filtros.semaforo) parametros.set("semaforo", estado.consulta.filtros.semaforo);
   if (orden !== LISTADO_VIGENCIAS.ordenInicial.columna || dir !== LISTADO_VIGENCIAS.ordenInicial.dir) {

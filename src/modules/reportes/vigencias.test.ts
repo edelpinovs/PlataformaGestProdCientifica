@@ -3,6 +3,7 @@ import {
   analizarReporte,
   COLUMNAS_VIGENCIA,
   consultarVigencias,
+  opcionesAnio,
   cuentaParaSemaforo,
   enlaceReporte,
   filaCuerpo,
@@ -129,7 +130,43 @@ describe("reporte armado por quien consulta", () => {
     const estado = estadoBase();
     expect(estado.tipos).toEqual(["SNII", "PRODEP", "CA"]);
     expect(estado.columnas).toEqual([...COLUMNAS_VIGENCIA]);
+    expect(estado.anio).toBeNull();
     expect(estado.errores).toEqual({});
+  });
+
+  it("filtra los vencimientos por el año de la fecha de fin (RF-027)", () => {
+    const estado = analizarReporte({ anio: "2027" });
+    expect(estado.anio).toBe(2027);
+    expect(consultarVigencias(filas, estado).filas.map((fila) => fila.nombre)).toEqual(["Grace Hopper"]);
+    expect(opcionesAnio(filas, null)).toEqual([2024, 2027, 2030]);
+  });
+
+  it("en un cuerpo académico el año es el de vencimiento, no el de registro", () => {
+    const cuerpo = filaCuerpo({
+      id: 9,
+      clave: "CA-009",
+      nombre: "Software",
+      nivel: "CONSOLIDADO",
+      anioRegistro: 2020,
+      anioVencimiento: 2030,
+      departamento: "Computación",
+    }, hoy);
+    expect(consultarVigencias([cuerpo], analizarReporte({ anio: "2030" })).filas).toHaveLength(1);
+    expect(consultarVigencias([cuerpo], analizarReporte({ anio: "2020" })).filas).toHaveLength(0);
+  });
+
+  it("un año inválido se ignora y se avisa en español", () => {
+    const invalido = analizarReporte({ anio: "siglo" });
+    expect(invalido.anio).toBeNull();
+    expect(invalido.errores.anio).toBe("El año debe tener cuatro dígitos, entre 1990 y 2100.");
+    expect(consultarVigencias(filas, invalido).paginacion.total).toBe(filas.length);
+    expect(analizarReporte({ anio: ["2026", "2027"] }).errores.anio).toBe("Elige un solo año.");
+    expect(analizarReporte({ anio: "1899" }).errores.anio).toBe("El año debe tener cuatro dígitos, entre 1990 y 2100.");
+  });
+
+  it("conserva el año al pasar de página", () => {
+    const estado = analizarReporte({ anio: "2027" });
+    expect(enlaceReporte("/reportes", estado, { pagina: 2 })).toBe("/reportes?anio=2027&pagina=2");
   });
 
   it("respeta las distinciones elegidas", () => {
