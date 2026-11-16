@@ -40,7 +40,8 @@ export default async function ReportesPage({ searchParams }: { searchParams: Pro
 
   return (
     <Marco correo={perfil.correo} rol={perfil.rol} activo="reportes" titulo="Vigencias y reportes">
-      <Panel titulo="Armar reporte" descripcion="Elige las distinciones, las columnas y el año de vencimiento. El semáforo se calcula al abrir el reporte: vigente, por vencer en 12 meses o menos, o vencido.">
+      <Panel titulo="Armar reporte" descripcion="Elige las distinciones, las columnas y el año de vencimiento. El semáforo se calcula al abrir el reporte: vigente, por vencer en 12 meses o menos, o vencido."
+        accion={{ href: "/reportes/convocatoria", texto: "Convocatoria anual" }}>
         <Constructor estado={vista} anios={opcionesAnio(cargadas, vista.anio)} />
       </Panel>
 
