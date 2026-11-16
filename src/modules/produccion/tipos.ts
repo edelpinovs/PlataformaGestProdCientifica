@@ -18,6 +18,7 @@ export const fuentePublicacionEnum = z.enum([
   "SCOPUS",
   "OPENALEX",
   "GOOGLE_SCHOLAR",
+  "CROSSREF",
   "MANUAL",
 ]);
 

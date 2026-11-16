@@ -1,18 +1,25 @@
 import { z } from "zod";
 import type { ResumenEscaneo } from "./escaneo";
+import { consultaFuenteEsquema, seleccionFuentesEsquema } from "./fuentes";
+import { fuentePublicacionEnum } from "./tipos";
 
-export function resumenVacio(): ResumenEscaneo {
+export function resumenVacio(): ResumenEscaneo & { autoriasRechazadasOmitidas: number } {
   return { profesoresProcesados: 0, publicacionesEncontradas: 0, publicacionesGuardadas: 0,
-    autoriasCreadas: 0, coautoriasDetectadas: 0, errores: [] };
+    autoriasCreadas: 0, coautoriasDetectadas: 0, autoriasRechazadasOmitidas: 0, errores: [] };
 }
 
 const entero = z.number({ error: "El avance del escaneo no es válido." }).int().nonnegative();
 export const datosLoteEsquema = z.object({
   version: z.literal(1), profesoresIds: z.array(z.number().int().positive()), indice: entero,
   anio: z.number().int().min(1990).max(2100).optional(),
+  finalizadoEn: z.iso.datetime({ error: "La fecha de finalización no es válida." }).optional(),
+  fuentes: seleccionFuentesEsquema.optional(),
   resumen: z.object({
     profesoresProcesados: entero, publicacionesEncontradas: entero, publicacionesGuardadas: entero,
     autoriasCreadas: entero, coautoriasDetectadas: entero, errores: z.array(z.string()),
+    consultasFuentes: z.array(consultaFuenteEsquema).optional(),
+    procedencia: z.array(z.object({ publicacionId: entero, fuentes: z.array(fuentePublicacionEnum) })).optional(),
+    autoriasRechazadasOmitidas: entero.optional().default(0),
   }),
 }).refine((datos) => datos.indice <= datos.profesoresIds.length, {
   error: "El avance supera la cantidad de profesores del escaneo.",
@@ -23,13 +30,14 @@ export const solicitudEscaneoEsquema = z.object({
   profesorId: z.union([
     z.literal("todos"),
     z.string().regex(/^[1-9]\d*$/, "Selecciona un profesor válido.").refine(
-      (valor) => Number.isSafeInteger(Number(valor)), "Selecciona un profesor válido.",
+      (valor) => Number.isSafeInteger(Number(valor)) && Number(valor) <= 2147483647, "Selecciona un profesor válido.",
     ),
   ], { error: "Selecciona un profesor válido." }),
   anio: z.string({ error: "Indica un año válido." }).trim().refine(
     (valor) => !valor || (/^\d{4}$/.test(valor) && Number(valor) >= 1990 && Number(valor) <= new Date().getUTCFullYear() + 1),
     "Indica un año entre 1990 y el próximo año, o deja el campo vacío.",
   ),
+  fuentes: seleccionFuentesEsquema,
 });
 
 export function avanzarLote(datos: DatosLote, resultado: ResumenEscaneo): DatosLote {
@@ -40,6 +48,15 @@ export function avanzarLote(datos: DatosLote, resultado: ResumenEscaneo): DatosL
   resumen.publicacionesGuardadas += resultado.publicacionesGuardadas;
   resumen.autoriasCreadas += resultado.autoriasCreadas;
   resumen.coautoriasDetectadas += resultado.coautoriasDetectadas;
+  resumen.consultasFuentes = [...(resumen.consultasFuentes ?? []), ...(resultado.consultasFuentes ?? [])];
+  const procedencias = new Map<number, Set<z.infer<typeof fuentePublicacionEnum>>>();
+  for (const entrada of [...(resumen.procedencia ?? []), ...(resultado.procedencia ?? [])]) {
+    const fuentes = procedencias.get(entrada.publicacionId) ?? new Set();
+    entrada.fuentes.forEach(f => fuentes.add(f));
+    procedencias.set(entrada.publicacionId,fuentes);
+  }
+  resumen.procedencia = [...procedencias].map(([publicacionId,fuentes]) => ({ publicacionId, fuentes: [...fuentes] }));
+  resumen.autoriasRechazadasOmitidas = (resumen.autoriasRechazadasOmitidas ?? 0) + (resultado.autoriasRechazadasOmitidas ?? 0);
   // Limita el JSON guardado cuando las fuentes fallan repetidamente.
   resumen.errores = [...resumen.errores, ...resultado.errores].slice(0, 50);
   return { ...datos, indice: datos.indice + 1, resumen };

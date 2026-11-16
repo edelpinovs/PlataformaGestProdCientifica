@@ -170,8 +170,44 @@ describe("RF-021 y RF-022: integración simulada con Validación", () => {
     const repetido = await escanear(1);
     expect(repetido.autoriasCreadas).toBe(0);
     expect(autorias[0].estado).toBe("RECHAZADA");
+    expect(repetido.publicacionesGuardadas).toBe(0);
+    expect(repetido.autoriasRechazadasOmitidas).toBe(1);
     expect(calcularConteoOficial(autorias).totalValidadas).toBe(0);
     expect(publicaciones).toHaveLength(1);
+  });
+
+  it("otra fuente respeta el rechazo y la misma obra sigue disponible para otro profesor", async () => {
+    await escanear(1);
+    await expect(rechazarHomonimo(formulario(1))).rejects.toThrow("/validacion?accion=rechazada");
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({
+      meta: { next_cursor: null }, results: [{ title: publicaciones[0].titulo,
+        doi: "https://doi.org/10.1000/INTEGRACION-FICTICIA", type: "article", publication_year: 2026,
+        authorships: [{ author: { display_name: "Persona Ficticia" } }],
+      }],
+    }), { status: 200, headers: { "content-type": "application/json" } })));
+    const opciones = { fuentes: ["OPENALEX"] as ["OPENALEX"], anio: 2026, enriquecerAutores: false };
+    const rechazado = await ejecutarEscaneo({ ...opciones, profesorId: 1 }, repositorioPrisma);
+    const otro = await ejecutarEscaneo({ ...opciones, profesorId: 2 }, repositorioPrisma);
+    expect(rechazado.autoriasRechazadasOmitidas).toBe(1);
+    expect(rechazado.autoriasCreadas).toBe(0);
+    expect(otro.autoriasCreadas).toBe(1);
+    expect(autorias.map(a => [a.profesorId, a.estado])).toEqual([[1, "RECHAZADA"], [2, "PENDIENTE"]]);
+    expect(publicaciones).toHaveLength(1);
+  });
+
+  it("sin DOI, la coincidencia de título y año tampoco vuelve a proponer una autoría rechazada", async () => {
+    await escanear(1);
+    await expect(rechazarHomonimo(formulario(1))).rejects.toThrow("/validacion?accion=rechazada");
+    publicaciones[0].doi = null;
+    dobles.prisma.$queryRaw.mockResolvedValue([{ ...publicaciones[0], fechaPublicacion: new Date("2026-01-01") }]);
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ group: [{
+      "work-summary": [{ title: { title: { value: publicaciones[0].titulo } }, type: "journal-article", "publication-date": { year: { value: "2026" } } }],
+    }] }), { status: 200, headers: { "content-type": "application/json" } })));
+    const resultado = await escanear(1);
+    expect(resultado.autoriasRechazadasOmitidas).toBe(1);
+    expect(resultado.autoriasCreadas).toBe(0);
+    expect(publicaciones).toHaveLength(1);
+    expect(autorias).toHaveLength(1);
   });
 
   it("un docente no puede confirmar la autoría de otro profesor", async () => {

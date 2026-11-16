@@ -44,7 +44,7 @@ describe("RF-021 y RF-022: persistencia concurrente", () => {
 
   it.each(["PENDIENTE", "VALIDADA", "RECHAZADA"])("conserva una autoría existente en estado %s", async (estado) => {
     base.autoria.findUnique.mockResolvedValue({ publicacionId: 10, profesorId: 1, estado });
-    expect(await repositorioPrisma.vincularAutoria(10, 1)).toBe(false);
+    expect(await repositorioPrisma.vincularAutoria(10, 1)).toBe(estado === "RECHAZADA" ? "RECHAZADA" : false);
     expect(base.autoria.create).not.toHaveBeenCalled();
   });
 
@@ -59,6 +59,12 @@ describe("RF-021 y RF-022: persistencia concurrente", () => {
     const error = { code: "P2002" };
     base.autoria.create.mockRejectedValue(error);
     await expect(repositorioPrisma.vincularAutoria(10, 1)).rejects.toBe(error);
+  });
+
+  it("respeta un rechazo concurrente al recuperar un conflicto de unicidad", async () => {
+    base.autoria.findUnique.mockResolvedValueOnce(null).mockResolvedValueOnce({ estado: "RECHAZADA" });
+    base.autoria.create.mockRejectedValue({ code: "P2002" });
+    expect(await repositorioPrisma.vincularAutoria(10, 1)).toBe("RECHAZADA");
   });
 
   it("si falla pg_trgm impide crear publicaciones sin comprobar la similitud", async () => {

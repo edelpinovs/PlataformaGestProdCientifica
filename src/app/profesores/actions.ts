@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect, RedirectType } from "next/navigation";
 import type { EstadoFila } from "@/components/fila-editable";
+import type { EstadoAlta } from "@/components/modal-alta-logica";
 import { Prisma } from "@/generated/prisma/client";
 import { requireModulo } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
@@ -137,10 +138,9 @@ function errorPrisma(e: unknown, valores: Record<string, string>): EstadoProfeso
   return null;
 }
 
-// CU-004: el administrador registra un profesor investigador (RF-004).
-export async function crearProfesor(_: EstadoProfesor, formData: FormData): Promise<EstadoProfesor> {
-  await requireModulo("profesores");
-
+// Reglas del alta (RF-004), comunes al formulario de página y al modal. Quien la llama
+// ya exigió el permiso del módulo.
+async function registrar(formData: FormData): Promise<EstadoProfesor> {
   const valores = valoresDe(formData);
   const datos = registrarProfesor.safeParse(valores);
   if (!datos.success) {
@@ -165,6 +165,25 @@ export async function crearProfesor(_: EstadoProfesor, formData: FormData): Prom
 
   revalidatePath("/profesores");
   return { registrado: `${datos.data.nombres} ${datos.data.apellidos}` };
+}
+
+// CU-004: el administrador registra un profesor investigador (RF-004).
+export async function crearProfesor(_: EstadoProfesor, formData: FormData): Promise<EstadoProfesor> {
+  await requireModulo("profesores");
+  return registrar(formData);
+}
+
+// D-214 · piloto D-216: el mismo alta, devuelta con el contrato de `ModalAlta`. No redirige: solo
+// un `exito` confirmado por el servidor cierra el modal; un error conserva los valores.
+export async function crearProfesorEnModal(_: EstadoAlta, formData: FormData): Promise<EstadoAlta> {
+  await requireModulo("profesores");
+  const resultado = await registrar(formData);
+  if (resultado.registrado) return { exito: `Se registró a ${resultado.registrado} correctamente.` };
+  return {
+    error: resultado.error ?? "No se pudo registrar al profesor. Revisa los datos e inténtalo de nuevo.",
+    campo: resultado.campo,
+    valores: resultado.valores,
+  };
 }
 
 // #59: cambia el perfil con las mismas reglas del registro.

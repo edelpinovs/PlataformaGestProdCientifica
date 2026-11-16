@@ -26,7 +26,7 @@ Al registrar una carga de resultados (RF-016), el servidor descarga el archivo, 
 
 1. **Archivos oficiales reales.** Solo se probó con archivos inventados que imitan la estructura descrita en el spec. El lector de PDF asigna cada texto a una columna por su posición en la página: si el PDF oficial tiene otros márgenes, tamaños de letra o celdas desalineadas con el encabezado, algunas personas pueden quedar mal armadas. No falla en silencio (esas filas salen como avisos en el conteo), pero no se ha medido cuántas. Tampoco se probaron listados de PRODEP de otras instituciones ni variantes de redacción del nivel que no estén en `lectura.test.ts`. Hacerlo **fuera de la base compartida** (`AGENTS.md`: solo datos ficticios en la base), pasando el archivo por `fragmentosDePdf` + `agruparEnFilas` + `interpretarListado` en local y reportando solo conteos.
 2. **Tiempo completo en Vercel.** Los 2.3 s son solo la lectura en local. No se midió descarga desde Storage + inserción de ~9,500 renglones en Supabase (bloques de 1,000) dentro de `after()`, con `maxDuration = 300`. Si no alcanza, la lectura queda atascada y a los 10 minutos se ofrece *Volver a leer*; la mitigación prevista es partir por páginas guardando el avance en `Job.datos`.
-3. **Decisiones del equipo pendientes:** D-214 (dependencia `unpdf`), D-215 (tabla `RenglonResultado` y su migración `20261109165553_renglones_resultado`) y D-216 (de dónde sale la vigencia SNII, que el listado no publica).
+3. **Decisiones del equipo pendientes:** D-222 (dependencia `unpdf`), D-223 (tabla `RenglonResultado` y su migración `20261109165553_renglones_resultado`) y D-224 (de dónde sale la vigencia SNII, que el listado no publica).
 
 ## Fuera de alcance
 

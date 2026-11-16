@@ -13,7 +13,7 @@ import {
   claseTabla,
   EtiquetaEstado,
 } from "@/components/ui";
-import { ETIQUETA_FUENTE, type FuentePublicacion } from "@/modules/validacion/bandeja";
+import { ETIQUETA_FUENTE, ETIQUETA_ESTADO_AUTORIA, type EstadoAutoria, type FuentePublicacion } from "@/modules/validacion/bandeja";
 import { ETIQUETAS_TIPO, TIPOS_PUBLICACION, type TipoPublicacion } from "@/modules/validacion/manual";
 import { confirmarAutoria, editarMetadatosBandeja, rechazarHomonimo } from "./actions";
 
@@ -31,7 +31,7 @@ type PublicacionBandeja = {
   profesorNombre: string;
 };
 
-export function FilaBandeja({ publicacion }: { publicacion: PublicacionBandeja }) {
+export function FilaBandeja({ publicacion, retorno, estadoAutoria }: { publicacion: PublicacionBandeja; retorno: string; estadoAutoria: EstadoAutoria }) {
   const [editando, setEditando] = useState(false);
   const [confirmandoRechazo, setConfirmandoRechazo] = useState(false);
 
@@ -47,7 +47,7 @@ export function FilaBandeja({ publicacion }: { publicacion: PublicacionBandeja }
   if (editando) {
     return (
       <tr className={claseTabla.fila}>
-        <td colSpan={4} className="p-4">
+        <td colSpan={6} className="p-4">
           <form action={accionEditar} className="flex flex-col gap-4 rounded-xl bg-superficie-alt p-4">
             <input type="hidden" name="id" value={publicacion.id} />
             <h3 className="text-sm font-semibold">Editar metadatos de la publicación</h3>
@@ -157,7 +157,7 @@ export function FilaBandeja({ publicacion }: { publicacion: PublicacionBandeja }
   if (confirmandoRechazo) {
     return (
       <tr className={claseTabla.fila}>
-        <td colSpan={4} className="p-4">
+        <td colSpan={6} className="p-4">
           <div className="flex flex-col gap-3 rounded-xl bg-peligro-suave p-4 text-sm text-peligro">
             <p className="font-semibold">
               ¿Confirmas que deseas rechazar esta obra por homónimo?
@@ -174,6 +174,7 @@ export function FilaBandeja({ publicacion }: { publicacion: PublicacionBandeja }
                 Cancelar
               </button>
               <form action={rechazarHomonimo}>
+                <input type="hidden" name="retorno" value={retorno} />
                 <input type="hidden" name="publicacionId" value={publicacion.id} />
                 <input type="hidden" name="profesorId" value={publicacion.profesorId} />
                 <button type="submit" className={claseBotonPeligro}>
@@ -188,17 +189,17 @@ export function FilaBandeja({ publicacion }: { publicacion: PublicacionBandeja }
   }
 
   return (
-    <tr className={claseTabla.fila}>
+    <tr className={`${claseTabla.fila} flex flex-col sm:table-row`}>
       <td className={`${claseTabla.celda} hidden sm:table-cell`}>
         <div className="flex flex-col gap-1 items-start">
           <EtiquetaEstado tipo="aviso">
             {ETIQUETA_FUENTE[publicacion.fuente] ?? publicacion.fuente}
           </EtiquetaEstado>
-          <span className="text-xs text-texto-3">{ETIQUETAS_TIPO[publicacion.tipo] ?? publicacion.tipo}</span>
         </div>
       </td>
+      <td className={`${claseTabla.celda} hidden sm:table-cell`}>{ETIQUETAS_TIPO[publicacion.tipo]}</td>
 
-      <td className={claseTabla.celda}>
+      <td className={`${claseTabla.celda} min-w-0 break-words`}>
         <div className="flex flex-col gap-0.5">
           {/* En celular, muestra fuente y tipo encima */}
           <div className="flex items-center gap-1.5 sm:hidden mb-1">
@@ -211,6 +212,7 @@ export function FilaBandeja({ publicacion }: { publicacion: PublicacionBandeja }
           </div>
 
           <span className="font-medium text-texto">{publicacion.titulo}</span>
+          <span className="text-xs text-texto-3 sm:hidden">{ETIQUETA_ESTADO_AUTORIA[estadoAutoria]}</span>
           <span className="text-xs text-texto-3">{publicacion.autoresTexto}</span>
           {publicacion.revistaEditorial && (
             <span className="text-xs text-texto-2">{publicacion.revistaEditorial}</span>
@@ -239,14 +241,17 @@ export function FilaBandeja({ publicacion }: { publicacion: PublicacionBandeja }
         </div>
       </td>
 
-      <td className={`${claseTabla.celda} text-right pr-0 whitespace-nowrap`}>
+      <td className={`${claseTabla.celda} hidden sm:table-cell`}>{ETIQUETA_ESTADO_AUTORIA[estadoAutoria]}</td>
+      <td className={`${claseTabla.celda} text-right pr-0 sm:whitespace-nowrap`}>
         <div className="flex items-center justify-end gap-1 flex-wrap">
           {/* RF-024 / RF-025: Acción 1: Confirmar autoría */}
           <form action={confirmarAutoria}>
+            <input type="hidden" name="retorno" value={retorno} />
             <input type="hidden" name="publicacionId" value={publicacion.id} />
             <input type="hidden" name="profesorId" value={publicacion.profesorId} />
             <button
               type="submit"
+              disabled={estadoAutoria === "VALIDADA"}
               title="Confirmar autoría e incorporar al conteo oficial"
               className={claseAccionFila(false)}
             >
@@ -268,6 +273,7 @@ export function FilaBandeja({ publicacion }: { publicacion: PublicacionBandeja }
           <button
             type="button"
             onClick={() => setConfirmandoRechazo(true)}
+            disabled={estadoAutoria === "RECHAZADA"}
             title="Descartar por homónimo"
             className={claseAccionFila(true)}
           >

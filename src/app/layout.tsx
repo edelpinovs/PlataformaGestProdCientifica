@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PGPC · CUValles",
-  description: "Plataforma de Gestión de la Producción Científica",
+  title: "SIGeC · CUValles",
+  description: "SIGeC, Sistema Integral de Gestión Científica",
 };
 
 // Aplica el tema guardado en la cookie antes de pintar, para que no parpadee

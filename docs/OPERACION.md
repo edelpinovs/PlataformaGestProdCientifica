@@ -14,7 +14,6 @@ Guía para quien administra la infraestructura (Supabase, Vercel, GitHub y acces
 | `DIRECT_URL` (pooler 5432) | ✓ | ✓ | |
 | `NEXT_PUBLIC_SUPABASE_URL` | ✓ | ✓ | ✓ |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | ✓ | ✓ | ✓ |
-| `CRON_SECRET` | ✓ | ✓ | ✓ |
 | `SUPABASE_SECRET_KEY` | | ✓ | |
 | `ADMIN_CORREO` · `SITIO_URL` | | ✓ | |
 

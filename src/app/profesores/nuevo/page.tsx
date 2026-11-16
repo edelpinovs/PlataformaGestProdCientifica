@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { FormularioProfesor } from "./formulario";
 
 export const metadata = {
-  title: "Nuevo profesor — PGPC",
+  title: "Nuevo profesor — SIGeC",
   description: "Registra un nuevo profesor investigador en el directorio de la plataforma.",
 };
 

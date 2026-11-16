@@ -278,7 +278,7 @@ model CargaResultados {
 }
 
 // RF-017: lo que trae el listado oficial, un renglón por persona. Nada se calcula: el SNII no
-// publica Código ni Vigencia y quedan vacíos (D-216). RF-018 lo cruza con el directorio.
+// publica Código ni Vigencia y quedan vacíos (D-224). RF-018 lo cruza con el directorio.
 model RenglonResultado {
   id              Int             @id @default(autoincrement())
   cargaId         Int
@@ -315,6 +315,7 @@ enum FuentePublicacion {
   SCOPUS
   OPENALEX
   GOOGLE_SCHOLAR
+  CROSSREF
   MANUAL
 }
 

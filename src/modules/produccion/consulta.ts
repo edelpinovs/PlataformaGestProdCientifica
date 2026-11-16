@@ -4,7 +4,7 @@ import { tipoPublicacionEnum, fuentePublicacionEnum, estadoAutoriaEnum } from ".
 import { normalizarTitulo } from "./normalizacion";
 
 export const ETIQUETAS_TIPO = { ARTICULO: "Artículo", LIBRO: "Libro", CAPITULO: "Capítulo", MEMORIA_CONGRESO: "Memoria de congreso", REGISTRO_SOFTWARE: "Registro de software", PATENTE: "Patente", OTRO: "Otro" };
-export const ETIQUETAS_FUENTE = { ORCID: "ORCID", SCOPUS: "Scopus", OPENALEX: "OpenAlex", GOOGLE_SCHOLAR: "Google Scholar", MANUAL: "Captura manual" };
+export const ETIQUETAS_FUENTE = { ORCID: "ORCID", SCOPUS: "Scopus", OPENALEX: "OpenAlex", CROSSREF: "Crossref", GOOGLE_SCHOLAR: "Google Scholar", MANUAL: "Captura manual" };
 export const ETIQUETAS_ESTADO = { PENDIENTE: "Pendiente", VALIDADA: "Validada", RECHAZADA: "Rechazada" };
 export const COLUMNAS_PUBLICACIONES = [
   { clave: "titulo", texto: "Título" }, { clave: "tipo", texto: "Tipo" },
