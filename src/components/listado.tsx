@@ -41,8 +41,8 @@ export type SegmentadoUi = {
 
 /**
  * Barra del listado: búsqueda de texto libre, filtros y, solo en celular, «Ordenar por».
- * Es un formulario GET y el estado queda en la URL. Las listas de filtro aplican al elegir y
- * Enter envía la búsqueda; sin JavaScript aparece el botón «Buscar». El grupo `segmentado`
+ * Es un formulario GET y el estado queda en la URL. Las listas de filtro aplican al elegir con ratón
+ * o toque; con teclado, y sin JavaScript, se aplican con el botón «Buscar», siempre visible. Enter envía la búsqueda. El grupo `segmentado`
  * son enlaces que conservan el resto del estado. Al enviarlo vuelve a la página 1 porque no manda `pagina`.
  */
 export function BarraListado({ base, definicion, consulta, filtros = [], segmentado, columnas, errores = {}, etiquetaBusqueda = "Buscar", placeholder }: Omit<Contexto, "definicion"> & {
@@ -60,8 +60,6 @@ export function BarraListado({ base, definicion, consulta, filtros = [], segment
   const mensajes = Object.values(errores);
   // El grupo segmentado son enlaces: su valor viaja en el formulario como campo oculto.
   const valorSegmentado = segmentado ? consulta.filtros[segmentado.clave] ?? "" : "";
-  // Un filtro compuesto por el módulo no sabe enviarse solo: necesita el botón.
-  const necesitaBoton = filtros.some((filtro) => filtro.contenido !== undefined);
   const claseSelector = (clave: string) =>
     `min-w-0 max-w-48 cursor-pointer bg-transparent py-2.5 pr-1 text-sm font-medium focus:outline-2 focus:outline-marca ${errores[clave] ? "text-peligro" : "text-texto"}`;
   return (
@@ -94,9 +92,7 @@ export function BarraListado({ base, definicion, consulta, filtros = [], segment
               </label>
             )
           ))}
-          {necesitaBoton
-            ? <button type="submit" className={claseBoton}>Buscar</button>
-            : <noscript><button type="submit" className={claseBoton}>Buscar</button></noscript>}
+          <button type="submit" className={claseBoton}>Buscar</button>
           {hayFiltrosActivos(consulta) && <Link href={base} className={claseBotonSecundario}>Limpiar</Link>}
         </div>
         {/* En celular los encabezados se ocultan: el orden se elige aquí. */}
