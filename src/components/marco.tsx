@@ -90,9 +90,10 @@ export function Marco({
                 <p className="max-w-56 truncate text-sm font-medium">{correo}</p>
                 <p className="text-xs text-texto-3">{ETIQUETA_ROL[rol]}</p>
               </div>
-              <span className="grid h-10 w-10 place-items-center rounded-full bg-marca text-sm font-semibold text-sobre-marca" aria-hidden>
-                {iniciales(correo)}
-              </span>
+              <Link href="/cuenta" aria-label="Mi cuenta" title="Mi cuenta"
+                className="grid h-10 w-10 place-items-center rounded-full bg-marca text-sm font-semibold text-sobre-marca hover:opacity-90">
+                <span aria-hidden>{iniciales(correo)}</span>
+              </Link>
             </div>
           </header>
 
@@ -107,7 +108,7 @@ function OpcionesCuenta({ compacto = false }: { compacto?: boolean }) {
   const clase = `rounded-xl px-3 py-2 text-left text-sm text-texto-2 hover:bg-hover ${compacto ? "" : "w-full"}`;
   return (
     <>
-      <Link href="/cuenta/contrasena" className={clase}>{compacto ? "Contraseña" : "Cambiar contraseña"}</Link>
+      <Link href="/cuenta" className={clase}>Mi cuenta</Link>
       <SelectorTema className={clase} />
       <form action={cerrarSesion}>
         <button type="submit" className={clase}>{compacto ? "Salir" : "Cerrar sesión"}</button>
