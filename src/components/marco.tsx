@@ -3,6 +3,7 @@ import { MarcaSigec } from "@/components/marca";
 import { cerrarSesion } from "@/app/login/actions";
 import { ETIQUETA_ROL, type Rol } from "@/lib/auth/roles";
 import { MODULOS } from "@/modules/registry";
+import { RegistroAcceso } from "./registro-acceso";
 import { Icono } from "./ui";
 import { SelectorTema } from "./selector-tema";
 
@@ -38,8 +39,12 @@ export function Marco({
     })),
   ];
 
+  // Solo los módulos del registro cuentan como acceso (no «inicio» ni «cuenta»).
+  const esModulo = MODULOS.some((m) => m.slug === activo);
+
   return (
     <div className="min-h-screen bg-fondo p-3 text-texto sm:p-4">
+      {esModulo && <RegistroAcceso modulo={activo} />}
       <div className="mx-auto flex min-h-[calc(100vh-1.5rem)] max-w-[1440px] flex-col overflow-hidden rounded-[28px] bg-superficie shadow-marco lg:flex-row">
         <aside className="flex w-full flex-col gap-4 border-linea px-4 py-4 lg:w-60 lg:shrink-0 lg:gap-6 lg:border-r lg:py-5">
           <div className="flex items-center justify-between gap-3">
@@ -90,9 +95,10 @@ export function Marco({
                 <p className="max-w-56 truncate text-sm font-medium">{correo}</p>
                 <p className="text-xs text-texto-3">{ETIQUETA_ROL[rol]}</p>
               </div>
-              <span className="grid h-10 w-10 place-items-center rounded-full bg-marca text-sm font-semibold text-sobre-marca" aria-hidden>
-                {iniciales(correo)}
-              </span>
+              <Link href="/cuenta" aria-label="Mi cuenta" title="Mi cuenta"
+                className="grid h-10 w-10 place-items-center rounded-full bg-marca text-sm font-semibold text-sobre-marca hover:opacity-90">
+                <span aria-hidden>{iniciales(correo)}</span>
+              </Link>
             </div>
           </header>
 
@@ -107,7 +113,7 @@ function OpcionesCuenta({ compacto = false }: { compacto?: boolean }) {
   const clase = `rounded-xl px-3 py-2 text-left text-sm text-texto-2 hover:bg-hover ${compacto ? "" : "w-full"}`;
   return (
     <>
-      <Link href="/cuenta/contrasena" className={clase}>{compacto ? "Contraseña" : "Cambiar contraseña"}</Link>
+      <Link href="/cuenta" className={clase}>Mi cuenta</Link>
       <SelectorTema className={clase} />
       <form action={cerrarSesion}>
         <button type="submit" className={clase}>{compacto ? "Salir" : "Cerrar sesión"}</button>

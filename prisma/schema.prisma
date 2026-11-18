@@ -21,12 +21,26 @@ enum Rol {
 
 // Un perfil por usuario de Supabase Auth; `id` es el uuid de auth.users.
 model Perfil {
-  id         String    @id @db.Uuid
-  correo     String    @unique
-  rol        Rol       @default(DOCENTE)
-  profesorId Int?      @unique
-  profesor   Profesor? @relation(fields: [profesorId], references: [id])
-  creadoEn   DateTime  @default(now())
+  id         String         @id @db.Uuid
+  correo     String         @unique
+  rol        Rol            @default(DOCENTE)
+  profesorId Int?           @unique
+  profesor   Profesor?      @relation(fields: [profesorId], references: [id])
+  creadoEn   DateTime       @default(now())
+  accesos    AccesoModulo[]
+}
+
+// Visitas de cada persona a cada módulo, para «Accesos frecuentes» de Mi cuenta (issue #226).
+// Solo el slug del módulo y un conteo: no guarda rutas, parámetros ni identificadores de registros.
+model AccesoModulo {
+  id           Int      @id @default(autoincrement())
+  perfilId     String   @db.Uuid
+  perfil       Perfil   @relation(fields: [perfilId], references: [id], onDelete: Cascade)
+  modulo       String
+  conteo       Int      @default(1)
+  ultimoAcceso DateTime @default(now())
+
+  @@unique([perfilId, modulo])
 }
 
 // ─── M1 Catálogos (RF-001 a RF-003) · Integrante 1 ──────────────────────────
