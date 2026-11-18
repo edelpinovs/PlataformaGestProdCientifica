@@ -15,7 +15,7 @@ Esta pauta vale para personas y agentes de IA. Las reglas obligatorias para agen
 | `src/components/ui.tsx` | Piezas: `Panel`, `EstadoVacio`, `Aviso`, `EtiquetaEstado`, `Icono` y las clases de botón, campo, etiqueta y tabla |
 | `src/components/fila-editable.tsx` | `FilaEditable`: fila de listado con *Editar* y *Eliminar* (sección 7) |
 | `src/components/selector-tema.tsx` | Botón *Tema oscuro* / *Tema claro* del menú |
-| `src/app/cuenta/` | *Mi cuenta*: perfil, selector Claro/Oscuro y cambio de contraseña con la actual; las reglas puras están en `src/modules/cuenta/` |
+| `src/app/cuenta/` | *Mi cuenta*: perfil, selector Claro/Oscuro y cambio de contraseña con la actual; las reglas puras están en `src/modules/cuenta/`. Incluye «Accesos frecuentes» (issue #226), que alimenta `RegistroAcceso` desde `Marco` |
 | `src/components/pauta-visual.test.ts` | Prueba que impide colores sueltos y páginas sin `Marco` |
 
 ## 2. Colores

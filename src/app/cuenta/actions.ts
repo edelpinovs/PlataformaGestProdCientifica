@@ -2,7 +2,9 @@
 
 import { ROLES } from "@/lib/auth/roles";
 import { requireRol } from "@/lib/auth/session";
+import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
+import { debeRegistrar, moduloRegistrable } from "@/modules/cuenta/accesos";
 import {
   mensajeGuardado,
   mensajeVerificacion,
@@ -45,4 +47,28 @@ export async function cambiarContrasena(
   if (guardado.error) return { ...mensajeGuardado(guardado.error.code) };
 
   return { exito: "Tu contraseña se actualizó." };
+}
+
+// Cuenta una visita al módulo para «Accesos frecuentes» (issue #226). La llama en segundo plano
+// RegistroAcceso, desde Marco: si algo falla no se avisa ni se interrumpe la navegación.
+export async function registrarAcceso(slug: unknown): Promise<void> {
+  // RNF-005: cualquier rol con sesión; el módulo se valida abajo contra el rol real.
+  const perfil = await requireRol([...ROLES]);
+  const modulo = moduloRegistrable(slug, perfil.rol);
+  if (!modulo) return;
+
+  try {
+    const donde = { perfilId_modulo: { perfilId: perfil.id, modulo: modulo.slug } };
+    const previo = await prisma.accesoModulo.findUnique({ where: donde, select: { ultimoAcceso: true } });
+    // El servidor decide: el navegador solo evita llamadas de más.
+    if (previo && !debeRegistrar(previo.ultimoAcceso.getTime(), Date.now())) return;
+
+    await prisma.accesoModulo.upsert({
+      where: donde,
+      create: { perfilId: perfil.id, modulo: modulo.slug },
+      update: { conteo: { increment: 1 }, ultimoAcceso: new Date() },
+    });
+  } catch {
+    // Contar visitas es secundario: nunca debe romper la pantalla de la persona.
+  }
 }

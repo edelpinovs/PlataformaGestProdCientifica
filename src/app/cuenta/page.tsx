@@ -3,7 +3,9 @@ import { Avatar, Panel } from "@/components/ui";
 import { ROLES } from "@/lib/auth/roles";
 import { requireRol } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
+import { accesosFrecuentes, modulosDelRol, LIMITE_ACCESOS } from "@/modules/cuenta/accesos";
 import { resumenPerfil } from "@/modules/cuenta/perfil";
+import { AccesosFrecuentes } from "./accesos-frecuentes";
 import { Apariencia } from "./apariencia";
 import { FormularioContrasena } from "./formulario-contrasena";
 
@@ -20,6 +22,14 @@ export default async function MiCuentaPage() {
     },
   });
   const resumen = resumenPerfil(perfil);
+  const filas = await prisma.accesoModulo.findMany({
+    where: { perfilId: sesion.id },
+    select: { modulo: true, conteo: true, ultimoAcceso: true },
+  });
+  const accesos = accesosFrecuentes(filas, perfil.rol);
+  const sugeridos = modulosDelRol(perfil.rol)
+    .slice(0, LIMITE_ACCESOS)
+    .map((m) => ({ slug: m.slug, nombre: m.nombre, descripcion: m.descripcion, href: `/${m.slug}` }));
 
   return (
     <Marco correo={perfil.correo} rol={perfil.rol} activo="cuenta" titulo="Mi cuenta"
@@ -41,6 +51,10 @@ export default async function MiCuentaPage() {
           <Apariencia />
         </Panel>
       </section>
+
+      <Panel titulo="Accesos frecuentes" descripcion="Los módulos que más usas, para entrar en un clic">
+        <AccesosFrecuentes accesos={accesos} sugeridos={sugeridos} />
+      </Panel>
 
       <Panel titulo="Seguridad" descripcion="Cambia la contraseña con la que entras a la plataforma">
         <FormularioContrasena />
