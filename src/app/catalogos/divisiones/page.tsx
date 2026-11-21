@@ -7,7 +7,7 @@ import { analizarListado, hayFiltrosActivos, paginar } from "@/lib/listados/cons
 import { prisma } from "@/lib/prisma";
 import { COLUMNAS_DIVISIONES, filtroDivisiones, LISTADO_DIVISIONES, ordenDivisiones } from "@/modules/catalogos/divisiones-listado";
 import { editarDivision, eliminarDivision } from "./actions";
-import { FormularioDivision } from "./formulario";
+import { RegistrarDivision } from "./registrar-division";
 
 const BASE = "/catalogos/divisiones";
 
@@ -35,12 +35,16 @@ export default async function DivisionesPage({ searchParams }: PageProps<"/catal
 
   return (
     <Marco correo={perfil.correo} rol={perfil.rol} activo="catalogos" titulo="Divisiones académicas"
+      subtitulo="Consulta y administra las divisiones académicas a las que pertenecen los departamentos."
       volver={{ href: "/catalogos", texto: "Catálogos" }}>
-      <Panel titulo="Registrar división">
-        <FormularioDivision />
-      </Panel>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full bg-marca-suave px-3 py-1 text-xs font-medium text-marca">
+          {new Intl.NumberFormat("es-MX").format(total)} {hayFiltrosActivos(consulta) ? "coinciden" : "en el catálogo"}
+        </span>
+        <RegistrarDivision />
+      </div>
 
-      <Panel titulo={`En el catálogo (${total})`}>
+      <Panel>
         {resultado && <div className="mb-4"><Aviso tipo="exito">{resultado}</Aviso></div>}
         <div className="flex flex-col gap-4">
           <BarraListado base={BASE} consulta={contexto.consulta} columnas={COLUMNAS_DIVISIONES} errores={errores}

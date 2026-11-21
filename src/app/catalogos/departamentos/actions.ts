@@ -3,24 +3,17 @@
 import { revalidatePath } from "next/cache";
 import { redirect, RedirectType } from "next/navigation";
 import type { EstadoFila } from "@/components/fila-editable";
+import type { EstadoAlta } from "@/components/modal-alta-logica";
 import { Prisma } from "@/generated/prisma/client";
 import { requireModulo } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { idDeFormulario } from "@/modules/catalogos/comun";
 import { departamento, motivoDepartamentoNoEliminable, revisarDepartamento } from "@/modules/catalogos/departamentos";
 
-export type EstadoDepartamento = {
-  error?: string;
-  campo?: "nombre" | "nomenclatura" | "divisionId";
-  registrado?: string;
-  valores?: { nombre: string; nomenclatura: string; divisionId: string };
-};
-
 // CU-003: el administrador registra un Departamento dentro de una División existente (RF-003).
-export async function registrarDepartamento(
-  _: EstadoDepartamento,
-  formData: FormData,
-): Promise<EstadoDepartamento> {
+// D-214: se abre en un modal (`ModalAlta`), así que no redirige: solo un `exito` confirmado por el
+// servidor cierra el modal y un error conserva los valores.
+export async function registrarDepartamento(_: EstadoAlta, formData: FormData): Promise<EstadoAlta> {
   await requireModulo("catalogos");
 
   const valores = {
@@ -31,7 +24,7 @@ export async function registrarDepartamento(
   const datos = departamento.safeParse(valores);
   if (!datos.success) {
     const issue = datos.error.issues[0];
-    return { error: issue.message, campo: issue.path[0] as EstadoDepartamento["campo"], valores };
+    return { error: issue.message, campo: String(issue.path[0]), valores };
   }
 
   const [divisiones, departamentos] = await Promise.all([
@@ -57,7 +50,7 @@ export async function registrarDepartamento(
 
   revalidatePath("/catalogos/departamentos");
   revalidatePath("/catalogos/divisiones");
-  return { registrado: datos.data.nombre };
+  return { exito: `Se registró «${datos.data.nombre}» correctamente.` };
 }
 
 const NO_EXISTE = "Ese departamento ya no existe en el catálogo. Recarga la página.";

@@ -10,7 +10,7 @@ import {
   COLUMNAS_DEPARTAMENTOS, filtroDepartamentos, listadoDepartamentos, ordenDepartamentos,
 } from "@/modules/catalogos/departamentos-listado";
 import { editarDepartamento, eliminarDepartamento } from "./actions";
-import { FormularioDepartamento } from "./formulario";
+import { RegistrarDepartamento } from "./registrar-departamento";
 
 const BASE = "/catalogos/departamentos";
 
@@ -41,19 +41,23 @@ export default async function DepartamentosPage({ searchParams }: PageProps<"/ca
 
   return (
     <Marco correo={perfil.correo} rol={perfil.rol} activo="catalogos" titulo="Departamentos"
+      subtitulo="Consulta y administra los departamentos de cada división académica."
       volver={{ href: "/catalogos", texto: "Catálogos" }}>
-      <Panel titulo="Registrar departamento">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full bg-marca-suave px-3 py-1 text-xs font-medium text-marca">
+          {new Intl.NumberFormat("es-MX").format(total)} {hayFiltrosActivos(consulta) ? "coinciden" : "en el catálogo"}
+        </span>
         {divisiones.length === 0 ? (
           <EstadoVacio>
             Todo departamento pertenece a una división.{" "}
             <Link href="/catalogos/divisiones" className="font-medium text-marca">Registra primero una división</Link>.
           </EstadoVacio>
         ) : (
-          <FormularioDepartamento divisiones={divisiones} />
+          <RegistrarDepartamento divisiones={divisiones} />
         )}
-      </Panel>
+      </div>
 
-      <Panel titulo={`En el catálogo (${total})`}>
+      <Panel>
         {resultado && <div className="mb-4"><Aviso tipo="exito">{resultado}</Aviso></div>}
         <div className="flex flex-col gap-4">
           <BarraListado base={BASE} consulta={contexto.consulta} columnas={COLUMNAS_DEPARTAMENTOS} errores={errores}

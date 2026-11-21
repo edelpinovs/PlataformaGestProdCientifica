@@ -7,7 +7,7 @@ import { analizarListado, hayFiltrosActivos, paginar } from "@/lib/listados/cons
 import { prisma } from "@/lib/prisma";
 import { COLUMNAS_GRADOS, filtroGrados, LISTADO_GRADOS, ordenGrados } from "@/modules/catalogos/grados-listado";
 import { editarGrado, eliminarGrado } from "./actions";
-import { FormularioGrado } from "./formulario";
+import { RegistrarGrado } from "./registrar-grado";
 
 const BASE = "/catalogos/grados";
 
@@ -34,12 +34,16 @@ export default async function GradosPage({ searchParams }: PageProps<"/catalogos
 
   return (
     <Marco correo={perfil.correo} rol={perfil.rol} activo="catalogos" titulo="Grados científicos"
+      subtitulo="Consulta y administra los grados científicos que se asignan a los profesores."
       volver={{ href: "/catalogos", texto: "Catálogos" }}>
-      <Panel titulo="Registrar grado">
-        <FormularioGrado />
-      </Panel>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full bg-marca-suave px-3 py-1 text-xs font-medium text-marca">
+          {new Intl.NumberFormat("es-MX").format(total)} {hayFiltrosActivos(consulta) ? "coinciden" : "en el catálogo"}
+        </span>
+        <RegistrarGrado />
+      </div>
 
-      <Panel titulo={`En el catálogo (${total})`}>
+      <Panel>
         {resultado && <div className="mb-4"><Aviso tipo="exito">{resultado}</Aviso></div>}
         <div className="flex flex-col gap-4">
           <BarraListado {...contexto} columnas={COLUMNAS_GRADOS} errores={errores}
