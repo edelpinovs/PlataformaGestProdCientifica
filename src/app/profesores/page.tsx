@@ -1,13 +1,14 @@
 import { FilaEditable } from "@/components/fila-editable";
 import { BarraListado, EncabezadoOrdenable, PaginacionListado } from "@/components/listado";
 import { Marco } from "@/components/marco";
-import { Aviso, Avatar, claseTabla, EstadoVacio, EtiquetaEstado, Panel } from "@/components/ui";
+import { Aviso, Avatar, claseBotonContorno, claseTabla, EstadoVacio, EtiquetaEstado, Icono, ICONOS, Panel } from "@/components/ui";
 import { requireModulo } from "@/lib/auth/session";
 import { analizarListado, hayFiltrosActivos, paginar } from "@/lib/listados/consulta";
 import { prisma } from "@/lib/prisma";
 import {
   COLUMNAS_PROFESORES, filtroProfesores, listadoProfesores, ordenProfesores,
 } from "@/modules/profesores/profesores-listado";
+import { enlaceExportacionProfesores } from "@/modules/profesores/exportar";
 import { ETIQUETA_CONTRATACION, ETIQUETA_ESTATUS } from "@/modules/profesores/profesores";
 import { editarProfesor, eliminarProfesor } from "./actions";
 import { RegistrarProfesor } from "./registrar-profesor";
@@ -77,7 +78,17 @@ export default async function ProfesoresPage({ searchParams }: PageProps<"/profe
         <span className="rounded-full bg-marca-suave px-3 py-1 text-xs font-medium text-marca">
           {new Intl.NumberFormat("es-MX").format(total)} {hayFiltros ? "coinciden" : "registrados"}
         </span>
-        <RegistrarProfesor grados={grados} departamentos={departamentos} />
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Descarga lo que coincide con la búsqueda y los filtros, todas las páginas (issue 233). */}
+          {total > 0 && (
+            <a href={enlaceExportacionProfesores(definicion, consulta)} className={claseBotonContorno}
+              title="Descargar en Excel los profesores que coinciden con la búsqueda y los filtros">
+              <Icono d={ICONOS.descargar} />
+              Exportar
+            </a>
+          )}
+          <RegistrarProfesor grados={grados} departamentos={departamentos} />
+        </div>
       </div>
       <Panel>
         {resultado && <div className="mb-4"><Aviso tipo="exito">{resultado}</Aviso></div>}
