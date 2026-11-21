@@ -26,8 +26,16 @@ No cambia esquema, permisos, reglas de negocio ni `Editar`/`Eliminar` (#59) ni l
 | Mutación: quitar `requireModulo` de cada acción de alta | falla 1 prueba en cada catálogo |
 | Chrome aislado con la pieza `ModalAlta` (`node src/components/modal-alta.navegador.mjs`) | correcto en claro, oscuro y celular 390 px |
 | Chrome aislado con los tres componentes reales y una acción ficticia | correcto en claro, oscuro y celular 390 px; capturas inspeccionadas |
+| CI de GitHub (`verificar`: pruebas, lint, typecheck y build) sobre `946b0ef` | verde |
+| Vista previa de Vercel de `946b0ef` | desplegada; sin sesión, `/catalogos/grados`, `/divisiones` y `/departamentos` responden 307 a `/login` y `/login` responde 200 |
+| Servidor compilado en local, sin sesión | las cuatro rutas de `/catalogos` responden 307 a `/login` (conservando la búsqueda y la página) y `/login` responde 200: el permiso no se perdió con la migración |
+| Alcance de los cambios en las páginas | solo el `import`, la cabecera y el panel de alta; la tabla, `FilaEditable`, la búsqueda, el orden y la paginación no se tocaron (14 líneas cambiadas por página; todo lo eliminado es el panel de alta) |
 
 Las pruebas de las acciones comprueban en cada catálogo: el permiso del módulo se exige antes de leer o escribir; un alta correcta devuelve `exito` y llama a `revalidatePath` (Departamentos también a `/catalogos/divisiones`); un dato inválido o ausente devuelve su mensaje en español con `campo` y `valores` y no crea; un duplicado se rechaza con el campo marcado; la carrera con otra persona (`P2002`, y `P2003` en Departamentos) no cierra el modal y avisa; y un error inesperado se propaga, de modo que el modal muestra su mensaje genérico y no un éxito.
+
+## Verificación independiente del 2026-11-21
+
+Se repitió sobre la cabeza del PR (`946b0ef`), con una copia limpia de la rama: 1,045 pruebas, lint, typecheck y build pasan, igual que el CI de GitHub, y las rutas se comprobaron sin sesión en local y en la vista previa de Vercel. En las corridas completas fallaron dos veces pruebas lentas ajenas al cambio (`pauta-visual`, `procesamiento` y, en otras ocasiones del equipo, las de PDF) cuando la máquina iba cargada; repetidas solas pasan. No se pudo probar con sesión real (ver «Límites»).
 
 ## Pruebas de navegador
 
