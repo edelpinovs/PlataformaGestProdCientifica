@@ -204,7 +204,7 @@ Todo listado de registros sigue estas tres reglas (acuerdo D-009). El estado viv
 - **Barra:** búsqueda con icono y filtros en línea («Departamento Todos ▾») que aplican al elegir con ratón o toque; con teclado (y sin JavaScript) se aplican con «Buscar», que siempre está visible: enviar en cada flecha atraparía al teclado (WCAG 3.2.2). «Limpiar» solo con filtros activos. Un filtro de pocas opciones se declara con `segmentado` en `<BarraListado>` (grupo Todos, Activos…); necesita `definicion` y sus opciones son enlaces que conservan el estado.
 - **Tabla:** encabezados en mayúsculas pequeñas, hover en la fila y acciones con icono (lápiz y papelera) con `aria-label` y `title`. Para personas, `<Avatar nombre=…>` de `@/components/ui` (solo iniciales, colores con nombre).
 - **Paginación:** «Mostrando a–b de N» y números de página con «…» (`paginasVisibles`); la actual se anuncia con `aria-current="page"`.
-- **Exportar:** no hay botón hasta que exista una exportación autorizada e implementada.
+- **Exportar (D-238):** un listado ofrece «Exportar» solo si su issue y su decisión lo autorizan. Hoy solo Profesores: botón con contorno (`claseBotonContorno` e icono `ICONOS.descargar`) junto a la acción principal, un enlace a una ruta GET `/<módulo>/exportar` que repite la búsqueda y los filtros sin `pagina`, protegida con `requireModulo` y que valida con las mismas reglas del listado. Se oculta si no hay resultados. Lleva solo las columnas visibles y nunca identificadores académicos ni datos que la tabla no muestra.
 
 **Cómo se usa** (resumen del ejemplo de Grados):
 

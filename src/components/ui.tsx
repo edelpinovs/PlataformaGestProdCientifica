@@ -125,6 +125,7 @@ export const ICONOS = {
   eliminar: "M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6",
   desplegar: "m6 9 6 6 6-6",
   mas: "M12 5v14M5 12h14",
+  descargar: "M12 4v11M7 11l5 5 5-5M5 20h14",
 };
 
 const TONOS_AVATAR = ["bg-marca-suave text-marca", "bg-exito-suave text-exito", "bg-aviso-suave text-aviso"];
