@@ -3,21 +3,17 @@
 import { revalidatePath } from "next/cache";
 import { redirect, RedirectType } from "next/navigation";
 import type { EstadoFila } from "@/components/fila-editable";
+import type { EstadoAlta } from "@/components/modal-alta-logica";
 import { Prisma } from "@/generated/prisma/client";
 import { requireModulo } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { idDeFormulario } from "@/modules/catalogos/comun";
 import { buscarDuplicado, gradoCientifico, motivoNoEliminable } from "@/modules/catalogos/grados";
 
-export type EstadoGrado = {
-  error?: string;
-  campo?: "nombre" | "nomenclatura";
-  registrado?: string;
-  valores?: { nombre: string; nomenclatura: string };
-};
-
-// CU-001: el administrador registra un Grado Científico (RF-001).
-export async function registrarGrado(_: EstadoGrado, formData: FormData): Promise<EstadoGrado> {
+// CU-001: el administrador registra un Grado Científico (RF-001). D-214: se abre en un modal
+// (`ModalAlta`), así que no redirige: solo un `exito` confirmado por el servidor cierra el modal y
+// un error conserva los valores.
+export async function registrarGrado(_: EstadoAlta, formData: FormData): Promise<EstadoAlta> {
   await requireModulo("catalogos");
 
   const valores = {
@@ -27,7 +23,7 @@ export async function registrarGrado(_: EstadoGrado, formData: FormData): Promis
   const datos = gradoCientifico.safeParse(valores);
   if (!datos.success) {
     const issue = datos.error.issues[0];
-    return { error: issue.message, campo: issue.path[0] as EstadoGrado["campo"], valores };
+    return { error: issue.message, campo: String(issue.path[0]), valores };
   }
 
   const existentes = await prisma.gradoCientifico.findMany({ select: { nombre: true, nomenclatura: true } });
@@ -45,7 +41,7 @@ export async function registrarGrado(_: EstadoGrado, formData: FormData): Promis
   }
 
   revalidatePath("/catalogos/grados");
-  return { registrado: datos.data.nombre };
+  return { exito: `Se registró «${datos.data.nombre}» correctamente.` };
 }
 
 const NO_EXISTE = "Ese grado ya no existe en el catálogo. Recarga la página.";
