@@ -5,6 +5,7 @@ Guía para quien administra la infraestructura (Supabase, Vercel, GitHub y acces
 - **Producción:** https://plataforma-gest-prod-cientifica.vercel.app
 - **Vercel:** proyecto `plataforma-gest-prod-cientifica` en la cuenta `edelpinovs-projects`. Cada push a `main` despliega a producción y cada PR tiene su vista previa.
 - **Supabase (desarrollo):** proyecto `qvyvzrejlukzhbetudix`, región `us-west-2`.
+- **Producción separada (#42, D-219):** pendiente. Hoy producción usa el proyecto de desarrollo. Los pasos están en [SEPARAR_PRODUCCION.md](SEPARAR_PRODUCCION.md).
 
 ## Variables de entorno
 
