@@ -4,9 +4,7 @@ import { Marco } from "@/components/marco";
 import { claseTabla, EstadoVacio, EtiquetaEstado, Panel } from "@/components/ui";
 import { requireModulo } from "@/lib/auth/session";
 import { analizarListado, hayFiltrosActivos, paginar } from "@/lib/listados/consulta";
-import { prisma } from "@/lib/prisma";
 import {
-  analizarCalidad,
   CLAVES_REGLA,
   COLUMNAS_CALIDAD,
   filtrarHallazgos,
@@ -14,6 +12,8 @@ import {
   ordenarHallazgos,
   REGLAS_CALIDAD,
 } from "@/modules/administracion/calidad";
+import { Descargas } from "../descargas";
+import { cargarHallazgos } from "./cargar";
 
 const BASE = "/administracion/calidad";
 const numero = new Intl.NumberFormat("es-MX");
@@ -21,18 +21,7 @@ const numero = new Intl.NumberFormat("es-MX");
 export default async function CalidadPage({ searchParams }: PageProps<"/administracion/calidad">) {
   const perfil = await requireModulo("administracion");
 
-  const [profesores, cuerpos] = await Promise.all([
-    prisma.profesor.findMany({
-      select: { id: true, codigo: true, nombres: true, apellidos: true, estatusLaboral: true, orcid: true, scopusId: true, perfil: { select: { id: true } } },
-    }),
-    prisma.cuerpoAcademico.findMany({
-      select: { id: true, clave: true, nombre: true, liderId: true, integrantes: { select: { profesorId: true } } },
-    }),
-  ]);
-  const todos = analizarCalidad({
-    profesores: profesores.map(({ perfil: acceso, ...p }) => ({ ...p, tienePerfil: acceso !== null })),
-    cuerpos: cuerpos.map(({ integrantes, ...c }) => ({ ...c, integrantes: integrantes.map((i) => i.profesorId) })),
-  });
+  const todos = await cargarHallazgos();
 
   // La lista se calcula en memoria (un hallazgo por registro afectado), así que se filtra, ordena y
   // pagina aquí. Búsqueda, filtro, orden y página vienen de la URL y se validan igual que en los demás listados.
@@ -50,6 +39,7 @@ export default async function CalidadPage({ searchParams }: PageProps<"/administ
         <span className="rounded-full bg-marca-suave px-3 py-1 text-xs font-medium text-marca">
           {numero.format(filtrados.length)} {hayFiltrosActivos(consulta) ? "coinciden" : todos.length === 1 ? "hallazgo" : "hallazgos"}
         </span>
+        <Descargas listado="calidad" definicion={LISTADO_CALIDAD} consulta={consulta} />
       </div>
 
       <Panel titulo="Hallazgos" descripcion="Se calculan al abrir la página con los datos actuales. Cada uno enlaza a donde se corrige.">
