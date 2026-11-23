@@ -105,6 +105,7 @@ export default async function RevisionPage({ params, searchParams }: PageProps<"
     nombreListado: f.nombreListado,
     profesor: f.profesorId === null ? null : nombreProfesor(f.profesorId) || null,
     criterio: f.criterio ? ETIQUETA_CRITERIO[f.criterio] : null,
+    repiteRenglon: f.repiteRenglon,
     accion: !enRevision || f.renglonId === null ? null
       : f.criterio === "AMBIGUO" || f.criterio === "SIN_COINCIDENCIA" ? "asignar"
       : f.criterio === "MANUAL" ? "quitar" : null,
@@ -162,7 +163,7 @@ export default async function RevisionPage({ params, searchParams }: PageProps<"
               <CuerpoRevision cargaId={carga.id} filas={vista} opciones={opciones} />
             </table>
           )}
-          <PaginacionListado {...contexto} paginacion={paginacion} nombre="renglones" />
+          <PaginacionListado {...contexto} paginacion={paginacion} nombre="registros" />
         </div>
       </Panel>
 

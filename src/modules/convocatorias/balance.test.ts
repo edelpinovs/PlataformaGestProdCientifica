@@ -10,6 +10,15 @@ const base = { programa: "SNII" as const, anio: 2026, historialSnii: [], histori
 const clase = (r: ReturnType<typeof clasificarCarga>, renglonId: number) => r.filas.find((f) => f.renglonId === renglonId)?.clasificacion;
 
 describe("clasificarCarga (RF-019)", () => {
+  it("marca el renglón que repite a un profesor con el número del primero en que aparece", () => {
+    const r = clasificarCarga({ ...base, renglones: [
+      renglon(1, { profesorId: 10, criterio: "CVU" }),
+      renglon(2),
+      renglon(3, { profesorId: 10, criterio: "CVU" }),
+    ] });
+    expect(r.filas.map((f) => f.repiteRenglon)).toEqual([null, null, 2]);
+  });
+
   it("SNII: sin reconocimiento anterior es nuevo ingreso", () => {
     const r = clasificarCarga({ ...base, renglones: [renglon(1, { profesorId: 10, criterio: "CVU", nivel: "NIVEL_1" })] });
     expect(clase(r, 1)).toBe("NUEVO_INGRESO");
@@ -50,7 +59,7 @@ describe("clasificarCarga (RF-019)", () => {
   it("el participante registrado que no aparece es una fila No aprobado sin renglón", () => {
     const r = clasificarCarga({ ...base, participantes: [10, 40], renglones: [renglon(1, { profesorId: 10, criterio: "CVU", nivel: "NIVEL_1" })] });
     expect(r.filas.filter((f) => f.clasificacion === "NO_APROBADO")).toEqual([
-      { clave: "p40", renglonId: null, numero: null, nombreListado: null, profesorId: 40, criterio: null, clasificacion: "NO_APROBADO" },
+      { clave: "p40", renglonId: null, numero: null, nombreListado: null, profesorId: 40, criterio: null, clasificacion: "NO_APROBADO", repiteRenglon: null },
     ]);
     expect(r.balance.NO_APROBADO).toBe(1);
   });

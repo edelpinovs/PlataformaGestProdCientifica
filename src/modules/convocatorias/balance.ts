@@ -27,6 +27,8 @@ export type FilaRevision = {
   profesorId: number | null;
   criterio: CriterioRenglon | null;
   clasificacion: Clasificacion;
+  /** Si el profesor ya apareció en un renglón anterior, el número de ese renglón (cuenta una vez). */
+  repiteRenglon: number | null;
 };
 
 export type EntradaBalance = {
@@ -50,8 +52,14 @@ export function clasificarCarga(e: EntradaBalance) {
   const historial = e.programa === "SNII" ? e.historialSnii : e.historialProdep;
   const tieneAnterior = new Set(historial.filter((h) => h.inicio < inicio).map((h) => h.profesorId));
 
+  const primerRenglon = new Map<number, number>();
   const filas: FilaRevision[] = e.renglones.map((r) => {
-    const fila = { clave: `r${r.id}`, renglonId: r.id, numero: r.numero, nombreListado: r.nombre, profesorId: r.profesorId, criterio: r.criterio };
+    let repiteRenglon: number | null = null;
+    if (r.profesorId !== null) {
+      repiteRenglon = primerRenglon.get(r.profesorId) ?? null;
+      if (repiteRenglon === null) primerRenglon.set(r.profesorId, r.numero);
+    }
+    const fila = { clave: `r${r.id}`, renglonId: r.id, numero: r.numero, nombreListado: r.nombre, profesorId: r.profesorId, criterio: r.criterio, repiteRenglon };
     if (r.profesorId === null) return { ...fila, clasificacion: r.criterio === "AMBIGUO" ? "DUDOSO" : "SIN_COINCIDENCIA" };
     const renueva = tieneAnterior.has(r.profesorId);
     const tipo = renueva ? "RENOVACION" : e.programa === "SNII" ? "NUEVO_INGRESO" : "PRIMER_RECONOCIMIENTO";
@@ -65,7 +73,7 @@ export function clasificarCarga(e: EntradaBalance) {
   const enListado = new Set(e.renglones.flatMap((r) => (r.profesorId === null ? [] : [r.profesorId])));
   for (const profesorId of new Set(e.participantes)) {
     if (enListado.has(profesorId)) continue;
-    filas.push({ clave: `p${profesorId}`, renglonId: null, numero: null, nombreListado: null, profesorId, criterio: null, clasificacion: "NO_APROBADO" });
+    filas.push({ clave: `p${profesorId}`, renglonId: null, numero: null, nombreListado: null, profesorId, criterio: null, clasificacion: "NO_APROBADO", repiteRenglon: null });
   }
 
   // Un profesor repetido en el listado cuenta una vez; los renglones sin profesor, cada uno.

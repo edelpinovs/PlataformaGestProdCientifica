@@ -13,6 +13,8 @@ export type FilaVista = {
   nombreListado: string | null;
   profesor: string | null;
   criterio: string | null;
+  /** Renglón anterior con el mismo profesor; este no vuelve a contar en el balance. */
+  repiteRenglon: number | null;
   /** Qué se puede hacer en la fila: asignar (dudoso o sin coincidencia), quitar (manual) o nada. */
   accion: "asignar" | "quitar" | null;
   clasificacion: { tipo: "exito" | "error" | "aviso"; texto: string };
@@ -41,6 +43,9 @@ function FilaRevision({ cargaId, f, opciones }: { cargaId: number; f: FilaVista;
       <td className={claseTabla.celda}>
         <span className={f.nombreListado ? "font-semibold text-texto" : "text-texto-3"}>{listado}</span>
         {f.numero !== null && <span className="block text-xs text-texto-3">Renglón {f.numero}</span>}
+        {f.repiteRenglon !== null && (
+          <span className="block text-xs text-aviso">Repite al renglón {f.repiteRenglon}; cuenta una sola vez.</span>
+        )}
         {/* En celular el profesor, el criterio y la clasificación van debajo del nombre. */}
         {f.profesor && <span className="mt-1 block text-texto-2 sm:hidden">{f.profesor}</span>}
         {f.criterio && <span className="block text-xs text-texto-3 sm:hidden">Criterio: {f.criterio}</span>}

@@ -4,7 +4,7 @@ import type { FilaRevision } from "./balance";
 import { COLUMNAS_REVISION, filtrarYOrdenarRevision, LISTADO_REVISION } from "./revision-listado";
 
 const fila = (clave: string, datos: Partial<FilaRevision>): FilaRevision => ({
-  clave, renglonId: 1, numero: 2, nombreListado: null, profesorId: null, criterio: null, clasificacion: "SIN_COINCIDENCIA", ...datos,
+  clave, renglonId: 1, numero: 2, nombreListado: null, profesorId: null, criterio: null, clasificacion: "SIN_COINCIDENCIA", repiteRenglon: null, ...datos,
 });
 const filas = [
   fila("r1", { nombreListado: "RUIZ SOTO JUAN", criterio: "AMBIGUO", clasificacion: "DUDOSO" }),
