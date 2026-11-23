@@ -1,0 +1,122 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { redirect, RedirectType } from "next/navigation";
+import type { EstadoAlta } from "@/components/modal-alta-logica";
+import { Prisma } from "@/generated/prisma/client";
+import { requireModulo } from "@/lib/auth/session";
+import { prisma } from "@/lib/prisma";
+import { revalidarProfesorSeleccionado } from "@/lib/selectores/profesor";
+import { motivoNoEliminable, participante } from "@/modules/convocatorias/participantes";
+import { profesoresEnListado, recalcularConvocatoria } from "@/modules/convocatorias/recalcular";
+
+// RF-018: registro de quienes participaron en una convocatoria. A mano solo hace falta registrar
+// a quien podría no salir en el listado oficial: el cruce agrega solo a quienes sí aparecen.
+
+const RUTA = "/convocatorias/participantes";
+const duplicado = (convocatoria: string) => `Ese profesor ya está registrado en ${convocatoria}.`;
+
+export async function registrarParticipante(_: EstadoAlta, formData: FormData): Promise<EstadoAlta> {
+  await requireModulo("convocatorias");
+
+  const valores = {
+    programa: String(formData.get("programa") ?? ""),
+    anio: String(formData.get("anio") ?? ""),
+    profesorId: String(formData.get("profesorId") ?? ""),
+  };
+  const datos = participante(new Date().getFullYear()).safeParse(valores);
+  if (!datos.success) {
+    const issue = datos.error.issues[0];
+    return { error: issue.message, campo: String(issue.path[0]), valores };
+  }
+  const { programa, anio } = datos.data;
+  const nombreConvocatoria = `${programa} ${anio}`;
+
+  // Solo profesores activos: el selector los ofrece, pero el servidor vuelve a comprobarlo (D-215).
+  const elegido = await revalidarProfesorSeleccionado(valores.profesorId, (id) =>
+    prisma.profesor.findFirst({
+      where: { id, estatusLaboral: "ACTIVO" },
+      select: { id: true, nombres: true, apellidos: true, codigo: true },
+    }),
+  );
+  if (!elegido.profesor) return { error: elegido.error, campo: "profesorId", valores };
+  const profesor = elegido.profesor;
+
+  const existente = await prisma.convocatoria.findUnique({
+    where: { programa_anio: { programa, anio } },
+    select: { id: true, cargas: { where: { estado: "CONFIRMADA" }, select: { id: true }, take: 1 } },
+  });
+  if (existente?.cargas.length) {
+    return { error: motivoNoEliminable({ enListado: false, confirmada: true, convocatoria: nombreConvocatoria })!, valores };
+  }
+  if (existente && await prisma.participacionConvocatoria.findUnique({
+    where: { convocatoriaId_profesorId: { convocatoriaId: existente.id, profesorId: profesor.id } },
+    select: { id: true },
+  })) {
+    return { error: duplicado(nombreConvocatoria), campo: "profesorId", valores };
+  }
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      const convocatoria = await tx.convocatoria.upsert({
+        where: { programa_anio: { programa, anio } },
+        update: {},
+        create: { programa, anio },
+      });
+      await tx.participacionConvocatoria.create({
+        data: { convocatoriaId: convocatoria.id, profesorId: profesor.id, origen: "MANUAL" },
+      });
+      // Si ya hay una carga leída, el nuevo participante recibe su resultado de inmediato.
+      await recalcularConvocatoria(tx, convocatoria.id);
+    });
+  } catch (e) {
+    // Otra persona lo registró, o el cruce lo agregó, entre la consulta y el alta.
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+      return { error: duplicado(nombreConvocatoria), campo: "profesorId", valores };
+    }
+    throw e;
+  }
+
+  revalidatePath(RUTA);
+  return { exito: `Se registró a ${profesor.apellidos}, ${profesor.nombres} en ${nombreConvocatoria}.` };
+}
+
+export type EstadoFila = { error?: string };
+const NO_EXISTE = "Ese participante ya no está registrado. Recarga la página.";
+
+// #59: sin Editar; la participación solo tiene al profesor y el resultado lo pone el cruce.
+export async function eliminarParticipante(_: EstadoFila, formData: FormData): Promise<EstadoFila> {
+  await requireModulo("convocatorias");
+
+  const id = Number(formData.get("id"));
+  if (!Number.isInteger(id) || id <= 0 || id > 2147483647) return { error: NO_EXISTE };
+
+  const participacion = await prisma.participacionConvocatoria.findUnique({
+    where: { id },
+    select: {
+      profesorId: true,
+      profesor: { select: { nombres: true, apellidos: true } },
+      convocatoria: {
+        select: { id: true, programa: true, anio: true, cargas: { where: { estado: "CONFIRMADA" }, select: { id: true }, take: 1 } },
+      },
+    },
+  });
+  if (!participacion) return { error: NO_EXISTE };
+  const { convocatoria, profesor } = participacion;
+  const nombreConvocatoria = `${convocatoria.programa} ${convocatoria.anio}`;
+
+  const enListado = (await profesoresEnListado(prisma, convocatoria.id))?.has(participacion.profesorId) ?? false;
+  const motivo = motivoNoEliminable({ enListado, confirmada: convocatoria.cargas.length > 0, convocatoria: nombreConvocatoria });
+  if (motivo) return { error: motivo };
+
+  const borrada = await prisma.$transaction(async (tx) => {
+    const { count } = await tx.participacionConvocatoria.deleteMany({ where: { id } });
+    if (count) await recalcularConvocatoria(tx, convocatoria.id);
+    return count > 0;
+  });
+  if (!borrada) return { error: NO_EXISTE };
+
+  revalidatePath(RUTA);
+  const texto = `${profesor.apellidos}, ${profesor.nombres} (${nombreConvocatoria})`;
+  redirect(`${RUTA}?eliminado=${encodeURIComponent(texto)}`, RedirectType.replace);
+}
