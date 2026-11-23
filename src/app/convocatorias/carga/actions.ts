@@ -19,6 +19,7 @@ import {
   TIEMPO_ATASCO_MS,
   tipoMime,
 } from "@/modules/convocatorias/carga";
+import { recalcularConvocatoria } from "@/modules/convocatorias/recalcular";
 import { procesarCarga } from "./procesamiento";
 
 // RF-016 (CU-010) en tres pasos, porque Vercel no acepta más de 4.5 MB por petición:
@@ -133,7 +134,7 @@ export async function eliminarCarga(_: EstadoFila, formData: FormData): Promise<
 
   const carga = await prisma.cargaResultados.findUnique({
     where: { id },
-    select: { estado: true, archivoRuta: true, convocatoria: { select: { programa: true, anio: true } } },
+    select: { estado: true, archivoRuta: true, convocatoriaId: true, convocatoria: { select: { programa: true, anio: true } } },
   });
   if (!carga) return { error: NO_EXISTE };
   const nombre = nombreDeRuta(carga.archivoRuta);
@@ -148,6 +149,8 @@ export async function eliminarCarga(_: EstadoFila, formData: FormData): Promise<
     const { count } = await tx.cargaResultados.deleteMany({ where: { id, estado: { not: "CONFIRMADA" } } });
     if (count === 0) return false;
     await tx.job.deleteMany({ where: { ...tareas, estado: { not: "EN_PROCESO" } } });
+    // RF-018: sin esta carga, el estatus de los participantes sale de la anterior (o de ninguna).
+    await recalcularConvocatoria(tx, carga.convocatoriaId);
     return true;
   });
   if (!borrada) {

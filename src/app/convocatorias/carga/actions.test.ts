@@ -6,6 +6,7 @@ const dobles = vi.hoisted(() => ({
   after: vi.fn(),
   redirect: vi.fn(),
   procesarCarga: vi.fn(),
+  recalcular: vi.fn(),
   supabase: {
     storage: {
       from: () => ({
@@ -15,9 +16,9 @@ const dobles = vi.hoisted(() => ({
     },
   },
   prisma: {
-    cargaResultados: { findFirst: vi.fn(), findUnique: vi.fn(), create: vi.fn(), updateMany: vi.fn() },
+    cargaResultados: { findFirst: vi.fn(), findUnique: vi.fn(), create: vi.fn(), updateMany: vi.fn(), deleteMany: vi.fn() },
     convocatoria: { upsert: vi.fn() },
-    job: { create: vi.fn(), findFirst: vi.fn(), updateMany: vi.fn() },
+    job: { create: vi.fn(), findFirst: vi.fn(), updateMany: vi.fn(), count: vi.fn(), deleteMany: vi.fn() },
     $transaction: vi.fn(),
   },
 }));
@@ -30,9 +31,10 @@ vi.mock("next/navigation", () => ({
   redirect: dobles.redirect,
   RedirectType: { replace: "replace" },
 }));
+vi.mock("@/modules/convocatorias/recalcular", () => ({ recalcularConvocatoria: dobles.recalcular }));
 vi.mock("./procesamiento", () => ({ procesarCarga: dobles.procesarCarga, TIEMPO_ATASCO_MS: 10 * 60 * 1000 }));
 
-const { registrarCarga, volverALeer } = await import("./actions");
+const { eliminarCarga, registrarCarga, volverALeer } = await import("./actions");
 
 const formulario = (id: string) => {
   const datos = new FormData();
@@ -62,6 +64,30 @@ describe("registrarCarga lanza la lectura (RF-017)", () => {
     expect(dobles.after).toHaveBeenCalledTimes(1);
     await correrAfter();
     expect(dobles.procesarCarga).toHaveBeenCalledWith(7, dobles.supabase);
+  });
+});
+
+describe("eliminarCarga (RF-018)", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    dobles.prisma.cargaResultados.findUnique.mockResolvedValue({
+      estado: "EN_REVISION", archivoRuta: "snii/2025/20261109T100000-resultados.pdf", convocatoriaId: 5,
+      convocatoria: { programa: "SNII", anio: 2025 },
+    });
+    dobles.prisma.job.count.mockResolvedValue(0);
+    dobles.prisma.cargaResultados.deleteMany.mockResolvedValue({ count: 1 });
+    dobles.prisma.$transaction.mockImplementation(async (fn) => fn(dobles.prisma));
+  });
+
+  it("recalcula los participantes de la convocatoria en la misma transacción", async () => {
+    await eliminarCarga({}, formulario("3"));
+    expect(dobles.recalcular).toHaveBeenCalledWith(dobles.prisma, 5);
+  });
+
+  it("no recalcula si la carga no se borró", async () => {
+    dobles.prisma.cargaResultados.deleteMany.mockResolvedValue({ count: 0 });
+    await eliminarCarga({}, formulario("3"));
+    expect(dobles.recalcular).not.toHaveBeenCalled();
   });
 });
 

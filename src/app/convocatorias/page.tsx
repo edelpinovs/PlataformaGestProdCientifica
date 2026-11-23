@@ -168,6 +168,7 @@ export default async function Page({ searchParams }: PageProps<"/convocatorias">
                       }),
                       renglones: c.estado === "EN_REVISION" ? resumen?.renglones : undefined,
                       totalAvisos: c.estado === "EN_REVISION" ? resumen?.totalAvisos : undefined,
+                      cruce: c.estado === "EN_REVISION" ? resumen?.cruce : undefined,
                       motivo: c.estado === "FALLIDA" ? (tarea?.error ?? undefined) : undefined,
                       volverALeer: puedeVolverALeer(c.estado, tarea?.actualizadoEn ?? null, ahora),
                     }}

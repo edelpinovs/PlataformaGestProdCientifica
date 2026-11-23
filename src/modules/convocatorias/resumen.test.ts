@@ -21,4 +21,10 @@ describe("leerResumen (RF-017)", () => {
     expect(leerResumen({ cargaId: 3, resumen: { ...resumen, renglones: "x" } })).toBeNull();
     expect(leerResumen("texto")).toBeNull();
   });
+
+  it("RF-018: conserva el resumen del cruce y rechaza uno mal formado", () => {
+    const cruce = { coincidencias: 9000, dudosos: 12, sinCoincidencia: 500 };
+    expect(leerResumen({ resumen: { ...resumen, cruce } })).toEqual({ ...resumen, cruce });
+    expect(leerResumen({ resumen: { ...resumen, cruce: { coincidencias: "x" } } })).toBeNull();
+  });
 });

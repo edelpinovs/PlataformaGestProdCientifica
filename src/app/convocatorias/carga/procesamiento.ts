@@ -3,10 +3,13 @@ import { prisma } from "@/lib/prisma";
 import { BUCKET, extension, TIEMPO_ATASCO_MS } from "@/modules/convocatorias/carga";
 import { filasDeExcel } from "@/modules/convocatorias/lector-excel";
 import { fragmentosDePdf } from "@/modules/convocatorias/lector-pdf";
+import { cruzarRenglones } from "@/modules/convocatorias/cruce";
 import { interpretarListado } from "@/modules/convocatorias/lectura";
 import { agruparEnFilas } from "@/modules/convocatorias/pdf-filas";
+import { recalcularConvocatoria } from "@/modules/convocatorias/recalcular";
 
 // RF-017 (RNF-001): lee el archivo de una carga en segundo plano y guarda sus renglones.
+// RF-018: antes de guardarlos los cruza con el directorio y recalcula los participantes.
 // No es Server Action (no lleva "use server"): solo la llaman registrarCarga y volverALeer,
 // que ya revisaron el permiso, y recibe el cliente de Storage con la sesión de esa persona.
 
@@ -63,7 +66,7 @@ export async function procesarCarga(jobId: number, almacen: AlmacenArchivos): Pr
 
     const carga = await prisma.cargaResultados.findUnique({
       where: { id: cargaId },
-      select: { archivoRuta: true, convocatoria: { select: { programa: true } } },
+      select: { archivoRuta: true, convocatoriaId: true, convocatoria: { select: { programa: true } } },
     });
     if (!carga) throw new ErrorLectura(SIN_CARGA);
 
@@ -74,6 +77,15 @@ export async function procesarCarga(jobId: number, almacen: AlmacenArchivos): Pr
     const lectura = interpretarListado(filas, carga.convocatoria.programa);
     if (!lectura.ok) throw new ErrorLectura(lectura.error);
 
+    // RF-018: solo el directorio activo; un profesor dado de baja no cuenta como coincidencia.
+    const activos = await prisma.profesor.findMany({
+      where: { estatusLaboral: "ACTIVO" },
+      select: { id: true, cvu: true, codigo: true, nombres: true, apellidos: true },
+    });
+    const cruce = cruzarRenglones(lectura.renglones, activos);
+    const resumen = { ...lectura.resumen, cruce: cruce.resumen };
+    const convocatoriaId = carga.convocatoriaId;
+
     const id = cargaId;
     await prisma.$transaction(
       async (tx) => {
@@ -81,16 +93,19 @@ export async function procesarCarga(jobId: number, almacen: AlmacenArchivos): Pr
         await tx.renglonResultado.deleteMany({ where: { cargaId: id } });
         for (let i = 0; i < lectura.renglones.length; i += TAMANO_BLOQUE) {
           const bloque = lectura.renglones.slice(i, i + TAMANO_BLOQUE);
-          await tx.renglonResultado.createMany({ data: bloque.map((renglon) => ({ ...renglon, cargaId: id })) });
+          await tx.renglonResultado.createMany({
+            data: bloque.map((renglon, j) => ({ ...renglon, ...cruce.cruces[i + j], cargaId: id })),
+          });
         }
         const { count } = await tx.cargaResultados.updateMany({
           where: { id, estado: "PROCESANDO" },
           data: { estado: "EN_REVISION" },
         });
         if (!count) throw new ErrorLectura(SIN_CARGA);
+        await recalcularConvocatoria(tx, convocatoriaId);
         const cerrada = await tx.job.updateMany({
           where: reservada,
-          data: { estado: "COMPLETADO", avance: 1, datos: { ...datos.data, resumen: lectura.resumen }, error: null },
+          data: { estado: "COMPLETADO", avance: 1, datos: { ...datos.data, resumen }, error: null },
         });
         if (!cerrada.count) throw new ReservaPerdida();
       },
