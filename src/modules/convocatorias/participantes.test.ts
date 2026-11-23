@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calcularParticipaciones, motivoNoEliminable, participante, type Participacion } from "./participantes";
+import { calcularParticipaciones, motivoConvocatoriaConfirmada, participante, resultadoPreliminar, type Participacion } from "./participantes";
 
 const p = (id: number, profesorId: number, origen: "MANUAL" | "LISTADO", resultado: Participacion["resultado"] = null): Participacion =>
   ({ id, profesorId, origen, resultado });
@@ -30,13 +30,19 @@ describe("calcularParticipaciones (RF-018)", () => {
   });
 });
 
-describe("motivoNoEliminable", () => {
-  it("no deja quitar a quien sale en el listado ni cambiar una convocatoria confirmada", () => {
-    expect(motivoNoEliminable({ enListado: true, confirmada: false, convocatoria: "SNII 2026" }))
-      .toBe("Aparece en el listado oficial de SNII 2026; para quitarlo, elimina o vuelve a leer la carga.");
-    expect(motivoNoEliminable({ enListado: false, confirmada: true, convocatoria: "SNII 2026" }))
+describe("resultadoPreliminar", () => {
+  it("con carga en revisión: Aprobado si aparece, No aprobado si no; sin carga, nada", () => {
+    expect(resultadoPreliminar(10, new Set([10]))).toBe("APROBADO");
+    expect(resultadoPreliminar(20, new Set([10]))).toBe("NO_APROBADO");
+    expect(resultadoPreliminar(10, null)).toBeNull();
+  });
+});
+
+describe("motivoConvocatoriaConfirmada", () => {
+  it("no deja cambiar los participantes de una convocatoria confirmada", () => {
+    expect(motivoConvocatoriaConfirmada("SNII 2026", true))
       .toBe("La convocatoria SNII 2026 ya se confirmó; no se pueden cambiar sus participantes.");
-    expect(motivoNoEliminable({ enListado: false, confirmada: false, convocatoria: "SNII 2026" })).toBeNull();
+    expect(motivoConvocatoriaConfirmada("SNII 2026", false)).toBeNull();
   });
 });
 

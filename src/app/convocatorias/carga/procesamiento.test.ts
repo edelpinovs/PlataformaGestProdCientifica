@@ -12,14 +12,13 @@ const dobles = vi.hoisted(() => {
     profesor: { findMany: vi.fn() },
     $transaction: vi.fn(),
   };
-  return { prisma, recalcular: vi.fn() };
+  return { prisma };
 });
 vi.mock("@/lib/prisma", () => ({ prisma: dobles.prisma }));
-vi.mock("@/modules/convocatorias/recalcular", () => ({ recalcularConvocatoria: dobles.recalcular }));
 
 type Tarea = { id: number; estado: string; actualizadoEn: Date; datos: unknown; error?: string | null; avance?: number };
 let tarea: Tarea;
-let carga: { id: number; estado: string; archivoRuta: string; convocatoriaId: number; convocatoria: { programa: "SNII" | "PRODEP" } } | null;
+let carga: { id: number; estado: string; archivoRuta: string; convocatoria: { programa: "SNII" | "PRODEP" } } | null;
 let renglones: { cargaId: number }[];
 let archivo: Uint8Array | null;
 const llamadas: string[] = [];
@@ -50,7 +49,7 @@ describe("procesarCarga (RF-017)", () => {
     vi.resetAllMocks();
     llamadas.length = 0;
     tarea = { id: 7, estado: "PENDIENTE", actualizadoEn: new Date(), datos: { cargaId: 3, ruta: "snii/2025/x.xlsx" } };
-    carga = { id: 3, estado: "PROCESANDO", archivoRuta: "snii/2025/20261109T100000-resultados.xlsx", convocatoriaId: 5, convocatoria: { programa: "SNII" } };
+    carga = { id: 3, estado: "PROCESANDO", archivoRuta: "snii/2025/20261109T100000-resultados.xlsx", convocatoria: { programa: "SNII" } };
     renglones = [];
     archivo = await excel(3);
 
@@ -83,15 +82,13 @@ describe("procesarCarga (RF-017)", () => {
     dobles.prisma.$transaction.mockImplementation(async (fn) => fn(dobles.prisma));
     // Profesor activo inventado con el CVU de la persona 1 del archivo de prueba.
     dobles.prisma.profesor.findMany.mockResolvedValue([{ id: 40, cvu: "900001", codigo: "2009001", nombres: "Uno", apellidos: "Prueba" }]);
-    dobles.recalcular.mockImplementation(async () => { llamadas.push("recalcula"); });
   });
 
-  it("RF-018: cruza los renglones con los profesores activos y recalcula los participantes", async () => {
+  it("RF-018: cruza los renglones con los profesores activos sin escribir resultados de participantes", async () => {
     await procesarCarga(7, almacen);
     expect(dobles.prisma.profesor.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { estatusLaboral: "ACTIVO" } }));
     expect(renglones[0]).toMatchObject({ cvu: "900001", profesorId: 40, criterio: "CVU" });
     expect(renglones[1]).toMatchObject({ profesorId: null, criterio: "SIN_COINCIDENCIA" });
-    expect(dobles.recalcular).toHaveBeenCalledWith(dobles.prisma, 5);
     expect(tarea.datos).toMatchObject({ resumen: { cruce: { coincidencias: 1, dudosos: 0, sinCoincidencia: 2 } } });
   });
 
@@ -109,7 +106,7 @@ describe("procesarCarga (RF-017)", () => {
 
   it("guarda los renglones, deja la carga en revisión y el resumen en la tarea", async () => {
     await procesarCarga(7, almacen);
-    expect(llamadas).toEqual(["descarga", "borra", "crea", "recalcula"]);
+    expect(llamadas).toEqual(["descarga", "borra", "crea"]);
     expect(renglones).toHaveLength(3);
     expect(renglones[0]).toMatchObject({ cargaId: 3, numero: 2, cvu: "900001", nombres: "PERSONA 1", nivel: "CANDIDATO" });
     expect(carga?.estado).toBe("EN_REVISION");

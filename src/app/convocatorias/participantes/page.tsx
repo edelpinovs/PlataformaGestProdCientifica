@@ -7,11 +7,14 @@ import { prisma } from "@/lib/prisma";
 import {
   COLUMNAS_PARTICIPANTES,
   ETIQUETA_ORIGEN,
+  ETIQUETA_PRELIMINAR,
   ETIQUETA_RESULTADO,
   filtroParticipantes,
   listadoParticipantes,
   ordenParticipantes,
 } from "@/modules/convocatorias/participantes-listado";
+import { resultadoPreliminar } from "@/modules/convocatorias/participantes";
+import { profesoresEnListado } from "@/modules/convocatorias/recalcular";
 import { FilaParticipante } from "./fila-participante";
 import { RegistrarParticipante } from "./registrar-participante";
 
@@ -44,16 +47,28 @@ export default async function ParticipantesPage({ searchParams }: PageProps<"/co
     skip: paginacion.salto,
     take: paginacion.tamanio,
     select: {
-      id: true, resultado: true, origen: true,
+      id: true, resultado: true, origen: true, convocatoriaId: true, profesorId: true,
       convocatoria: { select: { programa: true, anio: true } },
       profesor: { select: { nombres: true, apellidos: true, codigo: true } },
     },
   });
   const contexto = { base: BASE, definicion, consulta: { ...consulta, pagina: paginacion.pagina } };
 
+  // Resultado preliminar: el de la carga en revisión de cada convocatoria mostrada. No se guarda
+  // hasta confirmar la carga (RF-019), para que el reporte anual (RF-028) no lo cuente antes.
+  const idsMostrados = [...new Set(filas.map((f) => f.convocatoriaId))];
+  const enRevision = new Map(await Promise.all(
+    idsMostrados.map(async (id) => [id, await profesoresEnListado(prisma, id, "EN_REVISION")] as const),
+  ));
+  const etiquetaResultado = (f: (typeof filas)[number]) => {
+    if (f.resultado) return ETIQUETA_RESULTADO[f.resultado];
+    const preliminar = resultadoPreliminar(f.profesorId, enRevision.get(f.convocatoriaId) ?? null);
+    return preliminar ? ETIQUETA_PRELIMINAR[preliminar] : ETIQUETA_RESULTADO.PENDIENTE;
+  };
+
   return (
     <Marco correo={perfil.correo} rol={perfil.rol} activo="convocatorias" titulo="Participantes de convocatorias"
-      subtitulo="Quiénes participaron en cada convocatoria y su resultado según el listado oficial (RF-018)."
+      subtitulo="Quiénes participaron en cada convocatoria y su resultado según el listado oficial (RF-018). Mientras la carga está en revisión, el resultado es preliminar."
       volver={{ href: "/convocatorias", texto: "Convocatorias" }}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <span className="rounded-full bg-marca-suave px-3 py-1 text-xs font-medium text-marca">
@@ -70,7 +85,7 @@ export default async function ParticipantesPage({ searchParams }: PageProps<"/co
             filtros={[
               { clave: "convocatoria", etiqueta: "Convocatoria", opciones: convocatorias.map((c) => ({ valor: String(c.id), texto: `${c.programa} ${c.anio}` })) },
               { clave: "resultado", etiqueta: "Resultado", opciones: [
-                { valor: "APROBADO", texto: "Aprobado" }, { valor: "NO_APROBADO", texto: "No aprobado" }, { valor: "PENDIENTE", texto: "Sin resultado" },
+                { valor: "APROBADO", texto: "Aprobado" }, { valor: "NO_APROBADO", texto: "No aprobado" }, { valor: "PENDIENTE", texto: "Sin confirmar" },
               ] },
               { clave: "origen", etiqueta: "Origen", opciones: [
                 { valor: "MANUAL", texto: ETIQUETA_ORIGEN.MANUAL }, { valor: "LISTADO", texto: ETIQUETA_ORIGEN.LISTADO },
@@ -80,7 +95,7 @@ export default async function ParticipantesPage({ searchParams }: PageProps<"/co
             <EstadoVacio>
               {hayFiltrosActivos(consulta)
                 ? "No hay participantes con esta búsqueda. Prueba con otro texto o limpia los filtros."
-                : "Aún no hay participantes. Regístralos aquí o se agregarán al leer el listado oficial."}
+                : "Aún no hay participantes. Regístralos aquí; quienes salgan en el listado oficial se agregarán al confirmar la carga."}
             </EstadoVacio>
           ) : (
             <table className={claseTabla.tabla}>
@@ -101,7 +116,7 @@ export default async function ParticipantesPage({ searchParams }: PageProps<"/co
                     convocatoria: `${f.convocatoria.programa} ${f.convocatoria.anio}`,
                     profesor: `${f.profesor.apellidos}, ${f.profesor.nombres}`,
                     codigo: f.profesor.codigo,
-                    resultado: ETIQUETA_RESULTADO[f.resultado ?? "PENDIENTE"],
+                    resultado: etiquetaResultado(f),
                     origen: ETIQUETA_ORIGEN[f.origen],
                   }} />
                 ))}

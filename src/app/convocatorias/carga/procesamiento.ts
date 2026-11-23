@@ -6,10 +6,10 @@ import { fragmentosDePdf } from "@/modules/convocatorias/lector-pdf";
 import { cruzarRenglones } from "@/modules/convocatorias/cruce";
 import { interpretarListado } from "@/modules/convocatorias/lectura";
 import { agruparEnFilas } from "@/modules/convocatorias/pdf-filas";
-import { recalcularConvocatoria } from "@/modules/convocatorias/recalcular";
 
 // RF-017 (RNF-001): lee el archivo de una carga en segundo plano y guarda sus renglones.
-// RF-018: antes de guardarlos los cruza con el directorio y recalcula los participantes.
+// RF-018: antes de guardarlos los cruza con el directorio. El resultado de los participantes
+// queda preliminar mientras la carga está en revisión; se guarda al confirmarla (RF-019).
 // No es Server Action (no lleva "use server"): solo la llaman registrarCarga y volverALeer,
 // que ya revisaron el permiso, y recibe el cliente de Storage con la sesión de esa persona.
 
@@ -66,7 +66,7 @@ export async function procesarCarga(jobId: number, almacen: AlmacenArchivos): Pr
 
     const carga = await prisma.cargaResultados.findUnique({
       where: { id: cargaId },
-      select: { archivoRuta: true, convocatoriaId: true, convocatoria: { select: { programa: true } } },
+      select: { archivoRuta: true, convocatoria: { select: { programa: true } } },
     });
     if (!carga) throw new ErrorLectura(SIN_CARGA);
 
@@ -84,7 +84,6 @@ export async function procesarCarga(jobId: number, almacen: AlmacenArchivos): Pr
     });
     const cruce = cruzarRenglones(lectura.renglones, activos);
     const resumen = { ...lectura.resumen, cruce: cruce.resumen };
-    const convocatoriaId = carga.convocatoriaId;
 
     const id = cargaId;
     await prisma.$transaction(
@@ -102,7 +101,6 @@ export async function procesarCarga(jobId: number, almacen: AlmacenArchivos): Pr
           data: { estado: "EN_REVISION" },
         });
         if (!count) throw new ErrorLectura(SIN_CARGA);
-        await recalcularConvocatoria(tx, convocatoriaId);
         const cerrada = await tx.job.updateMany({
           where: reservada,
           data: { estado: "COMPLETADO", avance: 1, datos: { ...datos.data, resumen }, error: null },

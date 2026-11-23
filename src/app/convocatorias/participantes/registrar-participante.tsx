@@ -12,7 +12,7 @@ export function RegistrarParticipante({ profesores, anioActual }: { profesores: 
     <ModalAlta
       titulo="Registrar participante"
       textoBoton="Registrar participante"
-      descripcion="Registra a quien participó y podría no aparecer en el listado oficial. Quienes aparecen se agregan solos al leer la carga."
+      descripcion="Registra a quien participó en la convocatoria. Quienes salgan en el listado oficial y no estén registrados se agregan al confirmar la carga."
       accion={registrarParticipante}
     >
       {({ estado, valor, marcarCambios }) => {

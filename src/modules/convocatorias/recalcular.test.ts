@@ -13,12 +13,17 @@ const cliente = tx as unknown as Prisma.TransactionClient;
 describe("recalcularConvocatoria", () => {
   beforeEach(() => vi.resetAllMocks());
 
-  it("sin carga leída no hay listado", async () => {
+  it("sin carga con ese estado no hay listado", async () => {
     tx.cargaResultados.findFirst.mockResolvedValue(null);
-    expect(await profesoresEnListado(cliente, 5)).toBeNull();
-    expect(tx.cargaResultados.findFirst).toHaveBeenCalledWith(expect.objectContaining({
-      where: { convocatoriaId: 5, estado: { in: ["EN_REVISION", "CONFIRMADA"] } },
-    }));
+    expect(await profesoresEnListado(cliente, 5, "EN_REVISION")).toBeNull();
+    expect(tx.cargaResultados.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { convocatoriaId: 5, estado: "EN_REVISION" } }));
+  });
+
+  it("el resultado oficial solo sale de una carga confirmada (RF-028 lo cuenta)", async () => {
+    tx.cargaResultados.findFirst.mockResolvedValue(null);
+    tx.participacionConvocatoria.findMany.mockResolvedValue([]);
+    await recalcularConvocatoria(cliente, 5);
+    expect(tx.cargaResultados.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { convocatoriaId: 5, estado: "CONFIRMADA" } }));
   });
 
   it("aprueba a quien aparece, no aprueba a quien falta y agrega a quien no estaba registrado", async () => {

@@ -12,6 +12,12 @@ export const ETIQUETA_RESULTADO = {
   PENDIENTE: { tipo: "aviso", texto: "Sin resultado" },
 } as const;
 
+/** Resultado con la carga aún en revisión: se muestra, pero no se guarda hasta confirmar. */
+export const ETIQUETA_PRELIMINAR = {
+  APROBADO: { tipo: "aviso", texto: "Aprobado (preliminar)" },
+  NO_APROBADO: { tipo: "aviso", texto: "No aprobado (preliminar)" },
+} as const;
+
 export const ETIQUETA_ORIGEN = { MANUAL: "Registrado", LISTADO: "Listado oficial" } as const;
 
 /** Los ids de las convocatorias existentes son los únicos valores del filtro `convocatoria`. */

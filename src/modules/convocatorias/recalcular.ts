@@ -1,30 +1,36 @@
 import type { Prisma } from "@/generated/prisma/client";
 import { calcularParticipaciones } from "./participantes";
 
-// RF-018: aplica en la base el estatus de los participantes de una convocatoria. Se llama dentro
-// de una transacción al terminar la lectura, al eliminar una carga y al registrar o quitar un
-// participante. La carga vigente es la más reciente que ya se leyó (en revisión o confirmada).
+// RF-018: el resultado de los participantes sale del cruce con el listado oficial.
+// Mientras la carga está en revisión el resultado es solo preliminar y no se guarda: el reporte
+// de convocatoria anual (RF-028) cuenta como «no aprobado» lo que esté guardado en la
+// participación. Se escribe al confirmar la carga (la actualización masiva de RF-019).
 
 type Cliente = Prisma.TransactionClient;
+type EstadoLeido = "EN_REVISION" | "CONFIRMADA";
 
-/** Profesores que coincidieron en la carga vigente, o `null` si la convocatoria no tiene una leída. */
-export async function profesoresEnListado(tx: Cliente, convocatoriaId: number): Promise<Set<number> | null> {
-  const vigente = await tx.cargaResultados.findFirst({
-    where: { convocatoriaId, estado: { in: ["EN_REVISION", "CONFIRMADA"] } },
+/**
+ * Profesores que coincidieron en la carga más reciente de la convocatoria con ese estado, o
+ * `null` si no hay ninguna. `EN_REVISION` da el resultado preliminar; `CONFIRMADA`, el oficial.
+ */
+export async function profesoresEnListado(tx: Cliente, convocatoriaId: number, estado: EstadoLeido): Promise<Set<number> | null> {
+  const carga = await tx.cargaResultados.findFirst({
+    where: { convocatoriaId, estado },
     orderBy: [{ creadaEn: "desc" }, { id: "desc" }],
     select: { id: true },
   });
-  if (!vigente) return null;
+  if (!carga) return null;
   const filas = await tx.renglonResultado.findMany({
-    where: { cargaId: vigente.id, profesorId: { not: null } },
+    where: { cargaId: carga.id, profesorId: { not: null } },
     select: { profesorId: true },
     distinct: ["profesorId"],
   });
   return new Set(filas.map((f) => f.profesorId!));
 }
 
+/** Guarda el resultado oficial según la carga confirmada. Lo llamará la confirmación (RF-019). */
 export async function recalcularConvocatoria(tx: Cliente, convocatoriaId: number): Promise<void> {
-  const enListado = await profesoresEnListado(tx, convocatoriaId);
+  const enListado = await profesoresEnListado(tx, convocatoriaId, "CONFIRMADA");
   const actuales = await tx.participacionConvocatoria.findMany({
     where: { convocatoriaId },
     select: { id: true, profesorId: true, origen: true, resultado: true },

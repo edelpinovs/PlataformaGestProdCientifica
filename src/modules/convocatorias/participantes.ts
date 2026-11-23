@@ -2,6 +2,7 @@ import { z } from "zod";
 import { PRIMER_ANIO, PROGRAMAS } from "./carga";
 
 // RF-018 (CU-010): estatus de los participantes de una convocatoria según el listado oficial.
+// Con la carga en revisión el resultado es preliminar y solo se muestra; se guarda al confirmar.
 // Participantes = los registrados a mano + quienes aparecen en el listado (D-239, pendiente de
 // confirmar con la Coordinación, plan §8 punto 1). No Aprobado solo a registrados que no aparecen.
 
@@ -40,10 +41,14 @@ export function calcularParticipaciones(actuales: Participacion[], enListado: Se
   return cambios;
 }
 
-export function motivoNoEliminable(p: { enListado: boolean; confirmada: boolean; convocatoria: string }): string | null {
-  if (p.confirmada) return `La convocatoria ${p.convocatoria} ya se confirmó; no se pueden cambiar sus participantes.`;
-  if (p.enListado) return `Aparece en el listado oficial de ${p.convocatoria}; para quitarlo, elimina o vuelve a leer la carga.`;
-  return null;
+/** Resultado preliminar de un participante con la carga en revisión; `null` si aún no hay una. */
+export function resultadoPreliminar(profesorId: number, enListado: Set<number> | null): "APROBADO" | "NO_APROBADO" | null {
+  if (!enListado) return null;
+  return enListado.has(profesorId) ? "APROBADO" : "NO_APROBADO";
+}
+
+export function motivoConvocatoriaConfirmada(convocatoria: string, confirmada: boolean): string | null {
+  return confirmada ? `La convocatoria ${convocatoria} ya se confirmó; no se pueden cambiar sus participantes.` : null;
 }
 
 /** Programa y año del alta de un participante; mismas reglas y mensajes que la carga (RF-016). */

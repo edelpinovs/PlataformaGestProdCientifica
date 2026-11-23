@@ -14,7 +14,7 @@ export type Participante = {
 };
 
 // #59: fila con Eliminar y sin Editar (justificado en el issue #23): la participación solo
-// guarda al profesor, y cambiarlo es quitarla y registrar otra; el resultado lo pone el cruce.
+// guarda al profesor, y cambiarlo es quitarla y registrar otra; el resultado lo pone la confirmación.
 export function FilaParticipante({ p }: { p: Participante }) {
   const [confirmando, setConfirmando] = useState(false);
   if (confirmando) return <Confirmar p={p} cerrar={() => setConfirmando(false)} />;
@@ -55,7 +55,7 @@ function Confirmar({ p, cerrar }: { p: Participante; cerrar: () => void }) {
             <Aviso tipo="error">{estado.error}</Aviso>
           ) : (
             <p className="text-sm text-texto">
-              ¿Quitar a <strong>{p.profesor}</strong> de los participantes de {p.convocatoria}? Su resultado se vuelve a calcular.
+              ¿Quitar a <strong>{p.profesor}</strong> de los participantes de {p.convocatoria}?
             </p>
           )}
           <div className="flex gap-2">

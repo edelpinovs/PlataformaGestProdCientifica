@@ -5,8 +5,6 @@ import { Prisma } from "@/generated/prisma/client";
 const dobles = vi.hoisted(() => ({
   requireModulo: vi.fn(),
   redirect: vi.fn(),
-  recalcular: vi.fn(),
-  enListado: vi.fn(),
   llamadas: [] as string[],
   prisma: {
     profesor: { findFirst: vi.fn() },
@@ -19,10 +17,6 @@ vi.mock("@/lib/auth/session", () => ({ requireModulo: dobles.requireModulo }));
 vi.mock("@/lib/prisma", () => ({ prisma: dobles.prisma }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("next/navigation", () => ({ redirect: dobles.redirect, RedirectType: { replace: "replace" } }));
-vi.mock("@/modules/convocatorias/recalcular", () => ({
-  recalcularConvocatoria: dobles.recalcular,
-  profesoresEnListado: dobles.enListado,
-}));
 
 const { eliminarParticipante, registrarParticipante } = await import("./actions");
 
@@ -86,26 +80,23 @@ describe("registrarParticipante (RF-018)", () => {
     expect((await alta()).error).toBe(`La convocatoria SNII ${ANIO} ya se confirmó; no se pueden cambiar sus participantes.`);
   });
 
-  it("crea la convocatoria si hace falta, registra al participante como manual y recalcula", async () => {
+  it("crea la convocatoria si hace falta y registra al participante como manual, sin resultado", async () => {
     const r = await alta();
     expect(r).toEqual({ exito: `Se registró a Prueba Uno, Ana en SNII ${ANIO}.` });
     expect(dobles.prisma.convocatoria.upsert).toHaveBeenCalledWith(expect.objectContaining({ create: { programa: "SNII", anio: ANIO } }));
     expect(dobles.prisma.participacionConvocatoria.create).toHaveBeenCalledWith({ data: { convocatoriaId: 5, profesorId: 40, origen: "MANUAL" } });
-    expect(dobles.recalcular).toHaveBeenCalledWith(dobles.prisma, 5);
     expect(dobles.llamadas[0]).toBe("permiso");
   });
 });
 
 describe("eliminarParticipante (RF-018)", () => {
   const participacion = {
-    profesorId: 40,
     profesor: { nombres: "Ana", apellidos: "Prueba Uno" },
     convocatoria: { id: 5, programa: "SNII", anio: 2026, cargas: [] as { id: number }[] },
   };
 
   beforeEach(() => {
     dobles.prisma.participacionConvocatoria.findUnique.mockResolvedValue(participacion);
-    dobles.enListado.mockResolvedValue(new Set([99]));
     dobles.prisma.participacionConvocatoria.deleteMany.mockResolvedValue({ count: 1 });
   });
 
@@ -115,23 +106,33 @@ describe("eliminarParticipante (RF-018)", () => {
     expect(dobles.prisma.participacionConvocatoria.findUnique).not.toHaveBeenCalled();
   });
 
-  it("no quita a quien aparece en el listado oficial", async () => {
-    dobles.enListado.mockResolvedValue(new Set([40]));
+  it("no quita participantes de una convocatoria confirmada", async () => {
+    dobles.prisma.participacionConvocatoria.findUnique.mockResolvedValue({
+      ...participacion, convocatoria: { ...participacion.convocatoria, cargas: [{ id: 9 }] },
+    });
     const r = await eliminarParticipante({}, formulario({ id: "1" }));
-    expect(r.error).toBe("Aparece en el listado oficial de SNII 2026; para quitarlo, elimina o vuelve a leer la carga.");
+    expect(r.error).toBe("La convocatoria SNII 2026 ya se confirmó; no se pueden cambiar sus participantes.");
     expect(dobles.prisma.participacionConvocatoria.deleteMany).not.toHaveBeenCalled();
+  });
+
+  it("si se confirmó mientras tanto, el borrado condicionado no quita a nadie y lo explica", async () => {
+    dobles.prisma.participacionConvocatoria.deleteMany.mockResolvedValue({ count: 0 });
+    const r = await eliminarParticipante({}, formulario({ id: "1" }));
+    expect(r.error).toBe("La convocatoria SNII 2026 ya se confirmó; no se pueden cambiar sus participantes.");
   });
 
   it("explica que ya no existe si el id es inválido o se borró antes", async () => {
     expect((await eliminarParticipante({}, formulario({ id: "abc" }))).error).toBe("Ese participante ya no está registrado. Recarga la página.");
     dobles.prisma.participacionConvocatoria.deleteMany.mockResolvedValue({ count: 0 });
+    dobles.prisma.participacionConvocatoria.findUnique.mockResolvedValueOnce(participacion).mockResolvedValueOnce(null);
     expect((await eliminarParticipante({}, formulario({ id: "1" }))).error).toBe("Ese participante ya no está registrado. Recarga la página.");
   });
 
-  it("borra, recalcula y vuelve al listado con el resultado", async () => {
+  it("borra con la condición de no confirmada y vuelve al listado con el resultado", async () => {
     await eliminarParticipante({}, formulario({ id: "1" }));
-    expect(dobles.prisma.participacionConvocatoria.deleteMany).toHaveBeenCalledWith({ where: { id: 1 } });
-    expect(dobles.recalcular).toHaveBeenCalledWith(dobles.prisma, 5);
+    expect(dobles.prisma.participacionConvocatoria.deleteMany).toHaveBeenCalledWith({
+      where: { id: 1, convocatoria: { cargas: { none: { estado: "CONFIRMADA" } } } },
+    });
     expect(dobles.redirect).toHaveBeenCalledWith(
       `/convocatorias/participantes?eliminado=${encodeURIComponent("Prueba Uno, Ana (SNII 2026)")}`, "replace",
     );
