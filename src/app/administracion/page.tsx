@@ -36,10 +36,19 @@ export default async function AdministracionPage() {
         ))}
       </section>
 
-      <Panel titulo="Gestión" descripcion="Auditoría, calidad de datos y control del escaneo llegarán en las siguientes fases.">
-        <Link href="/administracion/usuarios" className="text-sm font-medium text-marca hover:underline">
-          Usuarios y roles
-        </Link>
+      <Panel titulo="Gestión" descripcion="El control del escaneo y los parámetros del sistema llegarán en la siguiente fase.">
+        <ul className="flex flex-col gap-3 text-sm">
+          {[
+            { href: "/administracion/usuarios", texto: "Usuarios y roles", nota: "Quién entra al sistema y qué puede hacer." },
+            { href: "/administracion/auditoria", texto: "Auditoría", nota: "Quién hizo qué y cuándo." },
+            { href: "/administracion/calidad", texto: "Calidad de datos", nota: "Inconsistencias que conviene corregir." },
+          ].map((e) => (
+            <li key={e.href}>
+              <Link href={e.href} className="font-medium text-marca hover:underline">{e.texto}</Link>
+              <span className="block text-xs text-texto-3">{e.nota}</span>
+            </li>
+          ))}
+        </ul>
       </Panel>
     </Marco>
   );
