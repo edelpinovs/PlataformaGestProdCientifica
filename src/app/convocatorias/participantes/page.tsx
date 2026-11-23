@@ -57,7 +57,7 @@ export default async function ParticipantesPage({ searchParams }: PageProps<"/co
       volver={{ href: "/convocatorias", texto: "Convocatorias" }}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <span className="rounded-full bg-marca-suave px-3 py-1 text-xs font-medium text-marca">
-          {cifra.format(total)} {hayFiltrosActivos(consulta) ? "coinciden" : "registrados"}
+          {cifra.format(total)} {hayFiltrosActivos(consulta) ? (total === 1 ? "coincide" : "coinciden") : (total === 1 ? "registrado" : "registrados")}
         </span>
         <RegistrarParticipante profesores={activos} anioActual={new Date().getFullYear()} />
       </div>
