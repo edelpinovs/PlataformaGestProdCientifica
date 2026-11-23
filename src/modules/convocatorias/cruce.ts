@@ -12,7 +12,8 @@ export type RenglonCruce = {
   nombres: string;
 };
 
-export type Criterio = "CVU" | "CODIGO" | "NOMBRE" | "AMBIGUO" | "SIN_COINCIDENCIA";
+// MANUAL no lo produce el cruce: lo pone la revisión de la carga (RF-019).
+export type Criterio = "CVU" | "CODIGO" | "NOMBRE" | "MANUAL" | "AMBIGUO" | "SIN_COINCIDENCIA";
 export type Cruce = { profesorId: number | null; criterio: Criterio };
 export type ResumenCruce = { coincidencias: number; dudosos: number; sinCoincidencia: number };
 
