@@ -3,6 +3,7 @@ import { EstadoVacio, Panel } from "@/components/ui";
 import { requireModulo } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { hayFiltrosActivos } from "@/lib/listados/consulta";
+import { anioActualMexico } from "@/modules/produccion/fechas-escaneo";
 import { analizarConsulta, type ErroresConsulta, type ParametrosConsulta } from "@/modules/produccion/consulta";
 import { FiltrosPublicaciones } from "../filtros-publicaciones";
 import { consultarPublicaciones } from "../consultas";
@@ -13,7 +14,8 @@ import { PaginacionPublicaciones } from "../paginacion-publicaciones";
 export default async function PublicacionesPage({ searchParams }: { searchParams: Promise<ParametrosConsulta> }) {
   const perfil = await requireModulo("produccion");
   const parametros = await searchParams;
-  const analisis = analizarConsulta(parametros);
+  const anioActual = anioActualMexico();
+  const analisis = analizarConsulta(parametros, anioActual);
   const consulta = analisis.data;
   const errores: ErroresConsulta = {};
   if (!analisis.success) {
@@ -29,7 +31,7 @@ export default async function PublicacionesPage({ searchParams }: { searchParams
     volver={{ href: "/produccion", texto: "Producción científica" }}>
     <NavegacionProduccion actual="publicaciones" />
     <Panel titulo="Buscar publicaciones">
-      <FiltrosPublicaciones key={JSON.stringify(consulta)} consulta={consulta} profesores={profesores} errores={errores} />
+      <FiltrosPublicaciones key={JSON.stringify(consulta)} consulta={consulta} profesores={profesores} errores={errores} anioActual={anioActual} />
     </Panel>
     <div id="publicaciones" className="min-w-0 scroll-mt-4">
       <Panel titulo="Resultados">
