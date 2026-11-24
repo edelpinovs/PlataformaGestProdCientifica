@@ -29,6 +29,8 @@ type Props = {
   rol: Rol;
   activo: boolean;
   profesor: { id: number; nombres: string; apellidos: string; codigo: string } | null;
+  /** Fecha de alta ya formateada en el servidor (hora de México). */
+  alta: string;
   /** Profesores que se pueden vincular: los que no tienen perfil y el actual de esta fila. */
   opcionesProfesor: OpcionProfesor[];
   /** Es el perfil de quien está en la pantalla: no puede desactivarse a sí mismo. */
@@ -44,7 +46,7 @@ export function FilaUsuario(props: Props) {
   if (modo === "editar") return <Edicion {...props} cerrar={cerrar} />;
   if (modo === "estado") return <CambioEstado {...props} cerrar={cerrar} />;
 
-  const { correo, rol, activo, profesor } = props;
+  const { correo, rol, activo, profesor, alta } = props;
   return (
     <tr className={claseTabla.fila}>
       <td className={`${claseTabla.celda} break-all text-texto`}>{correo}</td>
@@ -55,6 +57,7 @@ export function FilaUsuario(props: Props) {
       <td className={claseTabla.celda}>
         <EtiquetaEstado tipo={activo ? "exito" : "aviso"}>{activo ? "Activo" : "Desactivado"}</EtiquetaEstado>
       </td>
+      <td className={`${claseTabla.celda} whitespace-nowrap`}>{alta}</td>
       <td className={`${claseTabla.celda} pr-0 text-right whitespace-nowrap`}>
         <button type="button" onClick={() => setModo("editar")} className={claseAccionIcono()}
           aria-label={`Editar ${correo}`} title="Editar">
@@ -76,7 +79,7 @@ function Edicion({ id, correo, rol, profesor, opcionesProfesor, editar, cerrar }
 
   return (
     <tr className={claseTabla.fila}>
-      <td colSpan={5} className="py-3">
+      <td colSpan={6} className="py-3">
         <form action={accion} className="flex flex-col gap-3 rounded-xl bg-superficie-alt p-4">
           <input type="hidden" name="id" value={id} />
           <p className="text-sm text-texto-2">Cambios de acceso para <strong className="text-texto">{correo}</strong>.</p>
@@ -113,7 +116,7 @@ function CambioEstado({ id, correo, activo, esPropio, cambiarEstado, cerrar }: P
 
   return (
     <tr className={claseTabla.fila}>
-      <td colSpan={5} className="py-3">
+      <td colSpan={6} className="py-3">
         <form action={accion} className={`flex flex-col gap-3 rounded-xl p-4 ${desactivar ? "bg-peligro-suave" : "bg-superficie-alt"}`}>
           <input type="hidden" name="id" value={id} />
           <input type="hidden" name="accion" value={desactivar ? "desactivar" : "reactivar"} />

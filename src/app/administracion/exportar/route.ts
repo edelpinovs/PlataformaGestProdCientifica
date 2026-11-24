@@ -54,7 +54,7 @@ async function armar(listado: ListadoExportable, parametros: ParametrosListado, 
     const filas = await prisma.perfil.findMany({
       where,
       orderBy: ordenUsuarios(consulta),
-      select: { correo: true, rol: true, activo: true, profesor: { select: { codigo: true, nombres: true, apellidos: true } } },
+      select: { correo: true, rol: true, activo: true, creadoEn: true, profesor: { select: { codigo: true, nombres: true, apellidos: true } } },
     });
     return { tabla: tablaUsuarios(filas), filtros: descripcionFiltros(listado, consulta) };
   }

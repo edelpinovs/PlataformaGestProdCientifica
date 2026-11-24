@@ -20,7 +20,7 @@ beforeEach(() => {
   dobles.requireModulo.mockResolvedValue(ADMIN);
   dobles.perfil.count.mockResolvedValue(1);
   dobles.perfil.findMany.mockResolvedValue([
-    { correo: "a@ejemplo.mx", rol: "DOCENTE", activo: true, profesor: { codigo: "100", nombres: "Ana", apellidos: "Pérez" } },
+    { correo: "a@ejemplo.mx", rol: "DOCENTE", activo: true, creadoEn: new Date("2026-11-20T18:00:00Z"), profesor: { codigo: "100", nombres: "Ana", apellidos: "Pérez" } },
   ]);
   dobles.auditoria.count.mockResolvedValue(1);
   dobles.auditoria.findMany.mockResolvedValue([
