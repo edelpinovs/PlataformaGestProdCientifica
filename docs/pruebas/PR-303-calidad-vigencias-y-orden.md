@@ -11,7 +11,7 @@ Revisión del [PR #303](https://github.com/edelpinovs/PlataformaGestProdCientifi
 | Fecha de la revisión | 2026-11-24 |
 | Revisó | @edelpinovs (I1), con Claude Code |
 | Entorno | Local (Windows 10, Node 24): el PR mezclado con `main` en `3ee62fe` (trae #302), en una carpeta aparte (`git worktree`). Sin base de datos y sin `next dev` |
-| Resultado | **Aprobable con comentarios.** No hay código roto y el orden natural está bien; la regla nueva marca como vencido cada periodo anterior de quien ya renovó (hallazgo 1), y conviene acotarla antes de integrar |
+| Resultado | **Aprobable con comentarios.** No hay código roto y el orden natural está bien; la regla nueva marcaba como vencido cada periodo anterior de quien ya renovó (hallazgo 1). **El hallazgo 1 quedó corregido en `ff4f389`** (ver el apartado 8) |
 
 **Límite de esta revisión:** el autor y quien la hace son la misma persona (I1), así que no cumple D-006: el PR sigue necesitando la aprobación de otra persona del equipo.
 
@@ -76,6 +76,20 @@ Archivo temporal `src/modules/administracion/revision-303.test.ts`, que se borr�
 ## 7. Dictamen
 
 **Aprobable con comentarios.** El orden natural puede integrarse tal cual. Para la regla de vigencias vencidas se recomienda resolver el hallazgo 1 antes de integrar (o dejarla fuera hasta acordar D-227), porque si no la lista de Calidad crece con cada renovación. El hallazgo 2 es menor. Falta la aprobación de otra persona del equipo (D-006).
+
+## 8. Actualización: hallazgo 1 corregido (`ff4f389`, 2026-11-24)
+
+Se corrigió en la rama del PR, sin tocar el módulo de Reportes:
+
+| Verificación | Resultado |
+|---|---|
+| Qué cambió | `ultimoPeriodoPorPersona` en `calidad.ts` se queda con el último periodo SNII o PRODEP de cada profesor entre los que entran al semáforo (`cuentaParaSemaforo` de Reportes); un posterior no aprobado no sustituye al anterior. `cargar.ts` lee SNII y PRODEP con `profesorId` y arma las filas con `filaSnii` y `filaProdep` de Reportes; los cuerpos siguen saliendo de `cargarVigencias(["CA"])` |
+| Pruebas nuevas | Siete en `calidad.test.ts` y cuatro en `app/administracion/calidad/cargar.test.ts` (Prisma simulado): quien renovó no aparece, quien no renovó o no fue aprobado aparece una vez, SNII y PRODEP se acotan por separado |
+| Mis pruebas de revisión sobre `ff4f389` | Las 6 siguen pasando. R1 y R2 llaman directamente a `hallazgosVigenciasVencidas` con todas las filas, y esa función no cambió: la corrección está antes, en la carga, y la cubren las pruebas nuevas de `cargar.test.ts` |
+| `npm test` con `main` mezclado | Correcto: 118 archivos, 1354 pruebas |
+| `npm run lint`, `npm run typecheck` y `npm run build` | Correctos |
+
+Sin cambios en los demás puntos: el hallazgo 2 (profesores no activos) sigue abierto como menor, igual que la revisión de la pantalla y la aprobación de otra persona (D-006).
 
 <details>
 <summary>Código de las pruebas de revisión (apartado 4)</summary>
