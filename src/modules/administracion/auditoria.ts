@@ -65,7 +65,8 @@ export function resumenEdicionUsuario(
   }
   if (antes.profesorId !== despues.profesorId) {
     if (despues.profesorId === null) cambios.push("desvinculó al profesor");
-    else cambios.push(`vinculó al profesor con código ${despues.codigoProfesor ?? despues.profesorId}`);
+    // El id interno nunca se llama «código»: sin el código del profesor, solo se dice que se vinculó.
+    else cambios.push(despues.codigoProfesor ? `vinculó al profesor con código ${despues.codigoProfesor}` : "vinculó al profesor");
   }
   if (cambios.length === 0) return null;
   const texto = cambios.join(" y ");

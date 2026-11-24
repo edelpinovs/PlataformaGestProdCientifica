@@ -10,8 +10,8 @@ import {
   resumirTrabajos,
   textoAvance,
   VENTANA_DIAS,
+  ventanaDesde,
   type EstadoTrabajo,
-  type TrabajoResumen,
 } from "@/modules/administracion/escaneo";
 import { ESTADOS_HISTORIAL } from "@/modules/produccion/historial";
 
@@ -31,12 +31,19 @@ const TIPO_ESTADO: Record<EstadoTrabajo, "exito" | "aviso" | "error"> = {
 export default async function EscaneoPage() {
   const perfil = await requireModulo("administracion");
 
-  const [trabajos, cortes, activos, scopus] = await Promise.all([
+  // Las cifras de las tarjetas las calcula la base (count y groupBy); solo se cargan los cinco más recientes.
+  const [recientes, enCurso, ventana, cortes, activos, scopus] = await Promise.all([
     prisma.job.findMany({
       where: { tipo: { in: TIPOS_ESCANEO } },
       orderBy: [{ creadoEn: "desc" }, { id: "desc" }],
-      take: 200,
+      take: 5,
       select: { id: true, estado: true, avance: true, total: true, creadoEn: true, actualizadoEn: true },
+    }),
+    prisma.job.count({ where: { tipo: { in: TIPOS_ESCANEO }, estado: { in: ["PENDIENTE", "EN_PROCESO"] } } }),
+    prisma.job.groupBy({
+      by: ["estado"],
+      where: { tipo: { in: TIPOS_ESCANEO }, creadoEn: { gte: ventanaDesde(new Date()) } },
+      _count: { _all: true },
     }),
     prisma.corteEscaneo.groupBy({
       by: ["fuente"],
@@ -48,12 +55,11 @@ export default async function EscaneoPage() {
     estadoConfiguracionScopus(),
   ]);
 
-  const resumen = resumirTrabajos(trabajos as TrabajoResumen[], new Date());
+  const resumen = resumirTrabajos({ ultimo: recientes[0] ?? null, enCurso, ventana });
   const fuentes = resumirFuentes(
     cortes.map((c) => ({ fuente: c.fuente, profesores: c._count._all, ultimaFecha: c._max.ultimaFecha })),
     activos,
   );
-  const recientes = trabajos.slice(0, 5);
 
   const tarjetas = [
     { texto: "Último escaneo", cifra: resumen.ultimo ? ESTADOS_HISTORIAL[resumen.ultimo.estado] : "Ninguno", nota: resumen.ultimo ? fechaHora.format(resumen.ultimo.creadoEn) : "Aún no se ha ejecutado" },

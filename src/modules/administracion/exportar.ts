@@ -3,7 +3,8 @@ import { ETIQUETA_ROL, type Rol } from "@/lib/auth/roles";
 import { enlaceListado, type ConsultaListado, type DefinicionListado } from "@/lib/listados/consulta";
 import type { TablaExportable } from "@/modules/reportes/exportar";
 import { ACCIONES_AUDITORIA, MODULOS_AUDITORIA, type AccionAuditoria } from "./auditoria";
-import { REGLAS_CALIDAD, type Hallazgo } from "./calidad";
+import { REGLAS_CALIDAD, type Hallazgo, type ReglaCalidad } from "./calidad";
+import { ESTADOS_USUARIO } from "./usuarios-listado";
 
 // Exportar a Excel o PDF los listados del panel de administración (issue 244). La descarga trae todas
 // las filas que coinciden con la búsqueda y los filtros, no solo la página visible. Los archivos se
@@ -15,8 +16,19 @@ export type ListadoExportable = (typeof LISTADOS_EXPORTABLES)[number];
 export const FORMATOS = ["xlsx", "pdf"] as const;
 export type Formato = (typeof FORMATOS)[number];
 
-/** Tope de filas por descarga. Más allá se pide acotar con filtros en lugar de armar un archivo enorme. */
+/** Tope de filas de un Excel. Más allá se pide acotar con filtros en lugar de armar un archivo enorme. */
 export const LIMITE_FILAS = 10_000;
+
+/**
+ * Tope de filas de un PDF. Con 10 000 filas de bitácora el PDF pesa unos 5.5 MB y 900 páginas: más de lo
+ * que Vercel documenta para la respuesta de una función (4.5 MB, valor por verificar) y de lo que alguien lee.
+ * Con 2 000 son unos 1.1 MB. Por encima se ofrece el Excel.
+ */
+export const LIMITE_FILAS_PDF = 2_000;
+
+export function limiteFilas(formato: Formato) {
+  return formato === "pdf" ? LIMITE_FILAS_PDF : LIMITE_FILAS;
+}
 
 export const RUTA_EXPORTAR = "/administracion/exportar";
 
@@ -64,11 +76,15 @@ export function enlaceExportacion(
   return `${RUTA_EXPORTAR}?${parametros.toString()}`;
 }
 
-/** Mensaje en español cuando hay demasiadas filas; null si cabe en una descarga. */
-export function motivoDemasiadasFilas(total: number): string | null {
-  if (total <= LIMITE_FILAS) return null;
-  const formato = new Intl.NumberFormat("es-MX");
-  return `Hay ${formato.format(total)} registros y el máximo por descarga es ${formato.format(LIMITE_FILAS)}. Acota la búsqueda con filtros e inténtalo de nuevo.`;
+/** Mensaje en español cuando hay demasiadas filas para el formato; null si cabe en una descarga. */
+export function motivoDemasiadasFilas(total: number, formato: Formato = "xlsx"): string | null {
+  const limite = limiteFilas(formato);
+  if (total <= limite) return null;
+  const cifra = new Intl.NumberFormat("es-MX");
+  if (formato === "pdf" && total <= LIMITE_FILAS) {
+    return `Hay ${cifra.format(total)} registros y un PDF admite como máximo ${cifra.format(limite)}. Descárgalo en Excel (hasta ${cifra.format(LIMITE_FILAS)}) o acota la búsqueda con filtros.`;
+  }
+  return `Hay ${cifra.format(total)} registros y el máximo por descarga es ${cifra.format(limite)}. Acota la búsqueda con filtros e inténtalo de nuevo.`;
 }
 
 const fechaHora = new Intl.DateTimeFormat("es-MX", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Mexico_City" });
@@ -127,8 +143,29 @@ export function tablaCalidad(hallazgos: Hallazgo[]): TablaExportable {
   };
 }
 
-/** Resumen para la bitácora: qué se exportó, en qué formato y cuántas filas. */
-export function resumenExportacion(listado: ListadoExportable, formato: Formato, filas: number): string {
+/**
+ * Filtros activos del listado, para dejarlos en la bitácora: «rol Coordinación de Investigación, estado
+ * Desactivado». El texto de la búsqueda no se guarda (puede ser un correo o un nombre); solo se anota que hubo.
+ */
+export function descripcionFiltros(listado: ListadoExportable, consulta: ConsultaListado): string {
+  const f = consulta.filtros;
+  const partes: string[] = [];
+  if (listado === "usuarios") {
+    if (f.rol) partes.push(`rol ${ETIQUETA_ROL[f.rol as Rol] ?? f.rol}`);
+    if (f.estado) partes.push(`estado ${ESTADOS_USUARIO.find((e) => e.valor === f.estado)?.texto ?? f.estado}`);
+  } else if (listado === "auditoria") {
+    if (f.modulo) partes.push(`módulo ${MODULOS_AUDITORIA.find((m) => m.valor === f.modulo)?.texto ?? f.modulo}`);
+    if (f.accion) partes.push(`acción «${ACCIONES_AUDITORIA[f.accion as AccionAuditoria]?.texto ?? f.accion}»`);
+  } else if (f.regla) {
+    partes.push(`problema «${REGLAS_CALIDAD[f.regla as ReglaCalidad]?.texto ?? f.regla}»`);
+  }
+  if (consulta.q) partes.push("con búsqueda de texto");
+  return partes.join(", ");
+}
+
+/** Resumen para la bitácora: qué se exportó, en qué formato, cuántas filas y con qué filtros. */
+export function resumenExportacion(listado: ListadoExportable, formato: Formato, filas: number, filtros = ""): string {
   const nombre = { usuarios: "usuarios y roles", auditoria: "auditoría", calidad: "calidad de datos" }[listado];
-  return `Exportó el listado de ${nombre} a ${formato === "xlsx" ? "Excel" : "PDF"} (${filas} ${filas === 1 ? "fila" : "filas"}).`;
+  const base = `Exportó el listado de ${nombre} a ${formato === "xlsx" ? "Excel" : "PDF"} (${filas} ${filas === 1 ? "fila" : "filas"}).`;
+  return filtros ? `${base} Filtros: ${filtros}.` : base;
 }

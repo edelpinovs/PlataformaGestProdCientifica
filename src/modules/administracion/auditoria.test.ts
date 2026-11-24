@@ -41,6 +41,16 @@ describe("registro de auditoría", () => {
 });
 
 describe("resúmenes", () => {
+  it("sin el código del profesor no llama «código» a su identificador interno", () => {
+    const resumen = resumenEdicionUsuario(
+      "a@b.mx",
+      { rol: "DOCENTE", profesorId: null },
+      { rol: "DOCENTE", profesorId: 12 },
+    );
+    expect(resumen).toBe("Vinculó al profesor de a@b.mx.");
+    expect(resumen).not.toContain("12");
+  });
+
   it("nombra solo lo que cambió", () => {
     expect(resumenEdicionUsuario("a@b.mx", { rol: "DOCENTE", profesorId: null }, { rol: "COORDINADOR", profesorId: null })).toBe(
       "Cambió el rol de Docente a Coordinación de Investigación de a@b.mx.",

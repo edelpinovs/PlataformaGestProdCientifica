@@ -44,7 +44,10 @@ export default async function AuditoriaPage({ searchParams }: PageProps<"/admini
           <BarraListado {...contexto} columnas={COLUMNAS_AUDITORIA} errores={errores}
             etiquetaBusqueda="Buscar en la bitácora" placeholder="Persona, módulo, acción o texto"
             filtros={[
-              { clave: "modulo", etiqueta: "Módulo", opciones: MODULOS_AUDITORIA.map((m) => ({ valor: m.valor, texto: m.texto })) },
+              // Con un solo módulo registrado el filtro no sirve; aparece cuando otro módulo escriba en la bitácora.
+              ...(MODULOS_AUDITORIA.length > 1
+                ? [{ clave: "modulo", etiqueta: "Módulo", opciones: MODULOS_AUDITORIA.map((m) => ({ valor: m.valor, texto: m.texto })) }]
+                : []),
               { clave: "accion", etiqueta: "Acción", opciones: CLAVES_ACCION.map((a) => ({ valor: a, texto: ACCIONES_AUDITORIA[a].texto })) },
             ]} />
           {registros.length === 0 ? (
