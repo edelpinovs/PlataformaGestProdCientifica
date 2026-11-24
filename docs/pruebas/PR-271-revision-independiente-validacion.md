@@ -42,6 +42,8 @@ El PR está en conflicto con `main` (`DIRTY`), **solo en `docs/SEGUIMIENTO.md`**
 
 Mezcla local de prueba con `main` (22 commits adelante), con el archivo conflictivo resuelto a favor de `main` y mis pruebas de revisión incluidas: 111 archivos y 1231 pruebas, lint, typecheck y build correctos. Esa mezcla no se subió.
 
+**Resuelto el 2026-11-23** (commit `be42497` en la rama del PR): se mezcló `main`, que ya incluía el panel de administración (#263 a #269), conservando las filas de `main` y la del #271 en `docs/SEGUIMIENTO.md`. Sobre ese resultado pasan `prisma validate`, 110 archivos y 1221 pruebas, lint, typecheck y build. La fila del #271 es la misma en el PR y en la rama de este registro, para que integrar los dos en cualquier orden no choque.
+
 ## 3. Lo que se leyó y está bien
 
 - **Control único de vista:** la barra de pestañas (`<nav aria-label="Listados de validación">`, con `aria-current` en la activa) es el único control; el selector duplicado de `BarraListado` se quitó.
