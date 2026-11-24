@@ -202,12 +202,12 @@ describe("Notas 2 y 6 · Server Action iniciarEscaneoAction", { timeout: 30_000 
     expect(trabajosFalsos.crearTrabajoEscaneo).not.toHaveBeenCalled();
   });
 
-  it("cada consulta de progreso exige Coordinación y restringe el tipo de Job", async () => {
+  it("cada consulta de progreso exige Administración o Coordinación y restringe el tipo de Job", async () => {
     const { iniciarEscaneoAction } = await import("@/app/produccion/actions");
     const { requireRol } = await import("@/lib/auth/session");
     prismaFalso.job.findFirst.mockResolvedValue({ id: 7, estado: "COMPLETADO", avance: 2, total: 2 });
     const resultado = await iniciarEscaneoAction({}, formulario({ jobId: "7" }));
-    expect(requireRol).toHaveBeenCalledWith(["COORDINADOR"]);
+    expect(requireRol).toHaveBeenCalledWith(["ADMINISTRADOR", "COORDINADOR"]);
     expect(prismaFalso.job.findFirst).toHaveBeenCalledWith({ where: { id: 7, tipo: { in: ["escaneo-manual", "escaneo-diario"] } } });
     expect(resultado.exito).toBe(true);
   });
