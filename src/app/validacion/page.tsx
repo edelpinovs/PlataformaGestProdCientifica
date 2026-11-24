@@ -1,20 +1,32 @@
 import Link from "next/link";
 import { BarraListado, EncabezadoOrdenable, PaginacionListado } from "@/components/listado";
 import { enlaceListado, paginar, type ParametrosListado } from "@/lib/listados/consulta";
-import { COLUMNAS, consultarVista, filtroAutorias, type FilaResumen } from "@/modules/validacion/listados";
+import { COLUMNAS, consultarVista, enlaceCambioVista, filtroAutorias, type FilaResumen } from "@/modules/validacion/listados";
 import { consultarAutorias } from "@/modules/validacion/consultar-autorias";
 import { consultaResumen } from "@/modules/validacion/resumen-listado";
-import { ETIQUETA_ESTADO_AUTORIA, ETIQUETA_FUENTE, ESTADOS_AUTORIA, FUENTES_PUBLICACION } from "@/modules/validacion/bandeja";
+import {
+  ETIQUETA_ESTADO_AUTORIA,
+  ETIQUETA_FUENTE,
+  ESTADOS_AUTORIA,
+  FUENTES_PUBLICACION,
+  mapearConteosEstado,
+} from "@/modules/validacion/bandeja";
 import { FilaEditable } from "@/components/fila-editable";
 import { Marco } from "@/components/marco";
-import { Aviso, claseTabla, EstadoVacio, EtiquetaEstado, Panel } from "@/components/ui";
+import { Aviso, claseBotonSecundario, claseTabla, EstadoVacio, EtiquetaEstado, Panel } from "@/components/ui";
 import { requireModulo } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
-import { calcularConteoOficial } from "@/modules/validacion/bandeja";
 import { ETIQUETAS_TIPO, TIPOS_PUBLICACION } from "@/modules/validacion/manual";
 import { editarPublicacionManual, eliminarPublicacionManual } from "./actions";
 import { FilaBandeja } from "./fila-bandeja";
 import { FormularioManual } from "./formulario-manual";
+
+const VISTAS_VALIDACION = [
+  { clave: "bandeja" as const, texto: "Bandeja" },
+  { clave: "manuales" as const, texto: "Publicaciones manuales" },
+  { clave: "profesores" as const, texto: "Conteo por profesor" },
+  { clave: "departamentos" as const, texto: "Conteo por departamento" },
+];
 
 const AVISOS_URL: Record<string, { tipo: "exito" | "aviso" | "error"; mensaje: string }> = {
   confirmada: {
@@ -66,13 +78,17 @@ export default async function ValidacionPage({
   if (vista === "manuales") filtro.publicacion = { ...filtro.publicacion as object, fuente: "MANUAL" };
   const total = vista === "bandeja" || vista === "manuales" ? await prisma.autoria.count({ where: filtro }) : 0;
   let paginacion = paginar(total, consulta);
-  const [profesores, todasLasAutorias, filas] = await Promise.all([
+  const [profesores, conteosAgrupados, filas] = await Promise.all([
     prisma.profesor.findMany({
       where: profesorPermitido !== undefined ? { id: profesorPermitido } : {},
       orderBy: { apellidos: "asc" },
       select: { id: true, nombres: true, apellidos: true, codigo: true, departamentoId: true, departamento: { select: { id: true, nombre: true, nomenclatura: true } } },
     }),
-    prisma.autoria.findMany({ where: profesorPermitido !== undefined ? { profesorId: profesorPermitido } : {}, select: { estado: true, profesorId: true, profesor: { select: { departamentoId: true } } } }),
+    prisma.autoria.groupBy({
+      by: ["estado"],
+      where: profesorPermitido !== undefined ? { profesorId: profesorPermitido } : {},
+      _count: { _all: true },
+    }),
     vista === "bandeja" || vista === "manuales" ? consultarAutorias(filtro, consulta, paginacion) : Promise.resolve([]),
   ]);
   const autoriasPendientes = filas;
@@ -84,14 +100,8 @@ export default async function ValidacionPage({
   const avisoAccion = codigoAccion ? AVISOS_URL[codigoAccion] : undefined;
   const avisoError = typeof error === "string" ? AVISOS_URL[error] : undefined;
 
-  // RF-025: Calcular métricas oficiales de producción validada
-  const conteo = calcularConteoOficial(
-    todasLasAutorias.map((a) => ({
-      estado: a.estado,
-      profesorId: a.profesorId,
-      departamentoId: a.profesor?.departamentoId,
-    })),
-  );
+  // RF-025: Calcular métricas oficiales de producción validada directamente en SQL mediante COUNT
+  const conteo = mapearConteosEstado(conteosAgrupados);
 
   let filasResumen: FilaResumen[] = [];
   if (vista === "profesores" || vista === "departamentos") {
@@ -140,21 +150,101 @@ export default async function ValidacionPage({
         </div>
       </section>
 
-      <nav aria-label="Listados de validación" className="flex flex-wrap gap-4">
-        {Object.entries({ bandeja: "Bandeja", manuales: "Publicaciones manuales", profesores: "Conteo por profesor", departamentos: "Conteo por departamento" }).map(([valor, texto]) => (
-          <Link key={valor} href={"/validacion?vista=" + valor} aria-current={vista === valor ? "page" : undefined} className="rounded-xl px-3 py-2 text-sm text-marca hover:bg-hover">{texto}</Link>
-        ))}
+      {/* Un solo control para cambiar de vista; conserva búsqueda y filtros compatibles */}
+      <nav aria-label="Listados de validación" className="flex flex-wrap gap-2">
+        {VISTAS_VALIDACION.map(({ clave, texto }) => {
+          const activa = vista === clave;
+          const href = enlaceCambioVista(
+            clave,
+            consulta,
+            departamentos.map((d) => d.nomenclatura),
+          );
+          return (
+            <Link
+              key={clave}
+              href={href}
+              aria-current={activa ? "page" : undefined}
+              className={
+                activa
+                  ? "rounded-xl bg-marca-suave px-4 py-2 text-sm font-semibold text-marca"
+                  : claseBotonSecundario
+              }
+            >
+              {texto}
+            </Link>
+          );
+        })}
       </nav>
-      <BarraListado base="/validacion" consulta={consulta} columnas={COLUMNAS[vista]} errores={errores}
+
+      <BarraListado
+        base="/validacion"
+        definicion={definicion}
+        consulta={consulta}
+        columnas={COLUMNAS[vista]}
+        errores={errores}
         filtros={[
-          { clave: "vista", etiqueta: "Listado", opciones: Object.entries({ bandeja: "Bandeja", manuales: "Publicaciones manuales", profesores: "Conteo por profesor", departamentos: "Conteo por departamento" }).map(([valor, texto]) => ({ valor, texto })) },
-          ...(vista === "bandeja" ? [
-            { clave: "estado", etiqueta: "Estado", opciones: [{ valor: "TODOS", texto: "Todos los estados" }, ...ESTADOS_AUTORIA.map(valor => ({ valor, texto: ETIQUETA_ESTADO_AUTORIA[valor] }))] },
-            { clave: "fuente", etiqueta: "Fuente", opciones: FUENTES_PUBLICACION.map(valor => ({ valor, texto: ETIQUETA_FUENTE[valor] })) },
-          ] : []),
-          ...(vista === "bandeja" || vista === "manuales" ? [{ clave: "tipo", etiqueta: "Tipo", opciones: TIPOS_PUBLICACION.map(valor => ({ valor, texto: ETIQUETAS_TIPO[valor] })) }] : []),
-          ...(vista === "profesores" ? [{ clave: "departamento", etiqueta: "Departamento", opciones: [...departamentos.map(d => ({ valor: d.nomenclatura, texto: d.nombre })), { valor: "—", texto: "Sin departamento" }] }] : []),
-        ]} />
+          ...(vista !== "bandeja"
+            ? [
+                {
+                  clave: "vista",
+                  etiqueta: "Listado",
+                  opciones: [],
+                  contenido: <input type="hidden" name="vista" value={vista} />,
+                },
+              ]
+            : []),
+          ...(vista === "bandeja"
+            ? [
+                {
+                  clave: "estado",
+                  etiqueta: "Estado",
+                  opciones: [
+                    { valor: "TODOS", texto: "Todos los estados" },
+                    ...ESTADOS_AUTORIA.map((valor) => ({
+                      valor,
+                      texto: ETIQUETA_ESTADO_AUTORIA[valor],
+                    })),
+                  ],
+                },
+                {
+                  clave: "fuente",
+                  etiqueta: "Fuente",
+                  opciones: FUENTES_PUBLICACION.map((valor) => ({
+                    valor,
+                    texto: ETIQUETA_FUENTE[valor],
+                  })),
+                },
+              ]
+            : []),
+          ...(vista === "bandeja" || vista === "manuales"
+            ? [
+                {
+                  clave: "tipo",
+                  etiqueta: "Tipo",
+                  opciones: TIPOS_PUBLICACION.map((valor) => ({
+                    valor,
+                    texto: ETIQUETAS_TIPO[valor],
+                  })),
+                },
+              ]
+            : []),
+          ...(vista === "profesores"
+            ? [
+                {
+                  clave: "departamento",
+                  etiqueta: "Departamento",
+                  opciones: [
+                    ...departamentos.map((d) => ({
+                      valor: d.nomenclatura,
+                      texto: d.nombre,
+                    })),
+                    { valor: "—", texto: "Sin departamento" },
+                  ],
+                },
+              ]
+            : []),
+        ]}
+      />
 
       {/* RF-024 & RF-025 · CU-013: Bandeja de validación interactiva */}
       {vista === "bandeja" && <Panel

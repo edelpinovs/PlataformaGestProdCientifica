@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { consultarVista, distribuirPagina, gruposEnumerados, filtroAutorias, ordenAutorias, retornoValidacion } from "./listados";
+import {
+  consultarVista,
+  distribuirPagina,
+  enlaceCambioVista,
+  gruposEnumerados,
+  filtroAutorias,
+  ordenAutorias,
+  retornoValidacion,
+} from "./listados";
 import { consultaResumen } from "./resumen-listado";
 
 describe("consulta de Validación (#115)", () => {
@@ -69,5 +77,46 @@ describe("consulta de Validación (#115)", () => {
     expect(valida.errores).toEqual({});
     expect(consultaResumen("profesores", valida.consulta).contar.values).toContain("DEMO");
     expect(consultarVista({ vista: "profesores", departamento: "OTRO" }, ["DEMO"]).errores.departamento).toBe("Uno de los filtros tiene un valor que no existe.");
+  });
+
+  it("enlaceCambioVista preserva búsqueda y filtros compatibles y limpia los incompatibles", () => {
+    const { consulta: cBandeja } = consultarVista({
+      vista: "bandeja",
+      q: "inteligencia",
+      tipo: "ARTICULO",
+      fuente: "ORCID",
+      pagina: "3",
+    });
+
+    // Bandeja -> Manuales: conserva q y tipo (compatible), omite fuente (incompatible con manuales) y página
+    const urlManuales = enlaceCambioVista("manuales", cBandeja);
+    expect(urlManuales).toContain("vista=manuales");
+    expect(urlManuales).toContain("q=inteligencia");
+    expect(urlManuales).toContain("tipo=ARTICULO");
+    expect(urlManuales).not.toContain("fuente=");
+    expect(urlManuales).not.toContain("pagina=");
+
+    // Bandeja -> Profesores: conserva q, omite tipo y fuente (incompatibles)
+    const urlProfesores = enlaceCambioVista("profesores", cBandeja, ["DCC"]);
+    expect(urlProfesores).toContain("vista=profesores");
+    expect(urlProfesores).toContain("q=inteligencia");
+    expect(urlProfesores).not.toContain("tipo=");
+    expect(urlProfesores).not.toContain("fuente=");
+
+    // Profesores -> Bandeja: bandeja es la vista por defecto (sin vista en query)
+    const { consulta: cProf } = consultarVista({ vista: "profesores", q: "garcia", departamento: "DCC" }, ["DCC"]);
+    const urlBandeja = enlaceCambioVista("bandeja", cProf);
+    expect(urlBandeja).toBe("/validacion?q=garcia");
+
+    // Conservar orden solo si la columna existe en el destino
+    const { consulta: cConOrden } = consultarVista({ vista: "bandeja", orden: "tipo", dir: "desc" });
+    const urlManualesConOrden = enlaceCambioVista("manuales", cConOrden);
+    expect(urlManualesConOrden).toContain("orden=tipo");
+    expect(urlManualesConOrden).toContain("dir=desc");
+
+    // Si la columna de orden no existe en el destino (ej. 'fuente' en profesores), se omite
+    const { consulta: cOrdenFuente } = consultarVista({ vista: "bandeja", orden: "fuente", dir: "desc" });
+    const urlProfSinOrdenInvalido = enlaceCambioVista("profesores", cOrdenFuente);
+    expect(urlProfSinOrdenInvalido).not.toContain("orden=fuente");
   });
 });
