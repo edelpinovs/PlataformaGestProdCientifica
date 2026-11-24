@@ -11,7 +11,8 @@ vi.mock("@/lib/auth/session", () => ({ requireModulo: dobles.requireModulo }));
 vi.mock("@/lib/prisma", () => ({ prisma: dobles }));
 vi.mock("../calidad/cargar", () => ({ cargarHallazgos: dobles.cargarHallazgos }));
 
-const pedir = (consulta = "") => GET(new Request(`http://localhost/administracion/exportar${consulta}`));
+const pedir = (consulta = "", cabeceras: Record<string, string> = {}) =>
+  GET(new Request(`http://localhost/administracion/exportar${consulta}`, { headers: cabeceras }));
 const ADMIN = { id: "11111111-1111-4111-8111-111111111111", correo: "admin@ejemplo.mx", rol: "ADMINISTRADOR" };
 
 beforeEach(() => {
@@ -87,9 +88,59 @@ describe("exportar listados del panel (issue 244)", () => {
     });
   });
 
-  it("si no se puede registrar en la bitácora, no entrega el archivo", async () => {
-    dobles.auditoria.create.mockRejectedValue(new Error("falla de la bitácora"));
-    await expect(pedir("?listado=usuarios&formato=xlsx")).rejects.toThrow("falla de la bitácora");
+  it("anota en la bitácora los filtros usados y que hubo búsqueda, sin guardar el texto buscado", async () => {
+    await pedir("?listado=usuarios&formato=xlsx&rol=COORDINADOR&estado=DESACTIVADO&q=ana%40ejemplo.mx");
+    const resumen = dobles.auditoria.create.mock.calls[0][0].data.resumen as string;
+    expect(resumen).toBe(
+      "Exportó el listado de usuarios y roles a Excel (1 fila). Filtros: rol Coordinación de Investigación, estado Desactivado, con búsqueda de texto.",
+    );
+    expect(resumen).not.toContain("ana@ejemplo.mx");
+  });
+
+  it("si no se puede registrar en la bitácora, no entrega el archivo y responde en español sin repetir el error", async () => {
+    dobles.auditoria.create.mockRejectedValue(new Error("connection terminated: password authentication failed"));
+    const r = await pedir("?listado=usuarios&formato=xlsx");
+    expect(r.status).toBe(500);
+    expect(r.headers.get("Content-Type")).toBe("text/plain; charset=utf-8");
+    const texto = await r.text();
+    expect(texto).toBe("No se pudo registrar la descarga en la bitácora. Inténtalo de nuevo.");
+    expect(texto).not.toContain("password");
+  });
+
+  it("rechaza con 403 un pedido que el navegador marca como de otro sitio, sin leer datos ni registrar", async () => {
+    const r = await pedir("?listado=usuarios&formato=xlsx", { "Sec-Fetch-Site": "cross-site" });
+    expect(r.status).toBe(403);
+    expect(await r.text()).toBe("La descarga solo se puede pedir desde el panel de administración.");
+    expect(dobles.perfil.findMany).not.toHaveBeenCalled();
+    expect(dobles.auditoria.create).not.toHaveBeenCalled();
+  });
+
+  it.each(["same-origin", "none", "same-site"])("acepta un pedido con Sec-Fetch-Site «%s»", async (valor) => {
+    const r = await pedir("?listado=usuarios&formato=xlsx", { "Sec-Fetch-Site": valor });
+    expect(r.status).toBe(200);
+  });
+
+  it("el permiso se exige antes de mirar de dónde viene el pedido", async () => {
+    dobles.requireModulo.mockRejectedValue(new Error("sin permiso"));
+    await expect(pedir("?listado=usuarios&formato=xlsx", { "Sec-Fetch-Site": "cross-site" })).rejects.toThrow("sin permiso");
+  });
+
+  it("un PDF con más de 2 000 filas se rechaza y sugiere el Excel, que sí admite hasta 10 000", async () => {
+    dobles.auditoria.count.mockResolvedValue(5_000);
+    const pdf = await pedir("?listado=auditoria&formato=pdf");
+    expect(pdf.status).toBe(400);
+    expect(await pdf.text()).toBe(
+      "Hay 5,000 registros y un PDF admite como máximo 2,000. Descárgalo en Excel (hasta 10,000) o acota la búsqueda con filtros.",
+    );
+    expect(dobles.auditoria.findMany).not.toHaveBeenCalled();
+    const excel = await pedir("?listado=auditoria&formato=xlsx");
+    expect(excel.status).toBe(200);
+  });
+
+  it("un PDF con exactamente 2 000 filas todavía se entrega", async () => {
+    dobles.auditoria.count.mockResolvedValue(2_000);
+    const r = await pedir("?listado=auditoria&formato=pdf");
+    expect(r.status).toBe(200);
   });
 
   it("rechaza con mensajes en español un listado o formato inválidos, sin leer datos", async () => {

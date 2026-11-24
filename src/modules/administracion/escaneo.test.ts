@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { resumirFuentes, resumirTrabajos, textoAvance, VENTANA_DIAS, type TrabajoResumen } from "./escaneo";
+import {
+  resumirFuentes,
+  resumirTrabajos,
+  textoAvance,
+  VENTANA_DIAS,
+  ventanaDesde,
+  type ConteoPorEstado,
+  type TrabajoResumen,
+} from "./escaneo";
 
 const AHORA = new Date("2026-11-23T12:00:00Z");
 const haceDias = (n: number) => new Date(AHORA.getTime() - n * 24 * 60 * 60 * 1000);
@@ -13,39 +21,52 @@ const trabajo = (id: number, estado: TrabajoResumen["estado"], dias: number): Tr
   actualizadoEn: haceDias(dias),
 });
 
+const conteo = (estado: ConteoPorEstado["estado"], cantidad: number): ConteoPorEstado => ({ estado, _count: { _all: cantidad } });
+
+describe("ventana de recientes", () => {
+  it("empieza VENTANA_DIAS días antes de «ahora»", () => {
+    expect(ventanaDesde(AHORA).getTime()).toBe(haceDias(VENTANA_DIAS).getTime());
+  });
+});
+
 describe("resumen de trabajos de escaneo", () => {
   it("sin trabajos no hay último ni conteos", () => {
-    expect(resumirTrabajos([], AHORA)).toEqual({ ultimo: null, enCurso: 0, completados: 0, conIncidencias: 0 });
+    expect(resumirTrabajos({ ultimo: null, enCurso: 0, ventana: [] })).toEqual({
+      ultimo: null,
+      enCurso: 0,
+      completados: 0,
+      conIncidencias: 0,
+    });
   });
 
-  it("señala el trabajo más reciente aunque llegue desordenado y desempata por id", () => {
-    const lista = [trabajo(1, "COMPLETADO", 5), trabajo(3, "FALLIDO", 1), trabajo(2, "COMPLETADO", 1)];
-    expect(resumirTrabajos(lista, AHORA).ultimo?.id).toBe(3);
+  it("conserva el último trabajo y las cifras que calculó la base", () => {
+    const ultimo = trabajo(3, "FALLIDO", 1);
+    const r = resumirTrabajos({
+      ultimo,
+      enCurso: 2,
+      ventana: [conteo("COMPLETADO", 41), conteo("FALLIDO", 3)],
+    });
+    expect(r).toEqual({ ultimo, enCurso: 2, completados: 41, conIncidencias: 3 });
   });
 
-  it("cuenta lo que está en curso sin importar su antigüedad", () => {
-    const lista = [trabajo(1, "PENDIENTE", 90), trabajo(2, "EN_PROCESO", 2), trabajo(3, "COMPLETADO", 2)];
-    expect(resumirTrabajos(lista, AHORA).enCurso).toBe(2);
+  it("los conteos no se limitan a un máximo de trabajos cargados", () => {
+    const r = resumirTrabajos({ ultimo: null, enCurso: 0, ventana: [conteo("COMPLETADO", 5000)] });
+    expect(r.completados).toBe(5000);
   });
 
-  it("completados e incidencias solo cuentan dentro de la ventana", () => {
-    const lista = [
-      trabajo(1, "COMPLETADO", 1),
-      trabajo(2, "COMPLETADO", VENTANA_DIAS - 1),
-      trabajo(3, "COMPLETADO", VENTANA_DIAS + 1),
-      trabajo(4, "FALLIDO", 3),
-      trabajo(5, "FALLIDO", VENTANA_DIAS + 5),
-    ];
-    const r = resumirTrabajos(lista, AHORA);
-    expect(r.completados).toBe(2);
-    expect(r.conIncidencias).toBe(1);
+  it("un estado ausente de la ventana cuenta cero, y los pendientes o en proceso no se suman a completados", () => {
+    const r = resumirTrabajos({
+      ultimo: null,
+      enCurso: 1,
+      ventana: [conteo("PENDIENTE", 1), conteo("EN_PROCESO", 2)],
+    });
+    expect(r.completados).toBe(0);
+    expect(r.conIncidencias).toBe(0);
   });
 
-  it("no modifica la lista recibida", () => {
-    const lista = [trabajo(1, "COMPLETADO", 5), trabajo(2, "COMPLETADO", 1)];
-    const copia = [...lista];
-    resumirTrabajos(lista, AHORA);
-    expect(lista).toEqual(copia);
+  it("si llegaran dos grupos del mismo estado, se suman", () => {
+    const r = resumirTrabajos({ ultimo: null, enCurso: 0, ventana: [conteo("FALLIDO", 3), conteo("FALLIDO", 4)] });
+    expect(r.conIncidencias).toBe(7);
   });
 });
 

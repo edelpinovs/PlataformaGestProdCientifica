@@ -1,10 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { analizarListado } from "@/lib/listados/consulta";
 import { LISTADO_AUDITORIA } from "./auditoria-listado";
+import { LISTADO_CALIDAD } from "./calidad";
 import {
+  descripcionFiltros,
   enlaceExportacion,
   LIMITE_FILAS,
+  LIMITE_FILAS_PDF,
   leerPedido,
+  limiteFilas,
   motivoDemasiadasFilas,
   nombreArchivo,
   resumenExportacion,
@@ -57,6 +61,26 @@ describe("tope de filas", () => {
       "Hay 10,001 registros y el máximo por descarga es 10,000. Acota la búsqueda con filtros e inténtalo de nuevo.",
     );
   });
+
+  it("el PDF admite menos filas que el Excel", () => {
+    expect(LIMITE_FILAS_PDF).toBeLessThan(LIMITE_FILAS);
+    expect(limiteFilas("pdf")).toBe(2_000);
+    expect(limiteFilas("xlsx")).toBe(10_000);
+  });
+
+  it("en PDF, hasta 2 000 filas pasa y entre 2 001 y 10 000 se manda al Excel", () => {
+    expect(motivoDemasiadasFilas(LIMITE_FILAS_PDF, "pdf")).toBeNull();
+    expect(motivoDemasiadasFilas(LIMITE_FILAS_PDF + 1, "pdf")).toBe(
+      "Hay 2,001 registros y un PDF admite como máximo 2,000. Descárgalo en Excel (hasta 10,000) o acota la búsqueda con filtros.",
+    );
+    expect(motivoDemasiadasFilas(LIMITE_FILAS, "xlsx")).toBeNull();
+  });
+
+  it("en PDF, por encima del tope del Excel solo se pide acotar con filtros", () => {
+    expect(motivoDemasiadasFilas(LIMITE_FILAS + 1, "pdf")).toBe(
+      "Hay 10,001 registros y el máximo por descarga es 2,000. Acota la búsqueda con filtros e inténtalo de nuevo.",
+    );
+  });
 });
 
 describe("tablas", () => {
@@ -107,5 +131,45 @@ describe("resumen para la bitácora", () => {
   it("dice qué se exportó, en qué formato y cuántas filas", () => {
     expect(resumenExportacion("usuarios", "xlsx", 23)).toBe("Exportó el listado de usuarios y roles a Excel (23 filas).");
     expect(resumenExportacion("calidad", "pdf", 1)).toBe("Exportó el listado de calidad de datos a PDF (1 fila).");
+  });
+
+  it("agrega los filtros cuando los hay", () => {
+    expect(resumenExportacion("usuarios", "xlsx", 3, "rol Docente")).toBe(
+      "Exportó el listado de usuarios y roles a Excel (3 filas). Filtros: rol Docente.",
+    );
+  });
+});
+
+describe("descripción de los filtros", () => {
+  it("sin filtros ni búsqueda queda vacía", () => {
+    expect(descripcionFiltros("usuarios", consulta(LISTADO_USUARIOS, {}))).toBe("");
+  });
+
+  it("usuarios: rol y estado con su texto, no con la clave interna", () => {
+    expect(descripcionFiltros("usuarios", consulta(LISTADO_USUARIOS, { rol: "COORDINADOR", estado: "DESACTIVADO" }))).toBe(
+      "rol Coordinación de Investigación, estado Desactivado",
+    );
+  });
+
+  it("auditoría: módulo y acción con su texto", () => {
+    expect(descripcionFiltros("auditoria", consulta(LISTADO_AUDITORIA, { modulo: "administracion", accion: "usuario.desactivado" }))).toBe(
+      "módulo Administración, acción «Desactivó el acceso de un usuario»",
+    );
+  });
+
+  it("calidad: la regla con su texto", () => {
+    expect(descripcionFiltros("calidad", consulta(LISTADO_CALIDAD, { regla: "CA_SIN_LIDER" }))).toBe(
+      "problema «Cuerpo académico sin líder»",
+    );
+  });
+
+  it("la búsqueda de texto no se copia: solo se anota que hubo", () => {
+    const texto = descripcionFiltros("usuarios", consulta(LISTADO_USUARIOS, { q: "ana@ejemplo.mx", rol: "DOCENTE" }));
+    expect(texto).toBe("rol Docente, con búsqueda de texto");
+    expect(texto).not.toContain("ana");
+  });
+
+  it("un filtro de otro listado no se mezcla", () => {
+    expect(descripcionFiltros("calidad", consulta(LISTADO_CALIDAD, { rol: "DOCENTE" }))).toBe("");
   });
 });

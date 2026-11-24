@@ -51,7 +51,8 @@ model AccesoModulo {
 // Bitácora de auditoría del panel de administración (issue 242): quién hizo qué y cuándo.
 // Es un registro histórico: no se edita ni se elimina. Sin relación con Perfil a propósito, para que
 // desactivar o cambiar un perfil no altere lo ya registrado; el correo se copia al momento del hecho.
-// `resumen` es un texto legible en español y nunca lleva datos de contacto ni secretos.
+// `resumen` es un texto legible en español. Lleva el correo de la persona afectada (igual que `actorCorreo`)
+// y, de un profesor, solo su código; nunca teléfonos, nombres de profesores ni secretos.
 model Auditoria {
   id          Int      @id @default(autoincrement())
   creadoEn    DateTime @default(now())

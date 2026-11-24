@@ -28,16 +28,31 @@ export type ResumenTrabajos = {
   conIncidencias: number;
 };
 
-/** Cuenta los trabajos de escaneo de los últimos `VENTANA_DIAS` y señala el más reciente de todos. */
-export function resumirTrabajos(trabajos: TrabajoResumen[], ahora: Date): ResumenTrabajos {
-  const desde = ahora.getTime() - VENTANA_DIAS * MS_DIA;
-  const recientes = trabajos.filter((t) => t.creadoEn.getTime() >= desde);
-  const masReciente = [...trabajos].sort((a, b) => b.creadoEn.getTime() - a.creadoEn.getTime() || b.id - a.id)[0] ?? null;
+/** Desde cuándo cuenta la ventana de «recientes». */
+export function ventanaDesde(ahora: Date): Date {
+  return new Date(ahora.getTime() - VENTANA_DIAS * MS_DIA);
+}
+
+/** Forma que devuelve `prisma.job.groupBy({ by: ["estado"], _count: { _all: true } })`. */
+export type ConteoPorEstado = { estado: EstadoTrabajo; _count: { _all: number } };
+
+/**
+ * Arma el resumen con cifras que ya calculó la base, sin cargar los trabajos: `enCurso` son los
+ * pendientes o en proceso de cualquier antigüedad, `ventana` agrupa por estado los trabajos creados
+ * dentro de `VENTANA_DIAS` y `ultimo` es el más reciente de todos.
+ */
+export function resumirTrabajos(datos: {
+  ultimo: TrabajoResumen | null;
+  enCurso: number;
+  ventana: ConteoPorEstado[];
+}): ResumenTrabajos {
+  const enVentana = (estado: EstadoTrabajo) =>
+    datos.ventana.filter((g) => g.estado === estado).reduce((suma, g) => suma + g._count._all, 0);
   return {
-    ultimo: masReciente,
-    enCurso: trabajos.filter((t) => t.estado === "PENDIENTE" || t.estado === "EN_PROCESO").length,
-    completados: recientes.filter((t) => t.estado === "COMPLETADO").length,
-    conIncidencias: recientes.filter((t) => t.estado === "FALLIDO").length,
+    ultimo: datos.ultimo,
+    enCurso: datos.enCurso,
+    completados: enVentana("COMPLETADO"),
+    conIncidencias: enVentana("FALLIDO"),
   };
 }
 
