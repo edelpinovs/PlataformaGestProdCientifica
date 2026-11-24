@@ -27,4 +27,20 @@ Regla pura `permisos.ts` (`ROLES_ESCANEO`, `puedeEscanear`); `iniciarEscaneoActi
 
 ## 4. Dictamen
 
-**Solicitar cambios (ligeros):** resolver el hallazgo 1 y corregir el 2; el resto es menor.
+**Solicitar cambios (ligeros)** en la primera revisión (2026-11-24): resolver el hallazgo 1 y corregir el 2; el resto es menor.
+
+## 5. Actualización (2026-11-24)
+
+A petición de I1, quien revisó aplicó los hallazgos 1 y 2 en la rama del PR (commit `c7a7c7d`, comentario [en el PR](https://github.com/edelpinovs/PlataformaGestProdCientifica/pull/296#issuecomment-7141642094)):
+
+| # | Hallazgo | Estado |
+|---|---|---|
+| 1 | D-256 repetida y conflicto en `docs/DECISIONES.md` | **Resuelto**: la decisión pasa a D-257, D-121 queda «reemplazada por D-257» y se hizo merge con `main`; el PR queda sin conflicto |
+| 2 | Aviso «solo Coordinación» en `src/app/administracion/escaneo/page.tsx` | **Resuelto**: dice que Administración y Coordinación pueden iniciar, reintentar o continuar desde «Escaneo» |
+| 3 | Prueba del enlace del historial | Abierto (a cargo de la autora) |
+| 4 | Acuerdo de D-257 con la Coordinación (#243 y #242 por acordar) | Abierto |
+| 5 | Revisión visual en claro, oscuro y celular; `build` local | Abierto |
+
+Chequeos tras el cambio: `typecheck` y `lint` pasan en copia local; el CI (`verificar`) y Vercel pasan con `c7a7c7d`. `npm test` sigue sin poder ejecutarse en la copia local de quien revisó (entorno), así que las pruebas constan solo por el CI.
+
+**Dictamen actualizado: aprobable con comentarios**, pendiente de la aprobación de otra persona y de los puntos 3 a 5.
