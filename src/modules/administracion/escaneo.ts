@@ -21,12 +21,31 @@ export type TrabajoResumen = {
 
 export type ResumenTrabajos = {
   ultimo: TrabajoResumen | null;
-  /** Pendientes o en proceso ahora. */
+  /** Pendientes o en proceso ahora, de cualquier antigüedad. */
   enCurso: number;
+  /** De los que están en proceso, los que no se actualizan desde hace `TIEMPO_SIN_AVANCE_MS`. */
+  sinAvance: number;
   completados: number;
   /** Terminaron con incidencias dentro de la ventana. */
   conIncidencias: number;
 };
+
+/**
+ * Tiempo sin actualizarse tras el que un escaneo «en proceso» se considera sin avance. Es el mismo
+ * valor con que Producción deja de reservar un escaneo (`TIEMPO_RESERVA_MS` en
+ * src/app/produccion/trabajos.ts, 10 minutos); mientras no se unifique, hay que cambiar los dos.
+ */
+export const TIEMPO_SIN_AVANCE_MS = 10 * 60 * 1000;
+
+/** Fecha límite: un trabajo en proceso actualizado antes de esta fecha está sin avance. */
+export function sinAvanceDesde(ahora: Date): Date {
+  return new Date(ahora.getTime() - TIEMPO_SIN_AVANCE_MS);
+}
+
+/** Un escaneo está «sin avance» si sigue en proceso y no se actualiza desde hace `TIEMPO_SIN_AVANCE_MS`. */
+export function estaSinAvance(trabajo: Pick<TrabajoResumen, "estado" | "actualizadoEn">, ahora: Date): boolean {
+  return trabajo.estado === "EN_PROCESO" && trabajo.actualizadoEn.getTime() < sinAvanceDesde(ahora).getTime();
+}
 
 /** Desde cuándo cuenta la ventana de «recientes». */
 export function ventanaDesde(ahora: Date): Date {
@@ -38,12 +57,13 @@ export type ConteoPorEstado = { estado: EstadoTrabajo; _count: { _all: number } 
 
 /**
  * Arma el resumen con cifras que ya calculó la base, sin cargar los trabajos: `enCurso` son los
- * pendientes o en proceso de cualquier antigüedad, `ventana` agrupa por estado los trabajos creados
+ * pendientes o en proceso de cualquier antigüedad, `sinAvance` los en proceso que dejaron de actualizarse, `ventana` agrupa por estado los trabajos creados
  * dentro de `VENTANA_DIAS` y `ultimo` es el más reciente de todos.
  */
 export function resumirTrabajos(datos: {
   ultimo: TrabajoResumen | null;
   enCurso: number;
+  sinAvance: number;
   ventana: ConteoPorEstado[];
 }): ResumenTrabajos {
   const enVentana = (estado: EstadoTrabajo) =>
@@ -51,6 +71,7 @@ export function resumirTrabajos(datos: {
   return {
     ultimo: datos.ultimo,
     enCurso: datos.enCurso,
+    sinAvance: datos.sinAvance,
     completados: enVentana("COMPLETADO"),
     conIncidencias: enVentana("FALLIDO"),
   };
