@@ -14,6 +14,7 @@ import {
   ordenUsuarios,
 } from "@/modules/administracion/usuarios-listado";
 import { MODULOS } from "@/modules/registry";
+import { Descargas } from "../descargas";
 import { cambiarEstadoUsuario, editarUsuario } from "./actions";
 import { FilaUsuario } from "./fila-usuario";
 
@@ -63,6 +64,7 @@ export default async function UsuariosPage({ searchParams }: PageProps<"/adminis
         <span className="rounded-full bg-marca-suave px-3 py-1 text-xs font-medium text-marca">
           {new Intl.NumberFormat("es-MX").format(total)} {hayFiltrosActivos(consulta) ? "coinciden" : "personas con acceso"}
         </span>
+        <Descargas listado="usuarios" definicion={LISTADO_USUARIOS} consulta={consulta} />
       </div>
 
       <Panel titulo="Personas con acceso" descripcion="Cada profesor puede tener un solo perfil de acceso. Al desactivar a alguien se conservan sus registros.">

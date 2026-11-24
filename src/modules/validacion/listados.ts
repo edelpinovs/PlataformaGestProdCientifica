@@ -86,6 +86,53 @@ export function retornoValidacion(valor: unknown, aviso: string) {
   return `${enlace}${enlace.includes("?") ? "&" : "?"}${aviso}`;
 }
 
+/**
+ * Genera el enlace para cambiar de vista en Validación, conservando la búsqueda `q`
+ * y los filtros aplicables a la vista de destino, sin arrastrar columnas o filtros incompatibles.
+ */
+export function enlaceCambioVista(
+  nuevaVista: Vista,
+  consulta: ConsultaListado,
+  departamentos: string[] = [],
+): string {
+  const definicionNueva = definicionVista(nuevaVista, departamentos);
+  const parametros = new URLSearchParams();
+
+  if (nuevaVista !== "bandeja") {
+    parametros.set("vista", nuevaVista);
+  }
+
+  if (consulta.q) {
+    parametros.set("q", consulta.q);
+  }
+
+  // Conservar orden solo si la columna existe en la nueva vista y difiere del inicial
+  if (
+    definicionNueva.columnas.includes(consulta.orden) &&
+    (consulta.orden !== definicionNueva.ordenInicial.columna ||
+      consulta.dir !== definicionNueva.ordenInicial.dir)
+  ) {
+    parametros.set("orden", consulta.orden);
+    parametros.set("dir", consulta.dir);
+  }
+
+  // Conservar filtros aplicables a la nueva vista
+  for (const [clave, valor] of Object.entries(consulta.filtros)) {
+    if (clave === "vista") continue;
+    if (
+      definicionNueva.filtros &&
+      clave in definicionNueva.filtros &&
+      valor &&
+      valor !== ""
+    ) {
+      parametros.set(clave, valor);
+    }
+  }
+
+  const query = parametros.toString();
+  return query ? `/validacion?${query}` : "/validacion";
+}
+
 export type FilaResumen = { id: number; nombre: string; codigo?: string; departamento?: string; nomenclatura?: string; validadas: number };
 
 /** Los enums de PostgreSQL tienen orden de declaración; la interfaz ordena sus etiquetas. */

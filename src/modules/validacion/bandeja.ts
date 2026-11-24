@@ -128,6 +128,18 @@ export function calcularConteoOficial(autorias: AutoriaParaConteo[]): ResumenCon
   return resumen;
 }
 
+/** RF-025: Mapea el conteo por estado obtenido directamente desde SQL (GROUP BY). */
+export function mapearConteosEstado(
+  grupos: { estado: EstadoAutoria; _count: { _all: number } }[],
+): { totalValidadas: number; totalPendientes: number; totalRechazadas: number } {
+  const mapa = Object.fromEntries(grupos.map((g) => [g.estado, g._count._all]));
+  return {
+    totalValidadas: mapa.VALIDADA ?? 0,
+    totalPendientes: mapa.PENDIENTE ?? 0,
+    totalRechazadas: mapa.RECHAZADA ?? 0,
+  };
+}
+
 // Esquema para la edición rápida de metadatos desde la bandeja (RF-024)
 export const edicionMetadatosBandejaEsquema = z.object({
   publicacionId: z.coerce.number().int().positive("Publicación inválida."),

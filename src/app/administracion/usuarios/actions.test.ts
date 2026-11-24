@@ -7,6 +7,8 @@ const dobles = vi.hoisted(() => ({
   revalidatePath: vi.fn(),
   redirect: vi.fn(),
   perfil: { findMany: vi.fn(), update: vi.fn() },
+  auditoria: { create: vi.fn() },
+  $transaction: vi.fn(),
   profesor: { findFirst: vi.fn() },
 }));
 vi.mock("@/lib/auth/session", () => ({ requireModulo: dobles.requireModulo }));
@@ -40,6 +42,8 @@ beforeEach(() => {
   dobles.requireModulo.mockResolvedValue({ id: ADMIN, correo: "admin@ejemplo.mx", rol: "ADMINISTRADOR" });
   dobles.perfil.findMany.mockResolvedValue(perfiles.map((p) => ({ ...p })));
   dobles.perfil.update.mockResolvedValue({});
+  dobles.auditoria.create.mockResolvedValue({});
+  dobles.$transaction.mockImplementation((operaciones: Promise<unknown>[]) => Promise.all(operaciones));
   dobles.profesor.findFirst.mockResolvedValue(profesorLibre);
 });
 
@@ -59,10 +63,46 @@ describe("editar usuario", () => {
     expect(dobles.redirect).toHaveBeenCalledWith("/administracion/usuarios?editado=docente%40ejemplo.mx", "replace");
   });
 
+  it("deja constancia en la bitácora, en la misma transacción que el cambio", async () => {
+    await editarUsuario({}, formulario({ id: DOCENTE, rol: "COORDINADOR", profesorId: "" }));
+    expect(dobles.$transaction).toHaveBeenCalledTimes(1);
+    expect(dobles.auditoria.create).toHaveBeenCalledWith({
+      data: {
+        actorId: ADMIN,
+        actorCorreo: "admin@ejemplo.mx",
+        modulo: "administracion",
+        accion: "usuario.editado",
+        entidad: "Perfil",
+        entidadId: DOCENTE,
+        resumen: "Cambió el rol de Docente a Coordinación de Investigación y desvinculó al profesor de docente@ejemplo.mx.",
+      },
+    });
+  });
+
+  it("si la bitácora falla, el cambio no se guarda", async () => {
+    dobles.$transaction.mockRejectedValue(new Error("falla de la bitácora"));
+    await expect(editarUsuario({}, formulario({ id: DOCENTE, rol: "COORDINADOR", profesorId: "" }))).rejects.toThrow("falla de la bitácora");
+    expect(dobles.redirect).not.toHaveBeenCalled();
+  });
+
+  it("sin cambios no escribe en el perfil ni en la bitácora", async () => {
+    dobles.redirect.mockImplementation(() => {
+      throw new Error("redirige");
+    });
+    dobles.profesor.findFirst.mockResolvedValue({ ...profesorLibre, id: 5 });
+    await expect(editarUsuario({}, formulario({ id: DOCENTE, rol: "DOCENTE", profesorId: "5" }))).rejects.toThrow("redirige");
+    expect(dobles.$transaction).not.toHaveBeenCalled();
+    expect(dobles.perfil.update).not.toHaveBeenCalled();
+    expect(dobles.auditoria.create).not.toHaveBeenCalled();
+  });
+
   it("vincula a un profesor que el servidor vuelve a comprobar", async () => {
     await editarUsuario({}, formulario({ id: DOCENTE, rol: "DOCENTE", profesorId: "9" }));
     expect(dobles.profesor.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ id: 9 }) }));
     expect(dobles.perfil.update).toHaveBeenCalledWith({ where: { id: DOCENTE }, data: { rol: "DOCENTE", profesorId: 9 } });
+    expect(dobles.auditoria.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ resumen: "Vinculó al profesor con código 100 de docente@ejemplo.mx." }),
+    });
   });
 
   it("rechaza un profesor que ya no está disponible", async () => {
@@ -138,6 +178,9 @@ describe("desactivar y reactivar usuario", () => {
     await cambiarEstadoUsuario({}, formulario({ id: DOCENTE, accion: "desactivar" }));
     expect(dobles.perfil.update).toHaveBeenCalledWith({ where: { id: DOCENTE }, data: { activo: false } });
     expect(dobles.redirect).toHaveBeenCalledWith("/administracion/usuarios?desactivado=docente%40ejemplo.mx", "replace");
+    expect(dobles.auditoria.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ accion: "usuario.desactivado", entidadId: DOCENTE, resumen: "Desactivó el acceso de docente@ejemplo.mx." }),
+    });
   });
 
   it("reactiva", async () => {
@@ -145,6 +188,9 @@ describe("desactivar y reactivar usuario", () => {
     await cambiarEstadoUsuario({}, formulario({ id: DOCENTE, accion: "reactivar" }));
     expect(dobles.perfil.update).toHaveBeenCalledWith({ where: { id: DOCENTE }, data: { activo: true } });
     expect(dobles.redirect).toHaveBeenCalledWith("/administracion/usuarios?reactivado=docente%40ejemplo.mx", "replace");
+    expect(dobles.auditoria.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ accion: "usuario.reactivado", resumen: "Reactivó el acceso de docente@ejemplo.mx." }),
+    });
   });
 
   it("nadie desactiva su propio acceso", async () => {

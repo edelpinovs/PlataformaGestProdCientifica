@@ -28,3 +28,16 @@ En Windows se ejecutaron los scripts mediante `npm.cmd`, ya que PowerShell bloqu
 Fuente, tipo y estado se ordenan por su etiqueta en español, no por el orden interno de los enums de PostgreSQL. Se cuentan los grupos finitos y se distribuyen `skip`/`take` entre ellos para recuperar como máximo diez filas; una prueba cubre la página que cruza entre grupos.
 
 La revisión independiente y las comprobaciones visuales siguen pendientes; este registro no es un dictamen de aprobación del PR.
+
+## Seguimiento y atención de hallazgos (I7 - @yanetzijimeno8297)
+
+Fecha: 2026-11-23. Rama: `feat/M7-RF-024-revision-vistas-validacion`.
+
+Se resolvieron todos los puntos abiertos de la revisión del PR #160:
+
+1. **Un solo control para cambiar de vista:** Se eliminó la duplicidad del selector de listado en `BarraListado`. Ahora la navegación superior (`<nav aria-label="Listados de validación">`) es el único control visible para cambiar de vista, con estilo acorde a la pauta (`bg-marca-suave text-marca font-semibold` para la activa).
+2. **Preservación de búsqueda y filtros (`enlaceCambioVista`):** Al cambiar de vista se preserva la búsqueda `q` y los filtros compatibles (como `tipo` entre bandeja y manuales), omitiendo los incompatibles para no provocar errores de validación. La paginación se reinicia a la página 1. La vista activa se conserva en los envíos de formulario mediante un campo oculto.
+3. **Métricas con SQL `COUNT`:** Se reemplazó la carga de `todasLasAutorias` por `prisma.autoria.groupBy` con `_count`, mapeado con la función pura `mapearConteosEstado`. El conteo oficial se calcula directamente en PostgreSQL sin transferir registros a Node.js.
+4. **Excepciones de Editar y Eliminar (regla #59):** Documentadas explícitamente en `src/modules/validacion/README.md`. Los resúmenes son cálculos agregados en tiempo de ejecución (no admiten edición directa); en la bandeja se aplica rechazo por homónimo (`RECHAZADA`) para evitar eliminar registros multifuente compartidos entre coautores; las manuales conservan `FilaEditable`.
+5. **Revisión y aprobación del cambio de comportamiento por I7:** Como dueña del módulo Validación (I7), apruebo formalmente la distribución del conteo oficial en vistas seleccionables e independientes. Facilita la navegación, evita saturar la pantalla con tablas masivas y mantiene las métricas globales visibles en las tarjetas superiores.
+6. **Comprobación de calidad:** 1,098 pruebas unitarias e integración pasando en Vitest (100 archivos), `npm run lint`, `npm run typecheck` y `npm run build` en verde.
