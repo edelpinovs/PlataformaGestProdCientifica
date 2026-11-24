@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { analizarListado } from "@/lib/listados/consulta";
-import { idRegistroHistorial, LISTADO_CONTINUIDAD, LISTADO_HISTORIAL, periodoProximaConsulta, sqlContinuidad, sqlHistorial } from "./historial";
+import { ESTADOS_HISTORIAL, idRegistroHistorial, LISTADO_CONTINUIDAD, LISTADO_HISTORIAL, nombreProfesor, periodoProximaConsulta, sqlContinuidad, sqlHistorial, TIPOS_HISTORIAL } from "./historial";
 
 describe("historial y continuidad de Producción (#169)", () => {
   it("distingue primera consulta, Scopus inicial y solapamiento sin usar fechas de publicaciones", () => {
@@ -32,6 +32,19 @@ describe("historial y continuidad de Producción (#169)", () => {
     expect(sql.contar.text).toContain('c."profesorId" = p.id AND c.fuente::text = f.fuente');
     expect(sql.contar.text).toContain("Sin búsqueda previa completada");
     expect(sql.contar.values).toEqual(["ORCID","OPENALEX","SCOPUS","CROSSREF","GOOGLE_SCHOLAR"]);
+  });
+  it("el historial muestra el nombre del profesor, no «Profesor #107», y conserva el número si ya no existe (#189)", () => {
+    expect(nombreProfesor({ apellidos: "Ficticia", nombres: "Persona", codigo: "DEMO-107" })).toBe("Ficticia, Persona · DEMO-107");
+    const texto = sqlHistorial(analizarListado(LISTADO_HISTORIAL,{}).consulta).contar.text;
+    expect(texto).toContain('FROM "Profesor" p');
+    expect(texto).toContain("p.apellidos || ', ' || p.nombres || ' · ' || p.codigo");
+    expect(texto).toContain("COALESCE(");
+    expect(texto).toContain("'Profesor #' ||");
+  });
+  it("las etiquetas de estado y tipo del SQL salen de los mismos mapas que los filtros (#189)", () => {
+    const texto = sqlHistorial(analizarListado(LISTADO_HISTORIAL,{}).consulta).contar.text;
+    for (const etiqueta of [...Object.values(ESTADOS_HISTORIAL), ...Object.values(TIPOS_HISTORIAL)]) expect(texto).toContain(`'${etiqueta}'`);
+    expect(LISTADO_HISTORIAL.filtros?.tipo).toEqual(Object.keys(TIPOS_HISTORIAL));
   });
   it.each([undefined, ["1","2"], "0", "Infinity", "2147483648", "9007199254740992"])("rechaza un detalle inválido sin consultar un Job arbitrario (%j)", valor => {
     expect(idRegistroHistorial.safeParse(valor).success).toBe(false);
