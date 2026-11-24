@@ -4,6 +4,7 @@ import { enlaceListado, type ConsultaListado, type DefinicionListado } from "@/l
 import type { TablaExportable } from "@/modules/reportes/exportar";
 import { ACCIONES_AUDITORIA, MODULOS_AUDITORIA, type AccionAuditoria } from "./auditoria";
 import { REGLAS_CALIDAD, type Hallazgo, type ReglaCalidad } from "./calidad";
+import { formatoFechaAlta } from "./fechas";
 import { ESTADOS_USUARIO } from "./usuarios-listado";
 
 // Exportar a Excel o PDF los listados del panel de administración (issue 244). La descarga trae todas
@@ -94,19 +95,21 @@ export type FilaUsuarioExportable = {
   rol: Rol;
   activo: boolean;
   profesor: { codigo: string; nombres: string; apellidos: string } | null;
+  creadoEn: Date;
 };
 
 export function tablaUsuarios(filas: FilaUsuarioExportable[]): TablaExportable {
   return {
     titulo: "Usuarios y roles",
     hoja: "Usuarios",
-    columnas: ["Correo", "Rol", "Profesor vinculado", "Código del profesor", "Estado"],
+    columnas: ["Correo", "Rol", "Profesor vinculado", "Código del profesor", "Estado", "Alta"],
     filas: filas.map((f) => [
       f.correo,
       ETIQUETA_ROL[f.rol],
       f.profesor ? `${f.profesor.apellidos} ${f.profesor.nombres}` : "",
       f.profesor?.codigo ?? "",
       f.activo ? "Activo" : "Desactivado",
+      formatoFechaAlta.format(f.creadoEn),
     ]),
   };
 }
