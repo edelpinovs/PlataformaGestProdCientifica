@@ -18,21 +18,22 @@ beforeEach(() => {
   dobles.leer.mockResolvedValue(trabajo);
 });
 
-describe("escaneo manual exclusivo de Coordinación (#170)", () => {
-  it.each(["ADMINISTRADOR", "DOCENTE"])("deniega inicio y continuación a %s antes de acceder a datos", async rol => {
-    dobles.permiso.mockImplementation(async roles => { expect(roles).toEqual(["COORDINADOR"]); throw new Error(`Sin permiso: ${rol}`); });
+describe("escaneo manual de Administración y Coordinación (#170, #265)", () => {
+  it("deniega inicio y continuación a DOCENTE antes de acceder a datos", async () => {
+    dobles.permiso.mockImplementation(async roles => { expect(roles).toEqual(["ADMINISTRADOR", "COORDINADOR"]); expect(roles).not.toContain("DOCENTE"); throw new Error("Sin permiso: DOCENTE"); });
     for (const continuar of [false, true]) {
       const datos = new FormData(); if (continuar) datos.set("jobId", "7");
       await expect(iniciarEscaneoAction({}, datos)).rejects.toThrow("Sin permiso");
     }
     expect(dobles.leer).not.toHaveBeenCalled(); expect(dobles.crear).not.toHaveBeenCalled(); expect(dobles.after).not.toHaveBeenCalled();
   });
-  it("Coordinación puede iniciar y continuar el mismo trabajo sin crearlo de nuevo", async () => {
+  it.each(["ADMINISTRADOR", "COORDINADOR"])("%s puede iniciar y continuar el mismo trabajo sin crearlo de nuevo", async rol => {
+    dobles.permiso.mockResolvedValue({ rol });
     const inicio = new FormData(); inicio.set("fuentes", "ORCID");
     await iniciarEscaneoAction({}, inicio);
     const datos = new FormData(); datos.set("jobId", "7");
     await iniciarEscaneoAction({}, datos);
-    expect(dobles.permiso).toHaveBeenCalledWith(["COORDINADOR"]);
+    expect(dobles.permiso).toHaveBeenCalledWith(["ADMINISTRADOR", "COORDINADOR"]);
     expect(dobles.crear).toHaveBeenCalledExactlyOnceWith("escaneo-manual", undefined, undefined, ["ORCID"]);
     expect(dobles.after).toHaveBeenCalledTimes(2);
   });

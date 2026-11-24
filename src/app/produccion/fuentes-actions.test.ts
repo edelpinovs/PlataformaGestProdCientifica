@@ -12,7 +12,7 @@ beforeEach(()=>{vi.resetAllMocks();dobles.permiso.mockResolvedValue({rol:"COORDI
 describe("selección de fuentes en Server Action (#167)",()=>{
   it("sin fuentes no crea trabajos ni agenda consultas",async()=>{
     const resultado=await iniciarEscaneoAction({},new FormData());expect(resultado.error).toBe("Selecciona al menos una fuente para iniciar la búsqueda.");
-    expect(dobles.crear).not.toHaveBeenCalled();expect(dobles.after).not.toHaveBeenCalled();expect(dobles.permiso).toHaveBeenCalledWith(["COORDINADOR"]);
+    expect(dobles.crear).not.toHaveBeenCalled();expect(dobles.after).not.toHaveBeenCalled();expect(dobles.permiso).toHaveBeenCalledWith(["ADMINISTRADOR","COORDINADOR"]);
   });
   it("rechaza una fuente manipulada y conserva una selección válida normalizada",async()=>{
     const datos=new FormData();datos.append("fuentes","OTRA");expect((await iniciarEscaneoAction({},datos)).error).toBe("Selecciona una fuente válida.");

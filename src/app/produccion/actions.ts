@@ -3,6 +3,7 @@
 import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { requireRol } from "@/lib/auth/session";
+import { ROLES_ESCANEO } from "@/modules/produccion/permisos";
 import { FUENTES_ANTERIORES, type FuenteEscaneo } from "@/modules/produccion/fuentes";
 import { TrabajoEscaneoPendiente } from "@/modules/produccion/fechas-escaneo";
 import { prisma } from "@/lib/prisma";
@@ -26,7 +27,7 @@ function actualizarPantallasProduccion() {
 }
 
 export async function iniciarEscaneoAction(_: EstadoEscaneo, formData: FormData): Promise<EstadoEscaneo> {
-  await requireRol(["COORDINADOR"]);
+  await requireRol([...ROLES_ESCANEO]);
   try {
     const jobId = formData.get("jobId");
     let trabajo;
