@@ -66,6 +66,13 @@ describe("cargarHallazgos: vigencias vencidas", () => {
     expect(h[0].detalle).toContain("PRODEP");
   });
 
+  it("solo lee vigencias de profesores activos, como las demás reglas de profesores (hallazgo 2)", async () => {
+    await cargarHallazgos();
+    const where = { profesor: { estatusLaboral: "ACTIVO" } };
+    expect(dobles.prisma.reconocimientoSnii.findMany).toHaveBeenCalledWith(expect.objectContaining({ where }));
+    expect(dobles.prisma.reconocimientoProdep.findMany).toHaveBeenCalledWith(expect.objectContaining({ where }));
+  });
+
   it("los cuerpos académicos siguen saliendo de Reportes y solo se le piden los cuerpos", async () => {
     await cargarHallazgos();
     expect(dobles.cargarVigencias).toHaveBeenCalledWith(["CA"]);

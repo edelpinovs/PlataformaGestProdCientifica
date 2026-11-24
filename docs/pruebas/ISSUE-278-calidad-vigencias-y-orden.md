@@ -34,7 +34,7 @@ Se ejecutaron desde PowerShell con la ruta `C:\PROJECTS\…` (con la letra de un
 - **Homónimos sin resolver:** necesita que el dueño de Validación exponga su regla.
 - **«Sin perfil de acceso» enlaza a un lugar donde corregir:** depende de #275 (invitar usuarios, D-242).
 - **D-227 y D-229 siguen abiertas:** en Reportes, un periodo anterior de quien ya renovó sigue apareciendo en rojo (D-227). En Calidad ya no: solo cuenta el último periodo de cada persona (apartado 4). D-229 (cómo cuenta «en reconsideración») sigue la regla del semáforo.
-- **Profesores no activos:** sus vigencias vencidas se siguen reportando (hallazgo 2 de la revisión del #303, menor), aunque las demás reglas los ignoran.
+
 - **Excepción a D-009** (hallazgos filtrados, ordenados y paginados en memoria): sigue justificada en el código; se revisa si la lista crece.
 
 ## 4. Corrección tras la revisión del #303 (hallazgo 1)
@@ -50,4 +50,8 @@ La revisión (`docs/pruebas/PR-303-calidad-vigencias-y-orden.md`) encontró que 
 |---|---|
 | `calidad.test.ts` | Varios periodos anteriores y uno vigente dejan solo el vigente; cada persona conserva el suyo; un posterior no aprobado no sustituye; uno en reconsideración sí; empates por inicio y por fin; sin periodos no queda nada; junto con la regla, quien renovó no aparece y quien no renovó sí |
 | `app/administracion/calidad/cargar.test.ts` (Prisma simulado) | Quien renovó SNII y PRODEP no aparece; quien no renovó, o cuya renovación no se aprobó, aparece una sola vez; SNII y PRODEP se acotan por separado; a Reportes solo se le piden los cuerpos |
+
+## 5. Corrección tras la revisión del #303 (hallazgo 2)
+
+Las vigencias de profesores que no están activos (licencia, baja o trasladado) ya no se reportan: la carga de SNII y PRODEP filtra `profesor.estatusLaboral = ACTIVO`, con el mismo criterio que las demás reglas de profesores de Calidad («Sin ORCID ni Scopus», «Sin perfil de acceso»). Los cuerpos académicos no cambian. Prueba nueva en `cargar.test.ts`: las dos consultas llevan ese filtro.
 

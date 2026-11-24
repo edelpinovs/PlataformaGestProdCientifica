@@ -8,6 +8,10 @@ import {
 import { cargarVigencias } from "@/modules/reportes/cargar-vigencias";
 import { filaProdep, filaSnii, inicioDelDiaUtc } from "@/modules/reportes/vigencias";
 
+// Como las demás reglas de profesores de Calidad, solo importan los activos: las vigencias de
+// quien está de baja, trasladado o con licencia no se reportan (hallazgo 2 de la revisión del #303).
+const deProfesorActivo = { profesor: { estatusLaboral: "ACTIVO" } } as const;
+
 const persona = {
   select: { nombres: true, apellidos: true, departamento: { select: { nombre: true } } },
 } as const;
@@ -25,9 +29,11 @@ export async function cargarHallazgos(): Promise<Hallazgo[]> {
       select: { id: true, clave: true, nombre: true, liderId: true, integrantes: { select: { profesorId: true } } },
     }),
     prisma.reconocimientoSnii.findMany({
+      where: deProfesorActivo,
       select: { id: true, profesorId: true, nivel: true, resultado: true, inicio: true, fin: true, profesor: persona },
     }),
     prisma.reconocimientoProdep.findMany({
+      where: deProfesorActivo,
       select: { id: true, profesorId: true, tipoSolicitud: true, resultado: true, inicio: true, fin: true, profesor: persona },
     }),
     cargarVigencias(["CA"]),
