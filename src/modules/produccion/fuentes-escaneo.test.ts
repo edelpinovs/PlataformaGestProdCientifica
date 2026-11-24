@@ -28,6 +28,13 @@ describe("orquestación de las cinco fuentes (#167)",()=>{
     const repo=repositorio();const resultado=await ejecutarEscaneo({fuentes:[]},repo);
     expect(repo.obtenerProfesores).not.toHaveBeenCalled();expect(resultado.errores).toEqual(["Selecciona al menos una fuente para iniciar la búsqueda."]);
   });
+  it("informa la fuente correspondiente antes de consultar y limpia el indicador", async () => {
+    const informarFuente = vi.fn().mockResolvedValue(undefined);
+    await ejecutarEscaneo({ fuentes: ["ORCID", "SCOPUS"], anio: 2026, informarFuente }, repositorio());
+    expect(informarFuente.mock.calls).toEqual([["ORCID"], ["SCOPUS"], [null]]);
+    expect(informarFuente.mock.invocationCallOrder[0]).toBeLessThan(conectores.ORCID.mock.invocationCallOrder[0]);
+    expect(informarFuente.mock.invocationCallOrder[1]).toBeLessThan(conectores.SCOPUS.mock.invocationCallOrder[0]);
+  });
   it("un fallo de Google Scholar conserva su corte y deja avanzar ORCID",async()=>{
     conectores.GOOGLE_SCHOLAR.mockResolvedValue({publicaciones:[],error:"NO_API_KEY"});
     const repo=repositorio();const resultado=await ejecutarEscaneo({fuentes:["ORCID","GOOGLE_SCHOLAR"]},repo);

@@ -17,6 +17,25 @@ function BotonEscanear({ enCurso, continuar }: { enCurso: boolean; continuar: bo
   );
 }
 
+function ProgresoEscaneo({ estado, enviando }: { estado: EstadoEscaneo; enviando: boolean }) {
+  const enCurso = Boolean(estado.pendiente);
+  const finalizado = Boolean(estado.resultado);
+  const total = estado.total ?? 0;
+  const avance = estado.avance ?? 0;
+  const conocido = enCurso || (finalizado && !enviando);
+  const visible = enCurso || enviando || finalizado;
+  const texto = conocido
+    ? `${avance} de ${total} profesores revisados.${estado.fuenteEnCurso ? ` Consultando ${NOMBRES_FUENTE[estado.fuenteEnCurso]}.` : ""}`
+    : enviando ? "Iniciando búsqueda…" : "";
+  const valor = conocido ? (total === 0 && estado.exito ? 1 : avance) : undefined;
+
+  return <div className={visible ? "flex min-w-0 flex-col gap-2 text-sm text-texto-3" : "sr-only"}>
+    {visible && <progress aria-label="Avance de la búsqueda" max={Math.max(total, 1)} value={valor}
+      className="h-3 w-full overflow-hidden rounded-full bg-superficie-alt accent-marca [&::-webkit-progress-bar]:bg-superficie-alt [&::-webkit-progress-value]:bg-marca" />}
+    <p role="status">{texto}</p>
+  </div>;
+}
+
 export function FormularioEscaneo({
   profesores,
   trabajoPendiente,
@@ -30,7 +49,7 @@ export function FormularioEscaneo({
   profesorTrabajo?: string;
   anioTrabajo?: number;
 }) {
-  const [estado, formAction] = useActionState<EstadoEscaneo, FormData>(
+  const [estado, formAction, enviando] = useActionState<EstadoEscaneo, FormData>(
     async (anterior,datos) => ({ ...await iniciarEscaneoAction(anterior,datos), intento: (anterior.intento ?? 0) + 1 }),
     trabajoPendiente ? { jobId: trabajoPendiente, continuar: true, fuentes: fuentesTrabajo ?? [...FUENTES_ANTERIORES] } : {},
   );
@@ -50,62 +69,61 @@ export function FormularioEscaneo({
   }, [estado, formAction]);
 
   return (
-    <form key={estado.intento ?? 0} action={formAction} className="flex flex-col gap-4">
-      {(estado.pendiente || estado.continuar) && estado.jobId && <input type="hidden" name="jobId" value={estado.jobId} />}
-      <fieldset disabled={estado.pendiente || estado.continuar} className="flex flex-col gap-4">
-        <legend className="mb-2 text-sm font-semibold">Fuentes de búsqueda</legend>
-        <div className="flex flex-wrap gap-4">{FUENTES_ESCANEO.map(fuente => <label key={fuente} className="flex items-center gap-2 text-sm text-texto-2"><input type="checkbox" name="fuentes" value={fuente} checked={fuentesMostradas.includes(fuente)} onChange={evento => { const marcada=evento.target.checked; elegirFuentes(actual => marcada ? [...actual,fuente] : actual.filter(f => f !== fuente)); }} aria-invalid={Boolean(estado.erroresCampos?.fuentes)} />{NOMBRES_FUENTE[fuente]}</label>)}</div>
-        <div><button type="button" className="rounded-xl px-3 py-2 text-sm text-marca hover:bg-hover" onClick={() => elegirFuentes([...FUENTES_ESCANEO])}>Seleccionar todas</button></div>
-        <p className="text-sm text-texto-3">Se consultarán únicamente las fuentes elegidas. Google Scholar está sujeto a la cuota del proveedor. Al continuar un trabajo se respetan sus fuentes guardadas.</p>
-      </fieldset>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <fieldset disabled={estado.pendiente || estado.continuar} className="flex min-w-0 flex-col gap-4">
-          <legend className="mb-2 text-sm font-semibold">Profesores de la búsqueda</legend>
-          <label className="flex items-center gap-2 text-sm text-texto-2">
-            <input type="checkbox" checked={profesorElegido === "todos"}
-              onChange={evento => elegirProfesor(evento.target.checked ? "todos" : "")} />
-            Todos los profesores activos
-          </label>
-          {profesorElegido === "todos" ? <input type="hidden" name="profesorId" value="todos" /> :
-            (estado.pendiente || estado.continuar) && !profesores.some(profesor => String(profesor.id) === profesorElegido) ?
-            <p className="text-sm text-texto-2">Profesor del trabajo #{profesorElegido}. Se conserva la selección original aunque ya no esté activo.</p> :
-            <SelectorProfesor opciones={profesores} valorInicial={profesorElegido ? Number(profesorElegido) : undefined}
-              alSeleccionar={id => elegirProfesor(id === undefined ? "" : String(id))}
-              deshabilitado={Boolean(estado.pendiente || estado.continuar)} error={estado.erroresCampos?.profesorId} />}
-          {estado.erroresCampos?.profesorId && profesorElegido === "todos" && <Aviso tipo="error">{estado.erroresCampos.profesorId}</Aviso>}
+    <div className="flex flex-col gap-4">
+      <form key={estado.intento ?? 0} action={formAction} className="flex flex-col gap-4">
+        {(estado.pendiente || estado.continuar) && estado.jobId && <input type="hidden" name="jobId" value={estado.jobId} />}
+        <fieldset disabled={estado.pendiente || estado.continuar} className="flex flex-col gap-4">
+          <legend className="mb-2 text-sm font-semibold">Fuentes de búsqueda</legend>
+          <div className="flex flex-wrap gap-4">{FUENTES_ESCANEO.map(fuente => <label key={fuente} className="flex items-center gap-2 text-sm text-texto-2"><input type="checkbox" name="fuentes" value={fuente} checked={fuentesMostradas.includes(fuente)} onChange={evento => { const marcada=evento.target.checked; elegirFuentes(actual => marcada ? [...actual,fuente] : actual.filter(f => f !== fuente)); }} aria-invalid={Boolean(estado.erroresCampos?.fuentes)} />{NOMBRES_FUENTE[fuente]}</label>)}</div>
+          <div><button type="button" className="rounded-xl px-3 py-2 text-sm text-marca hover:bg-hover" onClick={() => elegirFuentes([...FUENTES_ESCANEO])}>Seleccionar todas</button></div>
+          <p className="text-sm text-texto-3">Se consultarán únicamente las fuentes elegidas. Google Scholar está sujeto a la cuota del proveedor. Al continuar un trabajo se respetan sus fuentes guardadas.</p>
         </fieldset>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <fieldset disabled={estado.pendiente || estado.continuar} className="flex min-w-0 flex-col gap-4">
+            <legend className="mb-2 text-sm font-semibold">Profesores de la búsqueda</legend>
+            <label className="flex items-center gap-2 text-sm text-texto-2">
+              <input type="checkbox" checked={profesorElegido === "todos"}
+                onChange={evento => elegirProfesor(evento.target.checked ? "todos" : "")} />
+              Todos los profesores activos
+            </label>
+            {profesorElegido === "todos" ? <input type="hidden" name="profesorId" value="todos" /> :
+              (estado.pendiente || estado.continuar) && !profesores.some(profesor => String(profesor.id) === profesorElegido) ?
+              <p className="text-sm text-texto-2">Profesor del trabajo #{profesorElegido}. Se conserva la selección original aunque ya no esté activo.</p> :
+              <SelectorProfesor opciones={profesores} valorInicial={profesorElegido ? Number(profesorElegido) : undefined}
+                alSeleccionar={id => elegirProfesor(id === undefined ? "" : String(id))}
+                deshabilitado={Boolean(estado.pendiente || estado.continuar)} error={estado.erroresCampos?.profesorId} />}
+            {estado.erroresCampos?.profesorId && profesorElegido === "todos" && <Aviso tipo="error">{estado.erroresCampos.profesorId}</Aviso>}
+          </fieldset>
 
-        <label className={claseEtiqueta}>
-          Año de publicación (opcional)
-          <input
-            type="number"
-            name="anio"
-            value={anioElegido}
-            onChange={evento => elegirAnio(evento.target.value)}
-            min="1990"
-            max={new Date().getUTCFullYear() + 1}
-            disabled={estado.pendiente || estado.continuar}
-            aria-invalid={Boolean(estado.erroresCampos?.anio)}
-            placeholder="Vacío para historial inicial o actualización"
-            className={claseCampo(Boolean(estado.erroresCampos?.anio))}
-          />
-        </label>
-      </div>
-
-      <p className="text-sm text-texto-3">Sin año, ORCID y OpenAlex recuperan el historial si no existe un escaneo previo; después consultan novedades. Para revisar un año concreto, indícalo arriba.</p>
-
-      {estado.error && !estado.resultado && <Aviso tipo="error">{estado.error}</Aviso>}
-      {estado.resultado && <ResultadoEscaneo resultado={estado.resultado} />}
-      {estado.pendiente && (
-        <div role="status" className="text-sm text-texto-3">
-          <p>{estado.mensaje ?? "Recuperando el avance del escaneo..."}</p>
-          <p>El avance se guarda por profesor. Puedes volver a esta pantalla para continuar.</p>
+          <label className={claseEtiqueta}>
+            Año de publicación (opcional)
+            <input
+              type="number"
+              name="anio"
+              value={anioElegido}
+              onChange={evento => elegirAnio(evento.target.value)}
+              min="1990"
+              max={new Date().getUTCFullYear() + 1}
+              disabled={estado.pendiente || estado.continuar}
+              aria-invalid={Boolean(estado.erroresCampos?.anio)}
+              placeholder="Vacío para historial inicial o actualización"
+              className={claseCampo(Boolean(estado.erroresCampos?.anio))}
+            />
+          </label>
         </div>
-      )}
 
-      <div className="flex justify-end pt-2">
-        <BotonEscanear enCurso={Boolean(estado.pendiente)} continuar={Boolean(estado.continuar)} />
-      </div>
-    </form>
+        <p className="text-sm text-texto-3">Sin año, ORCID y OpenAlex recuperan el historial si no existe un escaneo previo; después consultan novedades. Para revisar un año concreto, indícalo arriba.</p>
+
+        <div className="flex justify-end pt-2">
+          <BotonEscanear enCurso={Boolean(estado.pendiente)} continuar={Boolean(estado.continuar)} />
+        </div>
+      </form>
+      <ProgresoEscaneo estado={estado} enviando={enviando} />
+      {estado.error && !estado.resultado && <Aviso tipo="error">{estado.error}</Aviso>}
+      {!enviando && estado.resultado && <ResultadoEscaneo resultado={estado.resultado} />}
+      {estado.pendiente && (
+        <p className="text-sm text-texto-3">El avance se guarda por profesor. Puedes volver a esta pantalla para continuar.</p>
+      )}
+    </div>
   );
 }

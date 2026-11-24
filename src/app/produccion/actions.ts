@@ -15,6 +15,7 @@ export type EstadoEscaneo = {
   resultado?: ReturnType<typeof presentarResultadoEscaneo>;
   error?: string; exito?: boolean; mensaje?: string; resumen?: ResumenEscaneo;
   jobId?: number; pendiente?: boolean; avance?: number; total?: number;
+  fuenteEnCurso?: FuenteEscaneo | null;
   continuar?: boolean; fuentes?: FuenteEscaneo[];
   intento?: number;
   erroresCampos?: { profesorId?: string; anio?: string; fuentes?: string };
@@ -65,6 +66,7 @@ export async function iniciarEscaneoAction(_: EstadoEscaneo, formData: FormData)
     return {
       resultado: presentarResultadoEscaneo(trabajo.estado, trabajo.datos),
       jobId: trabajo.id, pendiente, avance: trabajo.avance, total: trabajo.total,
+      fuenteEnCurso: trabajo.estado === "EN_PROCESO" && datos.success ? datos.data.fuenteEnCurso : null,
       fuentes: datos.success ? datos.data.fuentes ?? [...FUENTES_ANTERIORES] : [...FUENTES_ANTERIORES],
       resumen: datos.success ? {
         ...datos.data.resumen,

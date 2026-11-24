@@ -42,4 +42,13 @@ describe("escaneo manual exclusivo de Coordinación (#170)", () => {
     expect(await iniciarEscaneoAction({}, inicio)).toEqual({ error: "Ya hay una búsqueda pendiente. Continúala antes de iniciar otra.", jobId: 12, continuar: true });
     expect(dobles.after).not.toHaveBeenCalled();
   });
+  it("devuelve la fuente activa y el avance real durante el escaneo", async () => {
+    dobles.leer.mockResolvedValueOnce({
+      id: 7, estado: "EN_PROCESO", avance: 1, total: 2,
+      datos: { version: 1, profesoresIds: [1, 2], indice: 1, fuenteEnCurso: "ORCID", resumen: resumenVacio() },
+    });
+    const datos = new FormData();
+    datos.set("jobId", "7");
+    expect(await iniciarEscaneoAction({}, datos)).toMatchObject({ pendiente: true, avance: 1, total: 2, fuenteEnCurso: "ORCID" });
+  });
 });
