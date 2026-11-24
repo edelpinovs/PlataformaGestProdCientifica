@@ -45,6 +45,25 @@ model AccesoModulo {
   @@unique([perfilId, modulo])
 }
 
+// Bitácora de auditoría del panel de administración (issue 242): quién hizo qué y cuándo.
+// Es un registro histórico: no se edita ni se elimina. Sin relación con Perfil a propósito, para que
+// desactivar o cambiar un perfil no altere lo ya registrado; el correo se copia al momento del hecho.
+// `resumen` es un texto legible en español y nunca lleva datos de contacto ni secretos.
+model Auditoria {
+  id          Int      @id @default(autoincrement())
+  creadoEn    DateTime @default(now())
+  actorId     String?  @db.Uuid
+  actorCorreo String
+  modulo      String
+  accion      String
+  entidad     String
+  entidadId   String
+  resumen     String
+
+  @@index([creadoEn])
+  @@index([modulo, accion])
+}
+
 // ─── M1 Catálogos (RF-001 a RF-003) · Integrante 1 ──────────────────────────
 
 model GradoCientifico {

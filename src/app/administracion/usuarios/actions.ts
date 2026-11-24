@@ -7,6 +7,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { requireModulo } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { revalidarProfesorSeleccionado } from "@/lib/selectores/profesor";
+import { eventoAuditoria, resumenCambioEstado, resumenEdicionUsuario } from "@/modules/administracion/auditoria";
 import {
   buscarDuplicado,
   edicionUsuario,
@@ -32,7 +33,7 @@ async function leerPerfiles(): Promise<PerfilUsuario[]> {
 // «Debe quedar un administrador» se revisa antes de guardar; dos administradores que se degraden a la vez
 // podrían saltarse la regla, pero es un caso que exige coincidir en el mismo instante.
 export async function editarUsuario(_: EstadoFila, formData: FormData): Promise<EstadoFila> {
-  await requireModulo("administracion");
+  const actor = await requireModulo("administracion");
 
   const id = idDePerfil(formData);
   if (!id) return { error: NO_EXISTE };
@@ -55,6 +56,7 @@ export async function editarUsuario(_: EstadoFila, formData: FormData): Promise<
   if (rechazoRol) return { error: rechazoRol.mensaje, campo: rechazoRol.campo, valores };
 
   const profesorId = datos.data.profesorId ?? null;
+  let codigoProfesor: string | undefined;
   if (profesorId !== null) {
     const duplicado = buscarDuplicado({ profesorId }, perfiles, id);
     if (duplicado) return { error: duplicado.mensaje, campo: duplicado.campo, valores };
@@ -67,10 +69,23 @@ export async function editarUsuario(_: EstadoFila, formData: FormData): Promise<
       }),
     );
     if (elegible.error) return { error: elegible.error, campo: "profesorId", valores };
+    codigoProfesor = elegible.profesor?.codigo;
   }
 
+  // Sin cambios no se escribe nada, ni en el perfil ni en la bitácora.
+  const resumen = resumenEdicionUsuario(
+    perfil.correo,
+    { rol: perfil.rol, profesorId: perfil.profesorId },
+    { rol: datos.data.rol, profesorId, codigoProfesor },
+  );
+  if (resumen === null) redirect(`${BASE}?editado=${encodeURIComponent(perfil.correo)}`, RedirectType.replace);
+
   try {
-    await prisma.perfil.update({ where: { id }, data: { rol: datos.data.rol, profesorId } });
+    // El cambio y su constancia en la bitácora se guardan juntos o no se guarda ninguno.
+    await prisma.$transaction([
+      prisma.perfil.update({ where: { id }, data: { rol: datos.data.rol, profesorId } }),
+      prisma.auditoria.create({ data: eventoAuditoria("usuario.editado", actor, { tipo: "Perfil", id }, resumen) }),
+    ]);
   } catch (e) {
     if (e instanceof Prisma.PrismaClientKnownRequestError) {
       // P2002: otro administrador vinculó a ese profesor entre la consulta y el cambio.
@@ -103,8 +118,19 @@ export async function cambiarEstadoUsuario(_: EstadoFila, formData: FormData): P
     if (rechazo) return { error: rechazo.mensaje };
   }
 
+  const activar = accion === "reactivar";
   try {
-    await prisma.perfil.update({ where: { id }, data: { activo: accion === "reactivar" } });
+    await prisma.$transaction([
+      prisma.perfil.update({ where: { id }, data: { activo: activar } }),
+      prisma.auditoria.create({
+        data: eventoAuditoria(
+          activar ? "usuario.reactivado" : "usuario.desactivado",
+          actor,
+          { tipo: "Perfil", id },
+          resumenCambioEstado(perfil.correo, activar),
+        ),
+      }),
+    ]);
   } catch (e) {
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2025") return { error: NO_EXISTE };
     throw e;
