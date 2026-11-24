@@ -1,0 +1,156 @@
+import type { ConsultaListado, DefinicionListado } from "@/lib/listados/consulta";
+import { normalizar } from "@/modules/catalogos/comun";
+
+// Calidad de datos (issue 242): inconsistencias que el administrador puede corregir. Son funciones
+// puras sobre datos ya leídos; la página los carga con Prisma y las aplica.
+//
+// Quedan fuera a propósito las vigencias vencidas (semáforo del módulo de reportes, con decisiones
+// abiertas D-227 y D-229) y los homónimos sin resolver (módulo de validación): se agregarán cuando
+// esos módulos expongan su regla, para no duplicarla.
+
+export const REGLAS_CALIDAD = {
+  CA_SIN_LIDER: { texto: "Cuerpo académico sin líder", severidad: "aviso" },
+  LIDER_NO_INTEGRANTE: { texto: "Líder que no es integrante", severidad: "error" },
+  INTEGRANTE_DE_BAJA: { texto: "Integrante de baja o trasladado", severidad: "aviso" },
+  SIN_IDENTIFICADORES: { texto: "Sin ORCID ni Scopus", severidad: "aviso" },
+  SIN_PERFIL: { texto: "Sin perfil de acceso", severidad: "aviso" },
+} as const;
+
+export type ReglaCalidad = keyof typeof REGLAS_CALIDAD;
+export const CLAVES_REGLA = Object.keys(REGLAS_CALIDAD) as ReglaCalidad[];
+
+// «Licencia» no cuenta como baja: la persona sigue vinculada a su cuerpo académico (D-246 está pendiente).
+const ESTATUS_DE_BAJA = new Set(["BAJA_TEMPORAL", "BAJA_POSDOCTORAL", "TRASLADADO"]);
+
+export type ProfesorCalidad = {
+  id: number;
+  codigo: string;
+  nombres: string;
+  apellidos: string;
+  estatusLaboral: string;
+  orcid: string | null;
+  scopusId: string | null;
+  tienePerfil: boolean;
+};
+
+export type CuerpoCalidad = {
+  id: number;
+  clave: string;
+  nombre: string;
+  liderId: number | null;
+  integrantes: number[];
+};
+
+export type Hallazgo = {
+  /** Única por regla y registro: sirve de `key` en la lista. */
+  clave: string;
+  regla: ReglaCalidad;
+  severidad: "aviso" | "error";
+  /** Registro afectado, tal como lo ve la persona. */
+  registro: string;
+  detalle: string;
+  /** Pantalla donde se corrige. */
+  enlace: string;
+};
+
+const nombreProfesor = (p: Pick<ProfesorCalidad, "apellidos" | "nombres" | "codigo">) =>
+  `${p.apellidos} ${p.nombres} (${p.codigo})`;
+
+function hallazgo(regla: ReglaCalidad, id: string, registro: string, detalle: string, enlace: string): Hallazgo {
+  return { clave: `${regla}:${id}`, regla, severidad: REGLAS_CALIDAD[regla].severidad, registro, detalle, enlace };
+}
+
+export function analizarCalidad(datos: { profesores: ProfesorCalidad[]; cuerpos: CuerpoCalidad[] }): Hallazgo[] {
+  const { profesores, cuerpos } = datos;
+  const porId = new Map(profesores.map((p) => [p.id, p]));
+  const resultado: Hallazgo[] = [];
+
+  for (const cuerpo of cuerpos) {
+    const registro = `${cuerpo.clave} · ${cuerpo.nombre}`;
+    const enlace = `/cuerpos-academicos/${cuerpo.id}`;
+
+    if (cuerpo.liderId === null) {
+      resultado.push(hallazgo("CA_SIN_LIDER", String(cuerpo.id), registro, "No tiene un líder asignado.", enlace));
+    } else if (!cuerpo.integrantes.includes(cuerpo.liderId)) {
+      const lider = porId.get(cuerpo.liderId);
+      resultado.push(
+        hallazgo("LIDER_NO_INTEGRANTE", String(cuerpo.id), registro,
+          `${lider ? nombreProfesor(lider) : "El líder"} figura como líder pero no es integrante.`, enlace),
+      );
+    }
+
+    for (const profesorId of cuerpo.integrantes) {
+      const profesor = porId.get(profesorId);
+      if (profesor && ESTATUS_DE_BAJA.has(profesor.estatusLaboral)) {
+        resultado.push(
+          hallazgo("INTEGRANTE_DE_BAJA", `${cuerpo.id}-${profesor.id}`, registro,
+            `${nombreProfesor(profesor)} sigue como integrante con estatus ${etiquetaEstatus(profesor.estatusLaboral)}.`, enlace),
+        );
+      }
+    }
+  }
+
+  for (const profesor of profesores) {
+    // Solo importan los profesores activos: quien está de baja no se escanea ni necesita acceso.
+    if (profesor.estatusLaboral !== "ACTIVO") continue;
+    const enlace = `/profesores?q=${encodeURIComponent(profesor.codigo)}`;
+    if (!profesor.orcid && !profesor.scopusId) {
+      resultado.push(
+        hallazgo("SIN_IDENTIFICADORES", String(profesor.id), nombreProfesor(profesor),
+          "No se pueden buscar sus publicaciones: falta su ORCID y su identificador de Scopus.", enlace),
+      );
+    }
+    if (!profesor.tienePerfil) {
+      resultado.push(
+        hallazgo("SIN_PERFIL", String(profesor.id), nombreProfesor(profesor),
+          "Está activo pero todavía no tiene un perfil para entrar al sistema.", "/administracion/usuarios"),
+      );
+    }
+  }
+  return resultado;
+}
+
+function etiquetaEstatus(estatus: string) {
+  return (
+    { BAJA_TEMPORAL: "baja temporal", BAJA_POSDOCTORAL: "baja posdoctoral", TRASLADADO: "trasladado" }[estatus] ?? estatus
+  ).toLowerCase();
+}
+
+// ─── Listado (D-009) sobre la lista ya calculada ──────────────────────────────
+
+export const LISTADO_CALIDAD: DefinicionListado = {
+  columnas: ["registro", "regla", "detalle"],
+  ordenInicial: { columna: "regla", dir: "asc" },
+  filtros: { regla: CLAVES_REGLA },
+};
+
+export const COLUMNAS_CALIDAD = [
+  { clave: "registro", texto: "Registro" },
+  { clave: "regla", texto: "Problema" },
+  { clave: "detalle", texto: "Detalle" },
+];
+
+/**
+ * Filtra por regla y por texto libre (registro, problema y detalle, sin distinguir mayúsculas ni
+ * acentos). Esta lista se calcula en memoria y es acotada (un hallazgo por registro afectado), por eso
+ * se filtra aquí y no con `skip`/`take` en la base; se justifica en el issue 242.
+ */
+export function filtrarHallazgos(hallazgos: Hallazgo[], consulta: ConsultaListado): Hallazgo[] {
+  const texto = normalizar(consulta.q.trim());
+  return hallazgos.filter((h) => {
+    if (consulta.filtros.regla && h.regla !== consulta.filtros.regla) return false;
+    if (!texto) return true;
+    return normalizar(`${h.registro} ${REGLAS_CALIDAD[h.regla].texto} ${h.detalle}`).includes(texto);
+  });
+}
+
+/**
+ * Ordena por la columna elegida (A–Z) con desempate por clave para que el orden sea estable.
+ * `consulta.orden` ya viene validado contra `LISTADO_CALIDAD.columnas`.
+ */
+export function ordenarHallazgos(hallazgos: Hallazgo[], consulta: ConsultaListado): Hallazgo[] {
+  const valor = (h: Hallazgo) =>
+    consulta.orden === "regla" ? REGLAS_CALIDAD[h.regla].texto : consulta.orden === "detalle" ? h.detalle : h.registro;
+  const signo = consulta.dir === "asc" ? 1 : -1;
+  return [...hallazgos].sort((a, b) => signo * valor(a).localeCompare(valor(b), "es") || signo * a.clave.localeCompare(b.clave));
+}
