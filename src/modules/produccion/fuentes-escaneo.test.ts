@@ -35,6 +35,18 @@ describe("orquestación de las cinco fuentes (#167)",()=>{
     expect(informarFuente.mock.invocationCallOrder[0]).toBeLessThan(conectores.ORCID.mock.invocationCallOrder[0]);
     expect(informarFuente.mock.invocationCallOrder[1]).toBeLessThan(conectores.SCOPUS.mock.invocationCallOrder[0]);
   });
+  it("si falla el aviso de la fuente en curso, el escaneo guarda todo sin registrar incidencias (#290)", async () => {
+    const informarFuente = vi.fn().mockRejectedValue(new Error("escritura fallida"));
+    const repo = repositorio();
+    const resultado = await ejecutarEscaneo({ fuentes: ["ORCID", "SCOPUS", "CROSSREF"], informarFuente }, repo);
+    expect(informarFuente.mock.calls).toEqual([["ORCID"], ["SCOPUS"], ["CROSSREF"], ["CROSSREF"], [null]]);
+    expect(resultado.errores).toEqual([]);
+    expect(resultado.profesoresProcesados).toBe(1);
+    expect(conectores.enriquecer).toHaveBeenCalledOnce();
+    expect(repo.persistirOActualizar).toHaveBeenCalledOnce();
+    expect(repo.registrarCorte).toHaveBeenCalledTimes(3);
+    expect(resultado.consultasFuentes?.filter(c => c.estado === "INCIDENCIA")).toEqual([]);
+  });
   it("un fallo de Google Scholar conserva su corte y deja avanzar ORCID",async()=>{
     conectores.GOOGLE_SCHOLAR.mockResolvedValue({publicaciones:[],error:"NO_API_KEY"});
     const repo=repositorio();const resultado=await ejecutarEscaneo({fuentes:["ORCID","GOOGLE_SCHOLAR"]},repo);
