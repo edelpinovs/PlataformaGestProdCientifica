@@ -64,7 +64,7 @@ export type OpcionesEscaneo = {
   fuentes?: FuenteEscaneo[];
   informarFuente?: (fuente: FuenteEscaneo | null) => Promise<void>;
   jobId?: number;
-  /** Enriquece autores solo si Crossref está seleccionado. Se puede desactivar para pruebas o consultas concretas. */
+  /** Completa autores por DOI con Crossref (#188). Si no se indica, lo hace solo cuando Crossref es fuente (trabajos anteriores). */
   enriquecerAutores?: boolean;
   /** Límite de profesores a procesar en una sola ejecución para cumplir con el timeout de Vercel (Hallazgo 2a) */
   limiteProfesores?: number;
@@ -223,7 +223,7 @@ export async function ejecutarEscaneo(
 
   // 3. Enriquecer autores con Crossref para publicaciones con DOI y autores incompletos (RF-020)
   //    Esto replica la lógica de autores_por_doi() en scripts/reporte_unificado.py
-  if (fuentesPermitidas.includes("CROSSREF") && opciones?.enriquecerAutores !== false) {
+  if (opciones?.enriquecerAutores ?? fuentesPermitidas.includes("CROSSREF")) {
     try {
       await informarFuenteSinBloquear(opciones, "CROSSREF");
       await enriquecerLoteConCrossref(todasCandidatas);

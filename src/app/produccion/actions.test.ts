@@ -34,7 +34,7 @@ describe("escaneo manual de Administración y Coordinación (#170, #265)", () =>
     const datos = new FormData(); datos.set("jobId", "7");
     await iniciarEscaneoAction({}, datos);
     expect(dobles.permiso).toHaveBeenCalledWith(["ADMINISTRADOR", "COORDINADOR"]);
-    expect(dobles.crear).toHaveBeenCalledExactlyOnceWith("escaneo-manual", undefined, undefined, ["ORCID"]);
+    expect(dobles.crear).toHaveBeenCalledExactlyOnceWith("escaneo-manual", undefined, undefined, ["ORCID"], false);
     expect(dobles.after).toHaveBeenCalledTimes(2);
   });
   it("un doble inicio ofrece continuar el trabajo pendiente en lugar de lanzar otro", async () => {

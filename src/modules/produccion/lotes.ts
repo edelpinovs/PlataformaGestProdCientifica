@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { ResumenEscaneo } from "./escaneo";
-import { consultaFuenteEsquema, FUENTES_ESCANEO, seleccionFuentesEsquema } from "./fuentes";
+import { consultaFuenteEsquema, FUENTES_ESCANEO, opcionEnriquecerEsquema, seleccionFuentesEsquema } from "./fuentes";
 import { fuentePublicacionEnum } from "./tipos";
 
 export function resumenVacio(): ResumenEscaneo & { autoriasRechazadasOmitidas: number } {
@@ -14,6 +14,7 @@ export const datosLoteEsquema = z.object({
   anio: z.number().int().min(1990).max(2100).optional(),
   finalizadoEn: z.iso.datetime({ error: "La fecha de finalización no es válida." }).optional(),
   fuentes: seleccionFuentesEsquema.optional(),
+  enriquecerAutores: z.boolean({ error: "La opción para completar autores no es válida." }).optional(),
   fuenteEnCurso: z.enum(FUENTES_ESCANEO, { error: "La fuente en curso no es válida." }).nullish(),
   resumen: z.object({
     profesoresProcesados: entero, publicacionesEncontradas: entero, publicacionesGuardadas: entero,
@@ -39,6 +40,7 @@ export const solicitudEscaneoEsquema = z.object({
     "Indica un año entre 1990 y el próximo año, o deja el campo vacío.",
   ),
   fuentes: seleccionFuentesEsquema,
+  enriquecerAutores: opcionEnriquecerEsquema,
 });
 
 export function avanzarLote(datos: DatosLote, resultado: ResumenEscaneo): DatosLote {
