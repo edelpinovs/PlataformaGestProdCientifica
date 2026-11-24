@@ -11,7 +11,7 @@ Revisión del [PR #303](https://github.com/edelpinovs/PlataformaGestProdCientifi
 | Fecha de la revisión | 2026-11-24 |
 | Revisó | @edelpinovs (I1), con Claude Code |
 | Entorno | Local (Windows 10, Node 24): el PR mezclado con `main` en `3ee62fe` (trae #302), en una carpeta aparte (`git worktree`). Sin base de datos y sin `next dev` |
-| Resultado | **Aprobable con comentarios.** No hay código roto y el orden natural está bien; la regla nueva marcaba como vencido cada periodo anterior de quien ya renovó (hallazgo 1). **El hallazgo 1 quedó corregido en `ff4f389`** (ver el apartado 8) |
+| Resultado | **Aprobable con comentarios.** No hay código roto y el orden natural está bien; la regla nueva marcaba como vencido cada periodo anterior de quien ya renovó (hallazgo 1). **Los hallazgos 1 y 2 quedaron corregidos en `ff4f389` y `d97e5ab`** (apartados 8 y 9) |
 
 **Límite de esta revisión:** el autor y quien la hace son la misma persona (I1), así que no cumple D-006: el PR sigue necesitando la aprobación de otra persona del equipo.
 
@@ -89,7 +89,18 @@ Se corrigió en la rama del PR, sin tocar el módulo de Reportes:
 | `npm test` con `main` mezclado | Correcto: 118 archivos, 1354 pruebas |
 | `npm run lint`, `npm run typecheck` y `npm run build` | Correctos |
 
-Sin cambios en los demás puntos: el hallazgo 2 (profesores no activos) sigue abierto como menor, igual que la revisión de la pantalla y la aprobación de otra persona (D-006).
+El hallazgo 2 se corrigió después (apartado 9).
+
+## 9. Actualización: hallazgo 2 corregido (`d97e5ab`, 2026-11-24)
+
+| Verificación | Resultado |
+|---|---|
+| Qué cambió | La carga de SNII y PRODEP filtra `profesor.estatusLaboral = ACTIVO`, con el mismo criterio que las demás reglas de profesores de Calidad. Las vigencias de quien tiene licencia, está de baja o fue trasladado ya no se reportan. Los cuerpos académicos no cambian |
+| Prueba nueva | `cargar.test.ts`: las dos consultas llevan el filtro por profesores activos |
+| `npm test` con `main` mezclado | Correcto: 118 archivos, 1355 pruebas |
+| `npm run lint`, `npm run typecheck` y `npm run build` | Correctos |
+
+Siguen abiertos la revisión de la pantalla en claro, oscuro y celular y la aprobación de otra persona (D-006). Queda por confirmar con el equipo si alguien con **licencia** debe verse aquí (D-246 sigue pendiente sobre los estatus).
 
 <details>
 <summary>Código de las pruebas de revisión (apartado 4)</summary>
