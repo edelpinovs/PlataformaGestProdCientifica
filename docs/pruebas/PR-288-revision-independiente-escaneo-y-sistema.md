@@ -11,7 +11,7 @@ Revisión independiente del [PR #288](https://github.com/edelpinovs/PlataformaGe
 | Fecha de la revisión | 2026-11-24 |
 | Revisó | Edel Pino (con Claude Code) |
 | Entorno | Local (Windows 10, Node 24), la rama del PR con `npm ci` y el cliente de Prisma generado. Sin base de datos y sin `next dev` |
-| Resultado | **Aprobable con comentarios.** No hay código roto, pero dos puntos de fondo no cumplen del todo lo que promete el issue |
+| Resultado | **Aprobable con comentarios.** No hay código roto, pero dos puntos de fondo no cumplen del todo lo que promete el issue. **El hallazgo 2 quedó corregido en `974e8e8`** (ver el apartado 8); el 1 sigue abierto |
 
 **Límite de esta revisión:** el autor y quien la hace son la misma persona (I1), así que no cumple D-006: el PR sigue necesitando la aprobación de otra persona del equipo antes de integrarse.
 
@@ -68,7 +68,7 @@ Archivo temporal `src/app/administracion/revision-288.test.tsx`, que se borró d
 | # | Tipo | Hallazgo | Qué hacer |
 |---|---|---|---|
 | 1 | Importante | «Sin avance» solo mira `EN_PROCESO`, y es poco probable que se vea. El escaneo avanza **un profesor por petición** (`iniciarEscaneoAction` con `jobId`) y entre profesor y profesor el trabajo vuelve a `PENDIENTE`. Si la persona cierra la pestaña, queda `PENDIENTE` para siempre: no se marca (R1), «En curso» lo cuenta como cualquier otro y `crearTrabajoEscaneo` rechaza iniciar uno nuevo mientras exista. Además, la prueba del PR que dice que un `PENDIENTE` «nunca» está sin avance fija ese comportamiento | Marcar «sin avance» también a los `PENDIENTE` con `actualizadoEn` anterior al límite, y cambiar esa prueba. Acordarlo con I6, porque depende de cómo se reanuda un escaneo (parte 2 del #279) |
-| 2 | Importante | El límite de 3 s no cumple el criterio del issue («responde «No responde» tras un tiempo límite») cuando la base de verdad no contesta. `estadoConfiguracionScopus()` consulta la misma base y se espera junto con el ping en el mismo `Promise.all`: si la base se cuelga, esa lectura también y la página no responde (R9). El límite solo funciona si falla el ping pero la tabla de claves sí contesta | Aplicar el mismo `comprobarServicio` (o un límite equivalente) a la lectura de Scopus, y probar la página con las dos consultas colgadas |
+| 2 | Importante | El límite de 3 s no cumple el criterio del issue («responde «No responde» tras un tiempo límite») cuando la base de verdad no contesta. `estadoConfiguracionScopus()` consulta la misma base y se espera junto con el ping en el mismo `Promise.all`: si la base se cuelga, esa lectura también y la página no responde (R9). El límite solo funciona si falla el ping pero la tabla de claves sí contesta | Aplicar el mismo límite a la lectura de Scopus, y probar la página con las dos consultas colgadas. **Corregido en `974e8e8`** (apartado 8) |
 | 3 | Menor | El `.catch(() => null)` de la lectura de Scopus no deja rastro en el servidor, igual que el hallazgo 1 del #285 | `console.error` con texto fijo, sin el mensaje de la base |
 | 4 | Menor | `TIEMPO_SIN_AVANCE_MS` repite `TIEMPO_RESERVA_MS`. El PR lo dice; ya hay acuerdo (comentario del #279) de exportar la constante de Producción y usarla | Hacerlo en la parte 2, con el visto bueno de I6 |
 | 5 | Observación | La etiqueta «Sin avance» solo aparece en los cinco escaneos recientes; el número de la tarjeta cuenta todos | Sin acción |
@@ -82,7 +82,21 @@ Archivo temporal `src/app/administracion/revision-288.test.tsx`, que se borró d
 
 ## 7. Dictamen
 
-**Aprobable con comentarios.** El PR puede integrarse como primera parte porque no rompe nada y mejora lo que mide, pero **conviene corregir el hallazgo 2 antes** (es un cambio pequeño, dentro del mismo módulo) y dejar el 1 anotado en el #279 para la parte 2. Falta la aprobación de otra persona del equipo (D-006).
+**Aprobable con comentarios.** El PR puede integrarse como primera parte porque no rompe nada y mejora lo que mide. El hallazgo 2 ya se corrigió dentro del mismo PR (apartado 8); el 1 queda anotado en el #279 para la parte 2. Falta la aprobación de otra persona del equipo (D-006).
+
+## 8. Actualización: hallazgo 2 corregido (`974e8e8`, 2026-11-24)
+
+Después de esta revisión, el autor corrigió el hallazgo 2 en el mismo PR. Se volvió a comprobar así:
+
+| Verificación | Resultado |
+|---|---|
+| Qué cambió | `esperarConLimite` aplica los 3 s a cualquier lectura; `comprobarServicio` la usa para el ping y la página del sistema la usa también para la lectura de la clave de Scopus. Si no se pudo leer la clave, muestra «No se pudo comprobar» (antes la daba por «Sin configurar») y no el mensaje del error |
+| Pruebas nuevas del autor (`sistema/page.test.tsx` y `sistema.test.ts`) | Con el código anterior de la página **fallan dos** (la página se cuelga y se da la clave por «sin configurar»); con la corrección pasan |
+| Mis pruebas de revisión sobre `974e8e8` | **8 de 9 pasan y R9 falla**, que es lo esperado: R9 afirmaba que la página seguía colgada tras un minuto, y ahora termina al pasar los 3 s. R1 sigue pasando, porque el hallazgo 1 no se tocó |
+| `npm test` | Correcto: 113 archivos, 1287 pruebas (las mismas que declara el autor) |
+| `npm run lint` y `npm run typecheck` | Correctos (corridos sobre el mismo código, justo antes del commit) |
+
+Sin cambios en los demás puntos: el hallazgo 1 («sin avance» no marca los `PENDIENTE` abandonados) sigue abierto para la parte 2 del #279, con I6; los menores y la aprobación de otra persona (D-006) también.
 
 <details>
 <summary>Código de las pruebas de revisión (apartado 4)</summary>
