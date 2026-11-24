@@ -5,6 +5,7 @@ import { requireRol } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
 import { debeRegistrar, moduloRegistrable } from "@/modules/cuenta/accesos";
+import { validarTema } from "@/modules/cuenta/tema";
 import {
   mensajeGuardado,
   mensajeVerificacion,
@@ -71,4 +72,21 @@ export async function registrarAcceso(slug: unknown): Promise<void> {
   } catch {
     // Contar visitas es secundario: nunca debe romper la pantalla de la persona.
   }
+}
+
+// Guarda en el perfil el tema que eligió la persona para que la siga a otro navegador (#283).
+// El cambio visual y la cookie ya los aplicó el navegador: si esto falla, no se interrumpe a nadie.
+export async function guardarTema(valor: unknown): Promise<{ error?: string }> {
+  // RNF-005: las tres personas con sesión guardan su propio tema; nunca el de otra persona.
+  const perfil = await requireRol([...ROLES]);
+
+  const tema = validarTema(valor);
+  if (!tema.ok) return { error: tema.error };
+
+  try {
+    await prisma.perfil.update({ where: { id: perfil.id }, data: { tema: tema.tema } });
+  } catch {
+    return { error: "No pudimos guardar el tema en tu cuenta. Se conserva en este navegador." };
+  }
+  return {};
 }

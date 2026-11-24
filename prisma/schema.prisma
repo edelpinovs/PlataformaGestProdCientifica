@@ -28,6 +28,9 @@ model Perfil {
   profesor   Profesor?      @relation(fields: [profesorId], references: [id])
   // Panel de administración (#241): un perfil desactivado conserva sus registros pero no entra.
   activo     Boolean        @default(true)
+  // Tema de la interfaz que eligió la persona («claro» u «oscuro»; #283). Vacío = nunca eligió.
+  // Lo valida src/modules/cuenta/tema.ts antes de guardar.
+  tema       String?
   creadoEn   DateTime       @default(now())
   accesos    AccesoModulo[]
 }

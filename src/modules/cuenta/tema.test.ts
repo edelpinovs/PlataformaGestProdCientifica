@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cookieTema, ETIQUETA_TEMA, esTema, TEMAS, temaDe } from "./tema";
+import { cookieTema, DURACION_COOKIE_TEMA, ETIQUETA_TEMA, esTema, TEMAS, temaDe, temaGuardado, validarTema } from "./tema";
 
 describe("tema", () => {
   it("solo hay claro y oscuro (no se sigue el tema del sistema operativo)", () => {
@@ -31,5 +31,23 @@ describe("tema", () => {
 
   it("tiene una etiqueta en español para cada tema", () => {
     expect(ETIQUETA_TEMA).toEqual({ claro: "Claro", oscuro: "Oscuro" });
+  });
+
+  it("validarTema acepta claro y oscuro y rechaza lo demás con un mensaje en español", () => {
+    expect(validarTema("oscuro")).toEqual({ ok: true, tema: "oscuro" });
+    expect(validarTema("claro")).toEqual({ ok: true, tema: "claro" });
+    for (const valor of ["sistema", "OSCURO", "", null, undefined, 1, {}]) {
+      expect(validarTema(valor)).toEqual({ ok: false, error: "Elige el tema claro o el oscuro." });
+    }
+  });
+
+  it("temaGuardado devuelve el tema del perfil o null si no hay uno válido", () => {
+    expect(temaGuardado("oscuro")).toBe("oscuro");
+    expect(temaGuardado(null)).toBeNull();
+    expect(temaGuardado("sistema")).toBeNull();
+  });
+
+  it("la cookie dura un año", () => {
+    expect(DURACION_COOKIE_TEMA).toBe(365 * 24 * 60 * 60);
   });
 });
