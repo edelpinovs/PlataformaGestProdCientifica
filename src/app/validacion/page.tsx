@@ -14,7 +14,7 @@ import { calcularConteoOficial } from "@/modules/validacion/bandeja";
 import { ETIQUETAS_TIPO, TIPOS_PUBLICACION } from "@/modules/validacion/manual";
 import { editarPublicacionManual, eliminarPublicacionManual } from "./actions";
 import { FilaBandeja } from "./fila-bandeja";
-import { FormularioManual } from "./formulario-manual";
+import { RegistrarPublicacionModal } from "./registrar-publicacion-modal";
 
 const AVISOS_URL: Record<string, { tipo: "exito" | "aviso" | "error"; mensaje: string }> = {
   confirmada: {
@@ -140,11 +140,18 @@ export default async function ValidacionPage({
         </div>
       </section>
 
-      <nav aria-label="Listados de validación" className="flex flex-wrap gap-4">
-        {Object.entries({ bandeja: "Bandeja", manuales: "Publicaciones manuales", profesores: "Conteo por profesor", departamentos: "Conteo por departamento" }).map(([valor, texto]) => (
-          <Link key={valor} href={"/validacion?vista=" + valor} aria-current={vista === valor ? "page" : undefined} className="rounded-xl px-3 py-2 text-sm text-marca hover:bg-hover">{texto}</Link>
-        ))}
-      </nav>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <nav aria-label="Listados de validación" className="flex flex-wrap gap-4">
+          {Object.entries({ bandeja: "Bandeja", manuales: "Publicaciones manuales", profesores: "Conteo por profesor", departamentos: "Conteo por departamento" }).map(([valor, texto]) => (
+            <Link key={valor} href={"/validacion?vista=" + valor} aria-current={vista === valor ? "page" : undefined} className="rounded-xl px-3 py-2 text-sm text-marca hover:bg-hover">{texto}</Link>
+          ))}
+        </nav>
+        <RegistrarPublicacionModal
+          profesores={profesores}
+          profesorPreseleccionadoId={perfil.profesorId ?? undefined}
+          esDocente={perfil.rol === "DOCENTE"}
+        />
+      </div>
       <BarraListado base="/validacion" consulta={consulta} columnas={COLUMNAS[vista]} errores={errores}
         filtros={[
           { clave: "vista", etiqueta: "Listado", opciones: Object.entries({ bandeja: "Bandeja", manuales: "Publicaciones manuales", profesores: "Conteo por profesor", departamentos: "Conteo por departamento" }).map(([valor, texto]) => ({ valor, texto })) },
@@ -218,18 +225,6 @@ export default async function ValidacionPage({
           </table>
         )}
       </Panel>}
-
-      {/* RF-023 · CU-012: Captura manual de publicaciones */}
-      <Panel
-        titulo="Registrar publicación manual"
-        descripcion="RF-023 · CU-012: Da de alta obras no detectadas por los conectores automáticos."
-      >
-        <FormularioManual
-          profesores={profesores}
-          profesorPreseleccionadoId={perfil.profesorId ?? undefined}
-          esDocente={perfil.rol === "DOCENTE"}
-        />
-      </Panel>
 
       {/* Listado de publicaciones manuales con Editar y Eliminar (#59) */}
       {vista === "manuales" && <Panel
