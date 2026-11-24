@@ -19,7 +19,7 @@ import { prisma } from "@/lib/prisma";
 import { ETIQUETAS_TIPO, TIPOS_PUBLICACION } from "@/modules/validacion/manual";
 import { editarPublicacionManual, eliminarPublicacionManual } from "./actions";
 import { FilaBandeja } from "./fila-bandeja";
-import { FormularioManual } from "./formulario-manual";
+import { RegistrarPublicacionModal } from "./registrar-publicacion-modal";
 
 const VISTAS_VALIDACION = [
   { clave: "bandeja" as const, texto: "Bandeja" },
@@ -150,31 +150,38 @@ export default async function ValidacionPage({
         </div>
       </section>
 
-      {/* Un solo control para cambiar de vista; conserva búsqueda y filtros compatibles */}
-      <nav aria-label="Listados de validación" className="flex flex-wrap gap-2">
-        {VISTAS_VALIDACION.map(({ clave, texto }) => {
-          const activa = vista === clave;
-          const href = enlaceCambioVista(
-            clave,
-            consulta,
-            departamentos.map((d) => d.nomenclatura),
-          );
-          return (
-            <Link
-              key={clave}
-              href={href}
-              aria-current={activa ? "page" : undefined}
-              className={
-                activa
-                  ? "rounded-xl bg-marca-suave px-4 py-2 text-sm font-semibold text-marca"
-                  : claseBotonSecundario
-              }
-            >
-              {texto}
-            </Link>
-          );
-        })}
-      </nav>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        {/* Un solo control para cambiar de vista; conserva búsqueda y filtros compatibles */}
+        <nav aria-label="Listados de validación" className="flex flex-wrap gap-2">
+          {VISTAS_VALIDACION.map(({ clave, texto }) => {
+            const activa = vista === clave;
+            const href = enlaceCambioVista(
+              clave,
+              consulta,
+              departamentos.map((d) => d.nomenclatura),
+            );
+            return (
+              <Link
+                key={clave}
+                href={href}
+                aria-current={activa ? "page" : undefined}
+                className={
+                  activa
+                    ? "rounded-xl bg-marca-suave px-4 py-2 text-sm font-semibold text-marca"
+                    : claseBotonSecundario
+                }
+              >
+                {texto}
+              </Link>
+            );
+          })}
+        </nav>
+        <RegistrarPublicacionModal
+          profesores={profesores}
+          profesorPreseleccionadoId={perfil.profesorId ?? undefined}
+          esDocente={perfil.rol === "DOCENTE"}
+        />
+      </div>
 
       <BarraListado
         base="/validacion"
@@ -308,18 +315,6 @@ export default async function ValidacionPage({
           </table>
         )}
       </Panel>}
-
-      {/* RF-023 · CU-012: Captura manual de publicaciones */}
-      <Panel
-        titulo="Registrar publicación manual"
-        descripcion="RF-023 · CU-012: Da de alta obras no detectadas por los conectores automáticos."
-      >
-        <FormularioManual
-          profesores={profesores}
-          profesorPreseleccionadoId={perfil.profesorId ?? undefined}
-          esDocente={perfil.rol === "DOCENTE"}
-        />
-      </Panel>
 
       {/* Listado de publicaciones manuales con Editar y Eliminar (#59) */}
       {vista === "manuales" && <Panel
