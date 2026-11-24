@@ -5,6 +5,7 @@ import { requireModulo } from "@/lib/auth/session";
 import { Descargas } from "../descargas";
 import { analizarListado, hayFiltrosActivos, paginar } from "@/lib/listados/consulta";
 import { prisma } from "@/lib/prisma";
+import { PERIODOS } from "@/modules/administracion/fechas";
 import { ACCIONES_AUDITORIA, CLAVES_ACCION, MODULOS_AUDITORIA, type AccionAuditoria } from "@/modules/administracion/auditoria";
 import { COLUMNAS_AUDITORIA, filtroAuditoria, LISTADO_AUDITORIA, ordenAuditoria } from "@/modules/administracion/auditoria-listado";
 
@@ -42,13 +43,14 @@ export default async function AuditoriaPage({ searchParams }: PageProps<"/admini
       <Panel titulo="Bitácora" descripcion="Solo lectura. Los registros no se pueden editar ni eliminar.">
         <div className="flex flex-col gap-4">
           <BarraListado {...contexto} columnas={COLUMNAS_AUDITORIA} errores={errores}
-            etiquetaBusqueda="Buscar en la bitácora" placeholder="Persona, módulo, acción o texto"
+            etiquetaBusqueda="Buscar en la bitácora" placeholder="Persona, módulo, acción, texto o fecha (2026-11-24)"
             filtros={[
               // Con un solo módulo registrado el filtro no sirve; aparece cuando otro módulo escriba en la bitácora.
               ...(MODULOS_AUDITORIA.length > 1
                 ? [{ clave: "modulo", etiqueta: "Módulo", opciones: MODULOS_AUDITORIA.map((m) => ({ valor: m.valor, texto: m.texto })) }]
                 : []),
               { clave: "accion", etiqueta: "Acción", opciones: CLAVES_ACCION.map((a) => ({ valor: a, texto: ACCIONES_AUDITORIA[a].texto })) },
+              { clave: "periodo", etiqueta: "Periodo", opciones: PERIODOS.map((p) => ({ valor: p.valor, texto: p.texto })) },
             ]} />
           {registros.length === 0 ? (
             <EstadoVacio>

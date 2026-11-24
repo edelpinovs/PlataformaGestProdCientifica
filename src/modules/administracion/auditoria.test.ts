@@ -109,6 +109,44 @@ describe("listado de auditoría", () => {
     });
   });
 
+  it("la búsqueda cubre la columna «Fecha»: año, mes y día en hora de México (#277)", () => {
+    expect(filtroAuditoria(consulta({ q: "2026-11-24" })).OR).toContainEqual({
+      creadoEn: { gte: new Date("2026-11-24T06:00:00Z"), lt: new Date("2026-11-25T06:00:00Z") },
+    });
+    expect(filtroAuditoria(consulta({ q: "2026-11" })).OR).toContainEqual({
+      creadoEn: { gte: new Date("2026-11-01T06:00:00Z"), lt: new Date("2026-12-01T06:00:00Z") },
+    });
+    expect(filtroAuditoria(consulta({ q: "2026" })).OR).toContainEqual({
+      creadoEn: { gte: new Date("2026-01-01T06:00:00Z"), lt: new Date("2027-01-01T06:00:00Z") },
+    });
+  });
+
+  it("un texto que parece fecha pero no existe no agrega condición de fecha", () => {
+    expect(JSON.stringify(filtroAuditoria(consulta({ q: "2026-13-45" })).OR)).not.toContain("creadoEn");
+  });
+
+  it("el filtro «Periodo» acota la fecha: hoy, 7 días, 30 días y el mes en curso (#277)", () => {
+    const ahora = new Date("2026-11-24T20:00:00Z");
+    const rango = (periodo: string) => filtroAuditoria(consulta({ periodo }), ahora).creadoEn;
+    expect(rango("HOY")).toEqual({ gte: new Date("2026-11-24T06:00:00Z"), lt: new Date("2026-11-25T06:00:00Z") });
+    expect(rango("7_DIAS")).toEqual({ gte: new Date("2026-11-18T06:00:00Z"), lt: new Date("2026-11-25T06:00:00Z") });
+    expect(rango("30_DIAS")).toEqual({ gte: new Date("2026-10-26T06:00:00Z"), lt: new Date("2026-11-25T06:00:00Z") });
+    expect(rango("MES")).toEqual({ gte: new Date("2026-11-01T06:00:00Z"), lt: new Date("2026-11-25T06:00:00Z") });
+  });
+
+  it("a las 23:30 del día 24 en México ya es el 25 en UTC, pero «Hoy» sigue siendo el 24", () => {
+    const ahora = new Date("2026-11-25T05:30:00Z");
+    expect(filtroAuditoria(consulta({ periodo: "HOY" }), ahora).creadoEn).toEqual({
+      gte: new Date("2026-11-24T06:00:00Z"), lt: new Date("2026-11-25T06:00:00Z"),
+    });
+  });
+
+  it("un periodo inválido se ignora y se avisa", () => {
+    const a = analisis({ periodo: "siempre" });
+    expect(filtroAuditoria(a.consulta)).toEqual({});
+    expect(Object.keys(a.errores)).toContain("periodo");
+  });
+
   it("un filtro inválido se ignora y se avisa", () => {
     const a = analisis({ accion: "borrar.todo" });
     expect(filtroAuditoria(a.consulta)).toEqual({});

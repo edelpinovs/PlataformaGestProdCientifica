@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatoFechaAlta, inicioDelDiaMexico, rangoFechaBusqueda } from "./fechas";
+import { fechaEnMexico, formatoFechaAlta, inicioDelDiaMexico, rangoFechaBusqueda, rangoPeriodo } from "./fechas";
 
 describe("fechas del panel en hora de Ciudad de México (#276)", () => {
   it("el día empieza a las 06:00 UTC (Ciudad de México no tiene horario de verano desde 2022)", () => {
@@ -49,5 +49,30 @@ describe("fechas del panel en hora de Ciudad de México (#276)", () => {
   it("acepta el 29 de febrero solo en año bisiesto", () => {
     expect(rangoFechaBusqueda("2028-02-29")).not.toBeNull();
     expect(rangoFechaBusqueda("2027-02-29")).toBeNull();
+  });
+});
+
+describe("periodos relativos en hora de Ciudad de México (#277)", () => {
+  const iso = (r: { desde: Date; hasta: Date }) => [r.desde.toISOString(), r.hasta.toISOString()];
+
+  it("la fecha de México puede ir un día detrás de UTC", () => {
+    expect(fechaEnMexico(new Date("2026-11-25T05:30:00Z"))).toEqual({ anio: 2026, mes: 11, dia: 24 });
+    expect(fechaEnMexico(new Date("2026-11-25T06:00:00Z"))).toEqual({ anio: 2026, mes: 11, dia: 25 });
+  });
+
+  it("«Hoy» es el día completo y termina en el inicio de mañana", () => {
+    expect(iso(rangoPeriodo("HOY", new Date("2026-11-24T20:00:00Z")))).toEqual(["2026-11-24T06:00:00.000Z", "2026-11-25T06:00:00.000Z"]);
+  });
+
+  it("«Últimos 7 días» incluye hoy y cruza el cambio de mes y de año", () => {
+    expect(iso(rangoPeriodo("7_DIAS", new Date("2027-01-03T18:00:00Z")))).toEqual(["2026-12-28T06:00:00.000Z", "2027-01-04T06:00:00.000Z"]);
+  });
+
+  it("«Últimos 30 días» incluye hoy y los 29 anteriores", () => {
+    expect(iso(rangoPeriodo("30_DIAS", new Date("2026-03-01T18:00:00Z")))).toEqual(["2026-01-31T06:00:00.000Z", "2026-03-02T06:00:00.000Z"]);
+  });
+
+  it("«Este mes» empieza el día 1 y llega hasta el inicio de mañana, también el 31 de diciembre", () => {
+    expect(iso(rangoPeriodo("MES", new Date("2026-12-31T20:00:00Z")))).toEqual(["2026-12-01T06:00:00.000Z", "2027-01-01T06:00:00.000Z"]);
   });
 });
