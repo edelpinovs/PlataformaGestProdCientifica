@@ -9,7 +9,7 @@ Cinco tarjetas con `count` (profesores activos, cuerpos académicos, vigencias p
 ## 2. Chequeos
 
 - `npm run typecheck` y `npm run lint`: pasan en copia local.
-- `npm test`: **no se pudo ejecutar en la copia local de quien revisó**; falla en los 117 archivos, también en `main`, por un problema del entorno local con vitest. Las 1,326 pruebas constan solo por el CI (`verificar`, en verde) y lo declarado en el PR.
+- `npm test` (verificado en local el 2026-11-24, sobre `6083756`, último commit de la rama): **117 archivos y 1,326 pruebas pasan**, y `npm run typecheck` sin errores. La primera revisión no pudo ejecutarlo por un problema de entorno (la ruta de trabajo con la letra de unidad en minúscula rompía vitest; se corrige ejecutando desde PowerShell con `C:\PROJECTS\…`). Además pasa el CI (`verificar`, en verde).
 - Vercel en verde; sin conflictos con `main`.
 - La pantalla no se vio en el navegador y la autoría tampoco (lo declara pendiente: inicio del panel, columna «Alta», su orden, la búsqueda por fecha y la exportación, en claro, oscuro y celular). Las cifras se probaron con Prisma simulado, no con la base real.
 - La rama está abierta en otra copia de trabajo, así que se revisó en un checkout separado del PR.

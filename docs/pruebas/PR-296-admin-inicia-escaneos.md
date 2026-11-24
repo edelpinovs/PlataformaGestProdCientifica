@@ -9,7 +9,7 @@ Regla pura `permisos.ts` (`ROLES_ESCANEO`, `puedeEscanear`); `iniciarEscaneoActi
 ## 2. Chequeos
 
 - `npm run typecheck` y `npm run lint`: pasan en copia local.
-- `npm test`: **no se pudo ejecutar en la copia local de quien revisó**; falla en los 117 archivos, también en `main`, por un problema del entorno local con vitest. Las 1,292 pruebas constan solo por el CI (`verificar`, en verde) y lo declarado en el PR.
+- `npm test` (verificado en local el 2026-11-24, sobre `c7a7c7d`, último commit de la rama): **114 archivos y 1,300 pruebas pasan**, y `npm run typecheck` sin errores. La primera revisión no pudo ejecutarlo por un problema de entorno (la ruta de trabajo con la letra de unidad en minúscula rompía vitest; se corrige ejecutando desde PowerShell con `C:\PROJECTS\…`). Además pasa el CI (`verificar`, en verde). `c7a7c7d` es el commit con los cambios aplicados por quien revisó.
 - Vercel en verde. **Conflicto con `main`** en `docs/DECISIONES.md`.
 - La pantalla no se vio en el navegador (la autora tampoco: lo declara pendiente).
 
@@ -41,6 +41,6 @@ A petición de I1, quien revisó aplicó los hallazgos 1 y 2 en la rama del PR (
 | 4 | Acuerdo de D-257 con la Coordinación (#243 y #242 por acordar) | Abierto |
 | 5 | Revisión visual en claro, oscuro y celular; `build` local | Abierto |
 
-Chequeos tras el cambio: `typecheck` y `lint` pasan en copia local; el CI (`verificar`) y Vercel pasan con `c7a7c7d`. `npm test` sigue sin poder ejecutarse en la copia local de quien revisó (entorno), así que las pruebas constan solo por el CI.
+Chequeos tras el cambio: `typecheck` y `lint` pasan en copia local; el CI (`verificar`) y Vercel pasan con `c7a7c7d`. `npm test` se ejecutó después en local sobre `c7a7c7d` y pasa (114 archivos, 1,300 pruebas; ver apartado 2).
 
 **Dictamen actualizado: aprobable con comentarios**, pendiente de la aprobación de otra persona y de los puntos 3 a 5.
