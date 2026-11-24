@@ -36,6 +36,21 @@ export default async function AdministracionPage() {
         ))}
       </section>
 
+      <Panel titulo="Reportes" descripcion="Se descargan en Excel o PDF desde cada reporte. Los listados de este panel también se descargan desde su pantalla.">
+        <ul className="grid gap-3 text-sm sm:grid-cols-2">
+          {[
+            { href: "/reportes", texto: "Vigencias y semáforo" },
+            { href: "/reportes/matriz", texto: "Matriz de acreditación" },
+            { href: "/reportes/convocatoria", texto: "Convocatoria anual" },
+            { href: "/reportes/completo", texto: "Reporte completo" },
+          ].map((e) => (
+            <li key={e.href}>
+              <Link href={e.href} className="font-medium text-marca hover:underline">{e.texto}</Link>
+            </li>
+          ))}
+        </ul>
+      </Panel>
+
       <Panel titulo="Gestión">
         <ul className="flex flex-col gap-3 text-sm">
           {[

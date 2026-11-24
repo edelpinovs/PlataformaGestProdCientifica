@@ -2,6 +2,7 @@ import { BarraListado, EncabezadoOrdenable, PaginacionListado } from "@/componen
 import { Marco } from "@/components/marco";
 import { claseTabla, EstadoVacio, Panel } from "@/components/ui";
 import { requireModulo } from "@/lib/auth/session";
+import { Descargas } from "../descargas";
 import { analizarListado, hayFiltrosActivos, paginar } from "@/lib/listados/consulta";
 import { prisma } from "@/lib/prisma";
 import { ACCIONES_AUDITORIA, CLAVES_ACCION, MODULOS_AUDITORIA, type AccionAuditoria } from "@/modules/administracion/auditoria";
@@ -35,6 +36,7 @@ export default async function AuditoriaPage({ searchParams }: PageProps<"/admini
         <span className="rounded-full bg-marca-suave px-3 py-1 text-xs font-medium text-marca">
           {new Intl.NumberFormat("es-MX").format(total)} {hayFiltrosActivos(consulta) ? "coinciden" : "registros"}
         </span>
+        <Descargas listado="auditoria" definicion={LISTADO_AUDITORIA} consulta={consulta} />
       </div>
 
       <Panel titulo="Bitácora" descripcion="Solo lectura. Los registros no se pueden editar ni eliminar.">

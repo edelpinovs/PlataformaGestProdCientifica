@@ -9,6 +9,7 @@ export const ACCIONES_AUDITORIA = {
   "usuario.editado": { modulo: "administracion", texto: "Cambió rol o profesor de un usuario" },
   "usuario.desactivado": { modulo: "administracion", texto: "Desactivó el acceso de un usuario" },
   "usuario.reactivado": { modulo: "administracion", texto: "Reactivó el acceso de un usuario" },
+  "listado.exportado": { modulo: "administracion", texto: "Exportó un listado" },
 } as const;
 
 export type AccionAuditoria = keyof typeof ACCIONES_AUDITORIA;
