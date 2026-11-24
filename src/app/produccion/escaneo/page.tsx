@@ -12,6 +12,7 @@ import { ResultadoEscaneo } from "../resultado-escaneo";
 import Link from "next/link";
 import { demoHabilitada } from "@/modules/produccion/demostracion";
 import { claseBotonSecundario } from "@/components/ui";
+import { AVISO_SIN_PERMISO_ESCANEO, puedeEscanear } from "@/modules/produccion/permisos";
 
 export const maxDuration = 300;
 
@@ -35,7 +36,7 @@ export default async function EscaneoPage() {
       <Link href="/produccion/demostracion" className={claseBotonSecundario}>Abrir demostración sin base de datos</Link>
     </Panel>}
     <Panel titulo="Escanear producción científica" descripcion="Elige un profesor activo o inicia el escaneo de todos. El avance se guarda por profesor.">
-      {perfil.rol === "COORDINADOR" ? <FormularioEscaneo profesores={profesores} trabajoPendiente={pendiente?.id} fuentesTrabajo={datosPendientes.data?.fuentes} profesorTrabajo={datosPendientes.data?.profesoresIds.length === 1 ? String(datosPendientes.data.profesoresIds[0]) : "todos"} anioTrabajo={datosPendientes.data?.anio} /> : <Aviso tipo="aviso">Solo Coordinación puede iniciar, reintentar o continuar búsquedas. Puedes consultar los resultados registrados.</Aviso>}
+      {puedeEscanear(perfil.rol) ? <FormularioEscaneo profesores={profesores} trabajoPendiente={pendiente?.id} fuentesTrabajo={datosPendientes.data?.fuentes} profesorTrabajo={datosPendientes.data?.profesoresIds.length === 1 ? String(datosPendientes.data.profesoresIds[0]) : "todos"} anioTrabajo={datosPendientes.data?.anio} /> : <Aviso tipo="aviso">{AVISO_SIN_PERMISO_ESCANEO}</Aviso>}
     </Panel>
     <Panel titulo="Último escaneo registrado">
       {ultimoJob && <ResultadoEscaneo resultado={presentarResultadoEscaneo(ultimoJob.estado, ultimoJob.datos)} />}
