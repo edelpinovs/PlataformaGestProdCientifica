@@ -4,7 +4,7 @@ import { enlaceListado, type ConsultaListado, type DefinicionListado } from "@/l
 import type { TablaExportable } from "@/modules/reportes/exportar";
 import { ACCIONES_AUDITORIA, MODULOS_AUDITORIA, type AccionAuditoria } from "./auditoria";
 import { REGLAS_CALIDAD, type Hallazgo, type ReglaCalidad } from "./calidad";
-import { formatoFechaAlta } from "./fechas";
+import { formatoFechaAlta, PERIODOS } from "./fechas";
 import { ESTADOS_USUARIO } from "./usuarios-listado";
 
 // Exportar a Excel o PDF los listados del panel de administración (issue 244). La descarga trae todas
@@ -159,6 +159,7 @@ export function descripcionFiltros(listado: ListadoExportable, consulta: Consult
   } else if (listado === "auditoria") {
     if (f.modulo) partes.push(`módulo ${MODULOS_AUDITORIA.find((m) => m.valor === f.modulo)?.texto ?? f.modulo}`);
     if (f.accion) partes.push(`acción «${ACCIONES_AUDITORIA[f.accion as AccionAuditoria]?.texto ?? f.accion}»`);
+    if (f.periodo) partes.push(`periodo «${PERIODOS.find((p) => p.valor === f.periodo)?.texto ?? f.periodo}»`);
   } else if (f.regla) {
     partes.push(`problema «${REGLAS_CALIDAD[f.regla as ReglaCalidad]?.texto ?? f.regla}»`);
   }

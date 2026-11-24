@@ -4,11 +4,16 @@ import {
   analizarCalidad,
   COLUMNAS_CALIDAD,
   filtrarHallazgos,
+  hallazgosVigenciasVencidas,
   LISTADO_CALIDAD,
   ordenarHallazgos,
+  ultimoPeriodoPorPersona,
   type CuerpoCalidad,
+  type PeriodoPersona,
   type ProfesorCalidad,
 } from "./calidad";
+import { calcularSemaforo } from "@/modules/reportes/semaforo";
+import { filaSnii, type FilaVigencia } from "@/modules/reportes/vigencias";
 
 const profesor = (id: number, extra: Partial<ProfesorCalidad> = {}): ProfesorCalidad => ({
   id,
@@ -146,5 +151,103 @@ describe("listado de calidad", () => {
   it("toda columna ordenable tiene texto para el selector de celular", () => {
     expect(COLUMNAS_CALIDAD.map((c) => c.clave)).toEqual([...LISTADO_CALIDAD.columnas]);
     for (const clave of LISTADO_CALIDAD.columnas) expect(() => ordenarHallazgos(hallazgos, consulta({ orden: clave }))).not.toThrow();
+  });
+});
+
+describe("vigencias vencidas (#278)", () => {
+  const hoy = new Date(Date.UTC(2026, 10, 24));
+  const fila = (id: string, fin: Date, extra: Partial<FilaVigencia> = {}): FilaVigencia => ({
+    id, tipo: "SNII", nombre: `Persona ${id}`, detalle: "Nivel I", departamento: "Ciencias", inicio: new Date(Date.UTC(2020, 0, 1)),
+    fin, semaforo: calcularSemaforo(fin, hoy), ...extra,
+  });
+
+  it("solo reporta lo que el semáforo de Reportes pinta de rojo", () => {
+    const filas = [
+      fila("snii-1", new Date(Date.UTC(2026, 10, 23))),
+      fila("snii-2", new Date(Date.UTC(2026, 10, 24))),
+      fila("snii-3", new Date(Date.UTC(2027, 10, 24))),
+      fila("snii-4", new Date(Date.UTC(2028, 0, 1))),
+    ];
+    expect(filas.map((f) => f.semaforo)).toEqual(["ROJO", "AMARILLO", "AMARILLO", "VERDE"]);
+    const h = hallazgosVigenciasVencidas(filas);
+    expect(h.map((x) => x.clave)).toEqual(["VIGENCIA_VENCIDA:snii-1"]);
+  });
+
+  it("explica la vigencia en español y enlaza al reporte", () => {
+    const [h] = hallazgosVigenciasVencidas([fila("prodep-7", new Date(Date.UTC(2025, 5, 30)), { tipo: "PRODEP", detalle: "Renovación", nombre: "Ana Pérez" })]);
+    expect(h).toMatchObject({ regla: "VIGENCIA_VENCIDA", severidad: "aviso", registro: "Ana Pérez" });
+    expect(h.detalle).toContain("PRODEP");
+    expect(h.detalle).toContain("Renovación");
+    expect(h.detalle).toMatch(/venció el .*2025/);
+    expect(h.enlace).toBe("/reportes?semaforo=ROJO&q=Ana%20P%C3%A9rez");
+  });
+
+  it("sin vigencias vencidas no hay hallazgos", () => {
+    expect(hallazgosVigenciasVencidas([])).toEqual([]);
+  });
+
+  it("el filtro por problema acepta la regla nueva", () => {
+    const { consulta } = analizarListado(LISTADO_CALIDAD, { regla: "VIGENCIA_VENCIDA" });
+    const h = hallazgosVigenciasVencidas([fila("snii-1", new Date(Date.UTC(2020, 0, 1)))]);
+    expect(filtrarHallazgos(h, consulta)).toHaveLength(1);
+  });
+});
+
+describe("orden natural de «Registro» (#278)", () => {
+  it("UDG-CA-2 va antes que UDG-CA-10, en ambos sentidos", () => {
+    const hallazgos = [10, 2, 1].map((id) => analizarCalidad({ profesores: [profesor(1)], cuerpos: [cuerpo(id, { liderId: null })] })[0]);
+    const asc = analizarListado(LISTADO_CALIDAD, { orden: "registro", dir: "asc" }).consulta;
+    const desc = analizarListado(LISTADO_CALIDAD, { orden: "registro", dir: "desc" }).consulta;
+    expect(ordenarHallazgos(hallazgos, asc).map((h) => h.registro.slice(0, 9))).toEqual(["UDG-CA-1 ", "UDG-CA-2 ", "UDG-CA-10"]);
+    expect(ordenarHallazgos(hallazgos, desc).map((h) => h.registro.slice(0, 9))).toEqual(["UDG-CA-10", "UDG-CA-2 ", "UDG-CA-1 "]);
+  });
+});
+
+describe("último periodo por persona (#278, hallazgo 1 de la revisión del #303)", () => {
+  const periodo = (id: number, profesorId: number, inicio: string, fin: string, resultado = "APROBADO"): PeriodoPersona =>
+    ({ id, profesorId, inicio: new Date(`${inicio}T00:00:00Z`), fin: new Date(`${fin}T00:00:00Z`), resultado });
+
+  it("de quien renovó solo queda el periodo vigente, aunque haya varios anteriores", () => {
+    const periodos = [
+      periodo(1, 7, "2010-01-01", "2013-12-31"),
+      periodo(2, 7, "2014-01-01", "2017-12-31"),
+      periodo(3, 7, "2023-01-01", "2027-12-31"),
+      periodo(4, 7, "2018-01-01", "2022-12-31"),
+    ];
+    expect(ultimoPeriodoPorPersona(periodos).map((p) => p.id)).toEqual([3]);
+  });
+
+  it("cada persona conserva su propio último periodo", () => {
+    const periodos = [periodo(1, 7, "2019-01-01", "2022-12-31"), periodo(2, 8, "2019-01-01", "2022-12-31"), periodo(3, 8, "2023-01-01", "2027-12-31")];
+    expect(ultimoPeriodoPorPersona(periodos).map((p) => p.id).sort()).toEqual([1, 3]);
+  });
+
+  it("un periodo posterior no aprobado no sustituye al anterior: la distinción sigue vencida", () => {
+    const periodos = [periodo(1, 7, "2019-01-01", "2022-12-31"), periodo(2, 7, "2023-01-01", "2027-12-31", "NO_APROBADO")];
+    expect(ultimoPeriodoPorPersona(periodos).map((p) => p.id)).toEqual([1]);
+  });
+
+  it("un periodo en reconsideración sí cuenta, igual que en el semáforo", () => {
+    const periodos = [periodo(1, 7, "2019-01-01", "2022-12-31"), periodo(2, 7, "2023-01-01", "2027-12-31", "EN_RECONSIDERACION")];
+    expect(ultimoPeriodoPorPersona(periodos).map((p) => p.id)).toEqual([2]);
+  });
+
+  it("con el mismo inicio gana el que termina después y, si también empatan, el de id mayor", () => {
+    expect(ultimoPeriodoPorPersona([periodo(1, 7, "2023-01-01", "2027-12-31"), periodo(2, 7, "2023-01-01", "2025-12-31")]).map((p) => p.id)).toEqual([1]);
+    expect(ultimoPeriodoPorPersona([periodo(5, 7, "2023-01-01", "2027-12-31"), periodo(4, 7, "2023-01-01", "2027-12-31")]).map((p) => p.id)).toEqual([5]);
+  });
+
+  it("sin periodos que entren al semáforo no queda nada", () => {
+    expect(ultimoPeriodoPorPersona([])).toEqual([]);
+    expect(ultimoPeriodoPorPersona([periodo(1, 7, "2019-01-01", "2022-12-31", "NO_APROBADO")])).toEqual([]);
+  });
+
+  it("junto con la regla: quien renovó no aparece y quien no renovó sí", () => {
+    const hoy = new Date(Date.UTC(2026, 10, 24));
+    const datos = { nombres: "Ana", apellidos: "Pérez", departamento: "Ciencias", nivel: "NIVEL_I" };
+    const renovo = [periodo(1, 7, "2019-01-01", "2022-12-31"), periodo(2, 7, "2023-01-01", "2027-12-31")];
+    const noRenovo = [periodo(3, 8, "2019-01-01", "2022-12-31")];
+    const filas = ultimoPeriodoPorPersona([...renovo, ...noRenovo]).map((p) => filaSnii({ ...p, ...datos }, hoy));
+    expect(hallazgosVigenciasVencidas(filas).map((h) => h.clave)).toEqual(["VIGENCIA_VENCIDA:snii-00000003"]);
   });
 });

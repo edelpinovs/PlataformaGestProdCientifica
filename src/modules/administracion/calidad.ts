@@ -1,12 +1,15 @@
 import type { ConsultaListado, DefinicionListado } from "@/lib/listados/consulta";
 import { normalizar } from "@/modules/catalogos/comun";
+import { cuentaParaSemaforo, ETIQUETA_TIPO, formatoFecha, type FilaVigencia } from "@/modules/reportes/vigencias";
 
 // Calidad de datos (issue 242): inconsistencias que el administrador puede corregir. Son funciones
 // puras sobre datos ya leídos; la página los carga con Prisma y las aplica.
 //
-// Quedan fuera a propósito las vigencias vencidas (semáforo del módulo de reportes, con decisiones
-// abiertas D-227 y D-229) y los homónimos sin resolver (módulo de validación): se agregarán cuando
-// esos módulos expongan su regla, para no duplicarla.
+// Las vigencias vencidas (#278) no se recalculan aquí: las filas se arman con las funciones del
+// semáforo de Reportes y se reporta la que ya está en rojo, así que si se acuerdan D-227 o D-229 el
+// hallazgo cambia junto con el reporte. De SNII y PRODEP solo cuenta el último periodo de cada
+// persona: uno anterior de quien ya renovó es historial, no algo que corregir (revisión del #303). Quedan fuera los homónimos sin resolver (módulo de validación): se
+// agregarán cuando ese módulo exponga su regla, para no duplicarla.
 
 export const REGLAS_CALIDAD = {
   CA_SIN_LIDER: { texto: "Cuerpo académico sin líder", severidad: "aviso" },
@@ -14,6 +17,7 @@ export const REGLAS_CALIDAD = {
   INTEGRANTE_DE_BAJA: { texto: "Integrante de baja o trasladado", severidad: "aviso" },
   SIN_IDENTIFICADORES: { texto: "Sin ORCID ni Scopus", severidad: "aviso" },
   SIN_PERFIL: { texto: "Sin perfil de acceso", severidad: "aviso" },
+  VIGENCIA_VENCIDA: { texto: "Vigencia vencida", severidad: "aviso" },
 } as const;
 
 export type ReglaCalidad = keyof typeof REGLAS_CALIDAD;
@@ -110,6 +114,44 @@ export function analizarCalidad(datos: { profesores: ProfesorCalidad[]; cuerpos:
   return resultado;
 }
 
+/** Periodo SNII o PRODEP con su profesor, para decidir cuál es el último de cada persona. */
+export type PeriodoPersona = { id: number; profesorId: number; inicio: Date; fin: Date; resultado: string };
+
+/** Compara por inicio, luego por fin y, si empatan, por id: el mayor es el periodo posterior. */
+function comparaPeriodos(a: PeriodoPersona, b: PeriodoPersona) {
+  return a.inicio.getTime() - b.inicio.getTime() || a.fin.getTime() - b.fin.getTime() || a.id - b.id;
+}
+
+/**
+ * Último periodo de cada persona entre los que entran al semáforo (aprobado o en reconsideración,
+ * con `cuentaParaSemaforo` de Reportes). Un periodo no aprobado no sustituye al anterior: quien no
+ * renovó sigue con su distinción vencida. Se aplica por separado a SNII y a PRODEP.
+ */
+export function ultimoPeriodoPorPersona<T extends PeriodoPersona>(periodos: T[]): T[] {
+  const ultimos = new Map<number, T>();
+  for (const periodo of periodos) {
+    if (!cuentaParaSemaforo(periodo.resultado)) continue;
+    const actual = ultimos.get(periodo.profesorId);
+    if (!actual || comparaPeriodos(periodo, actual) > 0) ultimos.set(periodo.profesorId, periodo);
+  }
+  return [...ultimos.values()];
+}
+
+/**
+ * Vigencias SNII, PRODEP y de cuerpo académico que el semáforo de Reportes pinta de rojo (#278).
+ * Recibe filas armadas con las funciones de Reportes, de modo que la regla de vencimiento no se
+ * copia aquí. Las de SNII y PRODEP deben venir ya acotadas con `ultimoPeriodoPorPersona`.
+ */
+export function hallazgosVigenciasVencidas(filas: FilaVigencia[]): Hallazgo[] {
+  return filas
+    .filter((fila) => fila.semaforo === "ROJO")
+    .map((fila) =>
+      hallazgo("VIGENCIA_VENCIDA", fila.id, fila.nombre,
+        `${ETIQUETA_TIPO[fila.tipo]} (${fila.detalle}) venció el ${formatoFecha(fila.fin)}.`,
+        `/reportes?semaforo=ROJO&q=${encodeURIComponent(fila.nombre)}`),
+    );
+}
+
 function etiquetaEstatus(estatus: string) {
   return (
     { BAJA_TEMPORAL: "baja temporal", BAJA_POSDOCTORAL: "baja posdoctoral", TRASLADADO: "trasladado" }[estatus] ?? estatus
@@ -146,11 +188,13 @@ export function filtrarHallazgos(hallazgos: Hallazgo[], consulta: ConsultaListad
 
 /**
  * Ordena por la columna elegida (A–Z) con desempate por clave para que el orden sea estable.
+ * El orden es natural: `UDG-CA-2` va antes que `UDG-CA-10` (#278).
  * `consulta.orden` ya viene validado contra `LISTADO_CALIDAD.columnas`.
  */
 export function ordenarHallazgos(hallazgos: Hallazgo[], consulta: ConsultaListado): Hallazgo[] {
   const valor = (h: Hallazgo) =>
     consulta.orden === "regla" ? REGLAS_CALIDAD[h.regla].texto : consulta.orden === "detalle" ? h.detalle : h.registro;
   const signo = consulta.dir === "asc" ? 1 : -1;
-  return [...hallazgos].sort((a, b) => signo * valor(a).localeCompare(valor(b), "es") || signo * a.clave.localeCompare(b.clave));
+  const comparar = (a: string, b: string) => a.localeCompare(b, "es", { numeric: true });
+  return [...hallazgos].sort((a, b) => signo * comparar(valor(a), valor(b)) || signo * comparar(a.clave, b.clave));
 }

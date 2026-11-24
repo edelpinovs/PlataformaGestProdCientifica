@@ -9,7 +9,7 @@ Barra de avance con la fuente en curso y región de estado (`formulario-escaneo.
 ## 2. Chequeos
 
 - `npm run typecheck` y `npm run lint`: pasan en copia local.
-- `npm test`: **no se pudo ejecutar en la copia local de quien revisó**; falla en los 113 archivos, también en `main`, por un problema del entorno local con vitest. Las 1,271 pruebas constan solo por el CI (`verificar`, en verde) y lo declarado en el PR.
+- `npm test` (verificado en local el 2026-11-24, sobre `9ed01ea`, último commit de la rama): **112 archivos y 1,272 pruebas pasan**, y `npm run typecheck` sin errores. La primera revisión no pudo ejecutarlo por un problema de entorno (la ruta de trabajo con la letra de unidad en minúscula rompía vitest; se corrige ejecutando desde PowerShell con `C:\PROJECTS\…`). Además pasa el CI (`verificar`, en verde). Ese commit incluye `9ed01ea`, posterior a la revisión, que hace de mejor esfuerzo el aviso de la fuente en curso (hallazgo 1).
 - Vercel en verde; sin conflictos con `main`.
 - La pantalla no se vio en el navegador ni con lector de pantalla.
 
