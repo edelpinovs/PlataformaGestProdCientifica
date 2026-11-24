@@ -36,10 +36,36 @@ export default async function AdministracionPage() {
         ))}
       </section>
 
-      <Panel titulo="Gestión" descripcion="Auditoría, calidad de datos y control del escaneo llegarán en las siguientes fases.">
-        <Link href="/administracion/usuarios" className="text-sm font-medium text-marca hover:underline">
-          Usuarios y roles
-        </Link>
+      <Panel titulo="Reportes" descripcion="Se descargan en Excel o PDF desde cada reporte. Los listados de este panel también se descargan desde su pantalla.">
+        <ul className="grid gap-3 text-sm sm:grid-cols-2">
+          {[
+            { href: "/reportes", texto: "Vigencias y semáforo" },
+            { href: "/reportes/matriz", texto: "Matriz de acreditación" },
+            { href: "/reportes/convocatoria", texto: "Convocatoria anual" },
+            { href: "/reportes/completo", texto: "Reporte completo" },
+          ].map((e) => (
+            <li key={e.href}>
+              <Link href={e.href} className="font-medium text-marca hover:underline">{e.texto}</Link>
+            </li>
+          ))}
+        </ul>
+      </Panel>
+
+      <Panel titulo="Gestión">
+        <ul className="flex flex-col gap-3 text-sm">
+          {[
+            { href: "/administracion/usuarios", texto: "Usuarios y roles", nota: "Quién entra al sistema y qué puede hacer." },
+            { href: "/administracion/auditoria", texto: "Auditoría", nota: "Quién hizo qué y cuándo." },
+            { href: "/administracion/calidad", texto: "Calidad de datos", nota: "Inconsistencias que conviene corregir." },
+            { href: "/administracion/escaneo", texto: "Control del escaneo", nota: "Estado de las búsquedas de publicaciones." },
+            { href: "/administracion/sistema", texto: "Estado del sistema", nota: "Qué está funcionando y qué falta configurar." },
+          ].map((e) => (
+            <li key={e.href}>
+              <Link href={e.href} className="font-medium text-marca hover:underline">{e.texto}</Link>
+              <span className="block text-xs text-texto-3">{e.nota}</span>
+            </li>
+          ))}
+        </ul>
       </Panel>
     </Marco>
   );
