@@ -84,6 +84,15 @@ export const MODULOS: Modulo[] = [
     liberacion: "2026-11-30",
     roles: ["ADMINISTRADOR", "COORDINADOR"],
   },
+  {
+    slug: "administracion",
+    nombre: "Administración",
+    descripcion: "Usuarios y roles, auditoría, calidad de datos y parámetros del sistema.",
+    integrante: "@edelpinovs",
+    requisitos: "Issues #241 a #244",
+    liberacion: "2026-12-09",
+    roles: ["ADMINISTRADOR"],
+  },
 ];
 
 export function getModulo(slug: string): Modulo {

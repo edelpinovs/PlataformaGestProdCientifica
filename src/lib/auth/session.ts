@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getModulo } from "@/modules/registry";
 import type { Rol } from "./roles";
 
-// Perfil del usuario con sesión iniciada, o null si no hay sesión o no tiene perfil.
+// Perfil del usuario con sesión iniciada, o null si no hay sesión, no tiene perfil o está desactivado.
 export async function getPerfil() {
   const supabase = await createClient();
   const {
@@ -12,7 +12,10 @@ export async function getPerfil() {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
-  return prisma.perfil.findUnique({ where: { id: user.id } });
+  const perfil = await prisma.perfil.findUnique({ where: { id: user.id } });
+  // Un perfil desactivado desde el panel de administración se trata como sin acceso. Es el único
+  // punto por el que pasan requireRol, requireModulo y las pantallas, así que cubre todos los módulos.
+  return perfil?.activo ? perfil : null;
 }
 
 // Corta la petición si el usuario no tiene alguno de los roles indicados (RNF-005).
