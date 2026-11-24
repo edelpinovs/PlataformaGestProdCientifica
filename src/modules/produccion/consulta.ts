@@ -2,6 +2,7 @@ import { z } from "zod";
 import { analizarListado, condicionTexto, enlaceListado, ordenarPor, paginar, type ConsultaListado, type DefinicionListado, type ErroresListado, type ParametrosListado, type Sentido } from "@/lib/listados/consulta";
 import { tipoPublicacionEnum, fuentePublicacionEnum, estadoAutoriaEnum } from "./tipos";
 import { normalizarTitulo } from "./normalizacion";
+import { anioActualMexico } from "./fechas-escaneo";
 
 export const ETIQUETAS_TIPO = { ARTICULO: "Artículo", LIBRO: "Libro", CAPITULO: "Capítulo", MEMORIA_CONGRESO: "Memoria de congreso", REGISTRO_SOFTWARE: "Registro de software", PATENTE: "Patente", OTRO: "Otro" };
 export const ETIQUETAS_FUENTE = { ORCID: "ORCID", SCOPUS: "Scopus", OPENALEX: "OpenAlex", CROSSREF: "Crossref", GOOGLE_SCHOLAR: "Google Scholar", MANUAL: "Captura manual" };
@@ -27,11 +28,20 @@ export const CONSULTA_INICIAL: ConsultaPublicaciones = {
 const profesorEsquema = z.string({ error: "Selecciona un solo profesor." }).refine(
   (valor) => valor === "" || (/^[1-9]\d*$/.test(valor) && Number(valor) <= 2147483647), "Selecciona un profesor válido.",
 );
-const anioEsquema = z.string({ error: "Indica un solo año." }).refine(
-  (valor) => valor === "" || (/^\d{4}$/.test(valor) && Number(valor) >= 1900 && Number(valor) <= 2100), "Indica un año entre 1900 y 2100.",
-);
+const ANIO_MINIMO_PUBLICACION = 1900;
 
-export function analizarConsulta(parametros: ParametrosConsulta) {
+export function opcionesAnioPublicacion(anioActual: number) {
+  return Array.from({ length: anioActual - ANIO_MINIMO_PUBLICACION + 1 }, (_, indice) => {
+    const anio = String(anioActual - indice);
+    return { valor: anio, texto: anio };
+  });
+}
+
+export function analizarConsulta(parametros: ParametrosConsulta, anioActual = anioActualMexico()) {
+  const anioEsquema = z.string({ error: "Indica un solo año." }).refine(
+    (valor) => valor === "" || (/^\d{4}$/.test(valor) && Number(valor) >= ANIO_MINIMO_PUBLICACION && Number(valor) <= anioActual),
+    `Indica un año entre ${ANIO_MINIMO_PUBLICACION} y ${anioActual}.`,
+  );
   // Los enlaces del #98 con `texto` siguen funcionando; las consultas nuevas usan q.
   const { consulta, errores } = analizarListado(LISTADO_PUBLICACIONES, { ...parametros, q: parametros.q ?? parametros.texto });
   for (const [clave, esquema] of [["profesor", profesorEsquema], ["anio", anioEsquema]] as const) {

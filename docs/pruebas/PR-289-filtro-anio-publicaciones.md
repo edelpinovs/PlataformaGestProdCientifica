@@ -11,7 +11,7 @@ Revisión independiente del [PR #289](https://github.com/edelpinovs/PlataformaGe
 | Fecha de la revisión | 2026-11-24 |
 | Revisó | @edelpinovs (I1), con Claude Code |
 | Entorno | Local (Windows 10, Node 24): la rama del PR mezclada con `main` en `ab8a862` (trae #288 y #291), con el cliente de Prisma generado. Sin base de datos y sin `next dev` |
-| Resultado | **Aprobable con comentarios.** Cumple los tres puntos del *Terminado cuando*; queda un hallazgo menor (el año se calcula en UTC) |
+| Resultado | **Aprobable con comentarios.** Cumple los tres puntos del *Terminado cuando*; queda un hallazgo menor (el año se calcula en UTC). **El hallazgo 1 quedó corregido en `a3a4674` y el PR se integró en `b251458`** (ver el apartado 9) |
 
 ## 1. Alcance
 
@@ -87,6 +87,18 @@ Archivo temporal `src/modules/produccion/revision-289.test.ts`, que se borró de
 ## 8. Dictamen
 
 **Aprobable con comentarios.** El PR cumple el #252 y no rompe nada. El hallazgo 1 es menor y puede corregirse aquí o en otro issue; el 2 conviene anotarlo en el #266. Falta la aprobación en GitHub y revisar la vista previa con sesión.
+
+## 9. Actualización: hallazgo 1 corregido (`a3a4674`) e integración (`b251458`), 2026-11-24
+
+Después de esta revisión, la autora corrigió el hallazgo 1 en el mismo PR y el PR se integró a `main`. Se volvió a comprobar así:
+
+| Verificación | Resultado |
+|---|---|
+| Qué cambió | `anioActualMexico()` en `src/modules/produccion/fechas-escaneo.ts` calcula el año con `Intl.DateTimeFormat` en `ZONA_FECHAS_ESCANEO` (Ciudad de México). Lo usan `publicaciones/page.tsx` y el valor por omisión de `analizarConsulta`, en un solo lugar, como se propuso |
+| Pruebas nuevas de la autora (`fechas-escaneo.test.ts`) | El 31 de diciembre por la noche sigue siendo el mismo año, y el año cambia a la medianoche de Ciudad de México |
+| Mis pruebas de revisión sobre `main` con la corrección | **5 de 6 pasan y R5 falla**, que es lo esperado: R5 afirmaba que la noche del 31 de diciembre ya se aceptaba el año siguiente, y ahora se rechaza. Con `consulta.test.ts` y `fechas-escaneo.test.ts`: 52 de 53 pasan; la que falla es R5 |
+
+Sin cambios en los demás puntos: el campo de año del escaneo (hallazgo 2) quedó anotado en el #266, donde además se decidió el rango por fechas con calendario (D-256). Sigue sin revisarse la pantalla con sesión.
 
 <details>
 <summary>Código de las pruebas de revisión (apartado 5)</summary>
