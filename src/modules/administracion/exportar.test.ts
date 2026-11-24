@@ -154,6 +154,10 @@ describe("descripción de los filtros", () => {
     );
   });
 
+  it("auditoría: el periodo se anota con su texto (#277)", () => {
+    expect(descripcionFiltros("auditoria", consulta(LISTADO_AUDITORIA, { periodo: "30_DIAS" }))).toBe("periodo «Últimos 30 días»");
+  });
+
   it("auditoría: módulo y acción con su texto", () => {
     expect(descripcionFiltros("auditoria", consulta(LISTADO_AUDITORIA, { modulo: "administracion", accion: "usuario.desactivado" }))).toBe(
       "módulo Administración, acción «Desactivó el acceso de un usuario»",

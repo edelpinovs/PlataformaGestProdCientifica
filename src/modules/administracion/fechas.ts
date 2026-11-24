@@ -54,3 +54,33 @@ export function rangoFechaBusqueda(texto: string): { desde: Date; hasta: Date } 
   }
   return null;
 }
+
+/** Día, mes (1 a 12) y año que marca el reloj de Ciudad de México en el instante dado. */
+export function fechaEnMexico(instante: Date): { anio: number; mes: number; dia: number } {
+  const partes = Object.fromEntries(partesEnZona.formatToParts(instante).map((p) => [p.type, Number(p.value)]));
+  return { anio: partes.year, mes: partes.month, dia: partes.day };
+}
+
+export const PERIODOS = [
+  { valor: "HOY", texto: "Hoy" },
+  { valor: "7_DIAS", texto: "Últimos 7 días" },
+  { valor: "30_DIAS", texto: "Últimos 30 días" },
+  { valor: "MES", texto: "Este mes" },
+] as const;
+
+export type Periodo = (typeof PERIODOS)[number]["valor"];
+export const CLAVES_PERIODO: Periodo[] = PERIODOS.map((p) => p.valor);
+
+/**
+ * Límites de un periodo relativo a `ahora`, con los días de Ciudad de México: `desde` incluido y
+ * `hasta` excluido (el inicio de mañana). «Últimos 7 días» incluye hoy y los seis anteriores.
+ */
+export function rangoPeriodo(periodo: Periodo, ahora: Date = new Date()): { desde: Date; hasta: Date } {
+  const { anio, mes, dia } = fechaEnMexico(ahora);
+  const manana = new Date(Date.UTC(anio, mes - 1, dia + 1));
+  const hasta = inicioDelDiaMexico(manana.getUTCFullYear(), manana.getUTCMonth() + 1, manana.getUTCDate());
+  if (periodo === "MES") return { desde: inicioDelDiaMexico(anio, mes, 1), hasta };
+  const atras = periodo === "HOY" ? 0 : periodo === "7_DIAS" ? 6 : 29;
+  const inicio = new Date(Date.UTC(anio, mes - 1, dia - atras));
+  return { desde: inicioDelDiaMexico(inicio.getUTCFullYear(), inicio.getUTCMonth() + 1, inicio.getUTCDate()), hasta };
+}
