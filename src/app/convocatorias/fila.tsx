@@ -31,6 +31,8 @@ export type Carga = {
   // RF-017: resultado de la lectura del archivo.
   renglones?: number;
   totalAvisos?: number;
+  // RF-018: resultado del cruce con el directorio.
+  cruce?: { coincidencias: number; dudosos: number; sinCoincidencia: number };
   motivo?: string;
   volverALeer: boolean;
 };
@@ -93,6 +95,12 @@ function ResultadoLectura({ carga }: { carga: Carga }) {
     return (
       <span className="mt-1 block text-xs text-texto-3">
         {plural(carga.renglones, "renglón", "renglones")} · {plural(carga.totalAvisos ?? 0, "aviso", "avisos")}
+        {carga.cruce && (
+          <span className="block">
+            {plural(carga.cruce.coincidencias, "coincidencia", "coincidencias")} ·{" "}
+            {plural(carga.cruce.dudosos, "dudoso", "dudosos")} · {cifra.format(carga.cruce.sinCoincidencia)} sin coincidencia
+          </span>
+        )}
       </span>
     );
   }

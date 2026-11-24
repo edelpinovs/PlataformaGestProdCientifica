@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireModulo } from "@/lib/auth/session";
 import { Marco } from "@/components/marco";
-import { Aviso, claseBoton, claseTabla, EstadoVacio, Icono, Panel } from "@/components/ui";
+import { Aviso, claseBoton, claseBotonContorno, claseTabla, EstadoVacio, Icono, Panel } from "@/components/ui";
 import { getModulo } from "@/modules/registry";
 import { prisma } from "@/lib/prisma";
 import { nombreDeRuta, puedeVolverALeer } from "@/modules/convocatorias/carga";
@@ -117,12 +117,18 @@ export default async function Page({ searchParams }: PageProps<"/convocatorias">
               </span>
             </div>
           </div>
-          <Link
-            href="/convocatorias/carga"
-            className={`${claseBoton} shrink-0 text-center whitespace-nowrap`}
-          >
-            Subir resultados oficiales
-          </Link>
+          <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+            {/* RF-018: participantes de cada convocatoria y su resultado. */}
+            <Link href="/convocatorias/participantes" className={`${claseBotonContorno} text-center whitespace-nowrap`}>
+              Participantes
+            </Link>
+            <Link
+              href="/convocatorias/carga"
+              className={`${claseBoton} text-center whitespace-nowrap`}
+            >
+              Subir resultados oficiales
+            </Link>
+          </div>
         </div>
       </Panel>
 
@@ -168,6 +174,7 @@ export default async function Page({ searchParams }: PageProps<"/convocatorias">
                       }),
                       renglones: c.estado === "EN_REVISION" ? resumen?.renglones : undefined,
                       totalAvisos: c.estado === "EN_REVISION" ? resumen?.totalAvisos : undefined,
+                      cruce: c.estado === "EN_REVISION" ? resumen?.cruce : undefined,
                       motivo: c.estado === "FALLIDA" ? (tarea?.error ?? undefined) : undefined,
                       volverALeer: puedeVolverALeer(c.estado, tarea?.actualizadoEn ?? null, ahora),
                     }}

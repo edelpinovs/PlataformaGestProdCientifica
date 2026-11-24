@@ -9,6 +9,7 @@ const dobles = vi.hoisted(() => {
     job: { updateMany: vi.fn(), findUnique: vi.fn() },
     cargaResultados: { findUnique: vi.fn(), updateMany: vi.fn() },
     renglonResultado: { deleteMany: vi.fn(), createMany: vi.fn() },
+    profesor: { findMany: vi.fn() },
     $transaction: vi.fn(),
   };
   return { prisma };
@@ -79,6 +80,16 @@ describe("procesarCarga (RF-017)", () => {
       renglones.push(...data);
     });
     dobles.prisma.$transaction.mockImplementation(async (fn) => fn(dobles.prisma));
+    // Profesor activo inventado con el CVU de la persona 1 del archivo de prueba.
+    dobles.prisma.profesor.findMany.mockResolvedValue([{ id: 40, cvu: "900001", codigo: "2009001", nombres: "Uno", apellidos: "Prueba" }]);
+  });
+
+  it("RF-018: cruza los renglones con los profesores activos sin escribir resultados de participantes", async () => {
+    await procesarCarga(7, almacen);
+    expect(dobles.prisma.profesor.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { estatusLaboral: "ACTIVO" } }));
+    expect(renglones[0]).toMatchObject({ cvu: "900001", profesorId: 40, criterio: "CVU" });
+    expect(renglones[1]).toMatchObject({ profesorId: null, criterio: "SIN_COINCIDENCIA" });
+    expect(tarea.datos).toMatchObject({ resumen: { cruce: { coincidencias: 1, dudosos: 0, sinCoincidencia: 2 } } });
   });
 
   it("no lee una tarea que otra lectura ya reservó", async () => {
