@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { comprobarServicio, LIMITE_COMPROBACION_MS, nombreEntorno, versionCorta } from "./sistema";
+import { comprobarServicio, esperarConLimite, LIMITE_COMPROBACION_MS, nombreEntorno, versionCorta } from "./sistema";
 
 describe("comprobación de servicios", () => {
   it("mide el tiempo de respuesta", async () => {
@@ -63,6 +63,39 @@ describe("comprobación de servicios", () => {
       });
       expect(r).toMatchObject({ responde: false, agotado: false });
       expect(JSON.stringify(r)).not.toContain("secreto");
+    });
+  });
+
+  describe("esperar con límite", () => {
+    afterEach(() => vi.useRealTimers());
+
+    it("devuelve el valor si llega a tiempo, sin dejar un temporizador pendiente", async () => {
+      vi.useFakeTimers();
+      expect(await esperarConLimite(async () => 42)).toEqual({ ok: true, valor: 42 });
+      expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it("pasado el límite devuelve ok: false y agotado, sin esperar a la tarea", async () => {
+      vi.useFakeTimers();
+      const pendiente = esperarConLimite(() => new Promise<never>(() => {}));
+      await vi.advanceTimersByTimeAsync(LIMITE_COMPROBACION_MS);
+      expect(await pendiente).toEqual({ ok: false, agotado: true });
+    });
+
+    it("un fallo rápido devuelve ok: false sin agotado y sin propagar el mensaje", async () => {
+      const r = await esperarConLimite(async () => {
+        throw new Error("clave ilegible: secreto-123");
+      });
+      expect(r).toEqual({ ok: false, agotado: false });
+      expect(JSON.stringify(r)).not.toContain("secreto");
+    });
+
+    it("una tarea que lanza de forma síncrona también devuelve ok: false", async () => {
+      expect(
+        await esperarConLimite(() => {
+          throw new Error("síncrona");
+        }),
+      ).toEqual({ ok: false, agotado: false });
     });
   });
 
