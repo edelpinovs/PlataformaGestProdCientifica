@@ -179,7 +179,7 @@ Lo que un integrante le debe a otro y para cuándo. Si una fecha se mueve, se av
 | Las funciones de Vercel tienen tiempo máximo por ejecución y el plan Hobby solo permite crons diarios. | Medio | Procesar en lotes con avance guardado en `jobs`. Si hace falta más frecuencia, un workflow programado de GitHub Actions llama a la ruta. | I5, I6 |
 | Supabase gratuito pausa el proyecto tras 7 días sin uso. | Bajo | Uso diario durante el semestre; reactivar desde el panel antes de cada demo y de la entrega. | I1 |
 | Si el repositorio se hace privado, Vercel Hobby deja de desplegar commits de integrantes que no son dueños de la cuenta. | Bajo | Mantenerlo público, o pasar a Vercel Pro si se decide cerrarlo. | I1 |
-| Datos personales reales en entornos de desarrollo. | Medio | Solo datos ficticios hasta producción. Nada de listados reales de profesores en el repositorio. | I4 |
+| Datos personales reales en entornos de desarrollo. | Medio | Desde D-259 la base compartida admite datos reales solo por el flujo de `docs/IMPORTACION_DATOS_REALES.md`. Nada de listados reales de profesores en el repositorio (los CSV viven en `datos-reales/`, ignorada por git). | I4 |
 
 ---
 

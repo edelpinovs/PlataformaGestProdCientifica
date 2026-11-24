@@ -57,4 +57,4 @@ No uses *Invite user* del panel de Supabase: no crea el `Perfil` con el rol, y e
 
 - Todos desarrollan contra la misma base. Las migraciones se crean con `npm run db:nueva-migracion` y se aplican con `npm run db:migrar`. Nadie debe ejecutar `prisma migrate dev` ni `prisma migrate reset`: pueden proponer borrar la base completa.
 - Si una migración falla a medias, revisa `_prisma_migrations` y resuélvelo con `npx prisma migrate resolve`.
-- Datos semilla: `npm run db:seed`. Solo datos ficticios; nunca listados reales de profesores.
+- Datos semilla: `npm run db:seed`. Solo datos ficticios. Los listados reales de profesores no se cargan con la semilla: siguen [`IMPORTACION_DATOS_REALES.md`](IMPORTACION_DATOS_REALES.md).
