@@ -161,7 +161,7 @@ export default async function EscaneoPage() {
               <strong className="text-texto">no se pudo comprobar ahora.</strong>
             )}
           </p>
-          <Aviso tipo="aviso">Por ahora solo Coordinación puede iniciar, reintentar o continuar un escaneo. Desde aquí puedes consultarlo y administrar la clave de Scopus.</Aviso>
+          <Aviso tipo="aviso">Administración y Coordinación pueden iniciar, reintentar o continuar un escaneo desde «Escaneo». Desde aquí puedes consultarlo y administrar la clave de Scopus.</Aviso>
           <div className="flex flex-wrap gap-3">
             <Link href="/produccion/escaneo" className={claseBotonSecundario}>Escaneo</Link>
             <Link href="/produccion/historial" className={claseBotonSecundario}>Historial de búsquedas</Link>

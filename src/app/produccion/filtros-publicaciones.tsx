@@ -1,8 +1,9 @@
 import { BarraListado } from "@/components/listado";
 import { SelectorProfesor } from "@/components/selector-profesor";
-import { COLUMNAS_PUBLICACIONES, RUTA_PUBLICACIONES, ETIQUETAS_TIPO, ETIQUETAS_FUENTE, ETIQUETAS_ESTADO, type ConsultaPublicaciones, type ErroresConsulta } from "@/modules/produccion/consulta";
+import { COLUMNAS_PUBLICACIONES, RUTA_PUBLICACIONES, ETIQUETAS_TIPO, ETIQUETAS_FUENTE, ETIQUETAS_ESTADO, opcionesAnioPublicacion, type ConsultaPublicaciones, type ErroresConsulta } from "@/modules/produccion/consulta";
 
-export function FiltrosPublicaciones({ consulta, profesores, errores }: {
+export function FiltrosPublicaciones({ consulta, profesores, errores, anioActual }: {
+  anioActual: number;
   consulta: ConsultaPublicaciones;
   profesores: { id: number; codigo: string; nombres: string; apellidos: string; estatusLaboral: string }[];
   errores: ErroresConsulta;
@@ -30,7 +31,7 @@ export function FiltrosPublicaciones({ consulta, profesores, errores }: {
                 valorInicial={consulta.filtros.profesor ? Number(consulta.filtros.profesor) : undefined} error={errores.profesor} />
               <p className="text-xs text-texto-3">Sin selección se muestran publicaciones de todos los profesores, incluidos los no activos.</p>
             </div> },
-            { clave: "anio", etiqueta: "Año de publicación", opciones: Array.from({ length: 201 }, (_, indice) => ({ valor: String(2100 - indice), texto: String(2100 - indice) })) },
+            { clave: "anio", etiqueta: "Año de publicación", opciones: opcionesAnioPublicacion(anioActual) },
             { clave: "tipo", etiqueta: "Tipo", opciones: opciones(ETIQUETAS_TIPO) },
             { clave: "fuente", etiqueta: "Fuente", opciones: opciones(ETIQUETAS_FUENTE) },
             { clave: "estado", etiqueta: "Estado de autoría", opciones: opciones(ETIQUETAS_ESTADO) },

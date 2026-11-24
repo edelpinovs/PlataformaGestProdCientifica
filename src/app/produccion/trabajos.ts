@@ -54,12 +54,21 @@ export async function procesarSiguienteProfesor(jobId: number) {
     const datos = datosLoteEsquema.parse(trabajo.datos);
     const profesorId = datos.profesoresIds[datos.indice];
     if (profesorId === undefined) {
-      await prisma.job.updateMany({ where: condicionReserva, data: { estado: "COMPLETADO" } });
+      await prisma.job.updateMany({ where: condicionReserva, data: { estado: "COMPLETADO", datos: { ...datos, fuenteEnCurso: null } } });
       return;
     }
     // El orquestador no controla este Job: el avance corresponde a toda la cola.
-    const resultado = await ejecutarEscaneo({ profesorId, anio: datos.anio, fuentes: datos.fuentes ?? [...FUENTES_ANTERIORES], limiteProfesores: 1 }, repositorioPrisma);
-    const siguientes = avanzarLote(datos, resultado);
+    const resultado = await ejecutarEscaneo({
+      profesorId, anio: datos.anio, fuentes: datos.fuentes ?? [...FUENTES_ANTERIORES], limiteProfesores: 1,
+      informarFuente: async (fuenteEnCurso) => {
+        await prisma.job.updateMany({
+          where: condicionReserva,
+          // El indicador no renueva la reserva del profesor.
+          data: { datos: { ...datos, fuenteEnCurso }, actualizadoEn: reserva },
+        });
+      },
+    }, repositorioPrisma);
+    const siguientes = avanzarLote({ ...datos, fuenteEnCurso: null }, resultado);
     const terminado = siguientes.indice === siguientes.profesoresIds.length;
     await prisma.job.updateMany({
       where: condicionReserva,

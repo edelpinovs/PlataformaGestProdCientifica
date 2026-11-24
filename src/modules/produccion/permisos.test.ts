@@ -3,7 +3,7 @@ import { ROLES } from "@/lib/auth/roles";
 import { getModulo } from "@/modules/registry";
 import { puedeEscanear, ROLES_ESCANEO } from "./permisos";
 
-describe("permisos del escaneo (#265, D-256)", () => {
+describe("permisos del escaneo (#265, D-257)", () => {
   it.each([
     ["ADMINISTRADOR", true], ["COORDINADOR", true], ["DOCENTE", false],
   ] as const)("%s puede escanear: %s", (rol, esperado) => {
