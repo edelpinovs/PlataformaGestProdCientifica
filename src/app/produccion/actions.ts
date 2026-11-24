@@ -4,7 +4,7 @@ import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { requireRol } from "@/lib/auth/session";
 import { ROLES_ESCANEO } from "@/modules/produccion/permisos";
-import { FUENTES_ANTERIORES, type FuenteEscaneo } from "@/modules/produccion/fuentes";
+import { debeEnriquecerAutores, FUENTES_ANTERIORES, type FuenteEscaneo } from "@/modules/produccion/fuentes";
 import { TrabajoEscaneoPendiente } from "@/modules/produccion/fechas-escaneo";
 import { prisma } from "@/lib/prisma";
 import { datosLoteEsquema, solicitudEscaneoEsquema } from "@/modules/produccion/lotes";
@@ -17,9 +17,9 @@ export type EstadoEscaneo = {
   error?: string; exito?: boolean; mensaje?: string; resumen?: ResumenEscaneo;
   jobId?: number; pendiente?: boolean; avance?: number; total?: number;
   fuenteEnCurso?: FuenteEscaneo | null;
-  continuar?: boolean; fuentes?: FuenteEscaneo[];
+  continuar?: boolean; fuentes?: FuenteEscaneo[]; enriquecerAutores?: boolean;
   intento?: number;
-  erroresCampos?: { profesorId?: string; anio?: string; fuentes?: string };
+  erroresCampos?: { profesorId?: string; anio?: string; fuentes?: string; enriquecerAutores?: string };
 };
 
 function actualizarPantallasProduccion() {
@@ -40,7 +40,7 @@ export async function iniciarEscaneoAction(_: EstadoEscaneo, formData: FormData)
     } else {
       const parseo = solicitudEscaneoEsquema.safeParse({
         profesorId: formData.get("profesorId") ?? "todos", anio: formData.get("anio") ?? "",
-        fuentes: formData.getAll("fuentes"),
+        fuentes: formData.getAll("fuentes"), enriquecerAutores: formData.get("enriquecerAutores"),
       });
       if (!parseo.success) return {
         error: parseo.error.issues[0]?.message ?? "Revisa los datos del escaneo.",
@@ -48,11 +48,12 @@ export async function iniciarEscaneoAction(_: EstadoEscaneo, formData: FormData)
           profesorId: parseo.error.issues.find((error) => error.path[0] === "profesorId")?.message,
           anio: parseo.error.issues.find((error) => error.path[0] === "anio")?.message,
           fuentes: parseo.error.issues.find((error) => error.path[0] === "fuentes")?.message,
+          enriquecerAutores: parseo.error.issues.find((error) => error.path[0] === "enriquecerAutores")?.message,
         },
       };
       trabajo = await crearTrabajoEscaneo("escaneo-manual",
         parseo.data.profesorId === "todos" ? undefined : Number(parseo.data.profesorId),
-        parseo.data.anio ? Number(parseo.data.anio) : undefined,parseo.data.fuentes);
+        parseo.data.anio ? Number(parseo.data.anio) : undefined, parseo.data.fuentes, parseo.data.enriquecerAutores);
     }
     const pendiente = trabajo.estado === "PENDIENTE" || trabajo.estado === "EN_PROCESO";
     if (pendiente) {
@@ -69,6 +70,7 @@ export async function iniciarEscaneoAction(_: EstadoEscaneo, formData: FormData)
       jobId: trabajo.id, pendiente, avance: trabajo.avance, total: trabajo.total,
       fuenteEnCurso: trabajo.estado === "EN_PROCESO" && datos.success ? datos.data.fuenteEnCurso : null,
       fuentes: datos.success ? datos.data.fuentes ?? [...FUENTES_ANTERIORES] : [...FUENTES_ANTERIORES],
+      enriquecerAutores: datos.success ? debeEnriquecerAutores(datos.data) : undefined,
       resumen: datos.success ? {
         ...datos.data.resumen,
         errores: datos.data.resumen.errores.map(() => "No se pudo completar una consulta o guardar sus resultados."),

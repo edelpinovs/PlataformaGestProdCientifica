@@ -17,7 +17,14 @@ describe("selección de fuentes en Server Action (#167)",()=>{
   it("rechaza una fuente manipulada y conserva una selección válida normalizada",async()=>{
     const datos=new FormData();datos.append("fuentes","OTRA");expect((await iniciarEscaneoAction({},datos)).error).toBe("Selecciona una fuente válida.");
     datos.delete("fuentes");datos.append("fuentes","ORCID");datos.append("fuentes","ORCID");await iniciarEscaneoAction({},datos);
-    expect(dobles.crear).toHaveBeenCalledExactlyOnceWith("escaneo-manual",undefined,undefined,["ORCID"]);
+    expect(dobles.crear).toHaveBeenCalledExactlyOnceWith("escaneo-manual",undefined,undefined,["ORCID"],false);
+  });
+  it("envía completar autores por DOI aparte de las fuentes y rechaza un valor manipulado (#188)",async()=>{
+    const datos=new FormData();datos.append("fuentes","SCOPUS");datos.set("enriquecerAutores","si");await iniciarEscaneoAction({},datos);
+    expect(dobles.crear).toHaveBeenCalledExactlyOnceWith("escaneo-manual",undefined,undefined,["SCOPUS"],true);
+    datos.set("enriquecerAutores","on");const resultado=await iniciarEscaneoAction({},datos);
+    expect(resultado.error).toBe("La opción para completar autores no es válida.");expect(resultado.erroresCampos?.enriquecerAutores).toBe("La opción para completar autores no es válida.");
+    expect(dobles.crear).toHaveBeenCalledOnce();
   });
   it("reanudar ignora fuentes enviadas por el navegador y usa la selección del trabajo",async()=>{
     const trabajo={id:7,estado:"PENDIENTE",avance:0,total:1,datos:{version:1,profesoresIds:[1],indice:0,fuentes:["ORCID"],resumen:resumenVacio()}};
