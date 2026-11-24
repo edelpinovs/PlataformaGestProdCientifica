@@ -2,6 +2,7 @@ import { z } from "zod";
 import { analizarListado, condicionTexto, enlaceListado, ordenarPor, paginar, type ConsultaListado, type DefinicionListado, type ErroresListado, type ParametrosListado, type Sentido } from "@/lib/listados/consulta";
 import { tipoPublicacionEnum, fuentePublicacionEnum, estadoAutoriaEnum } from "./tipos";
 import { normalizarTitulo } from "./normalizacion";
+import { anioActualMexico } from "./fechas-escaneo";
 
 export const ETIQUETAS_TIPO = { ARTICULO: "Artículo", LIBRO: "Libro", CAPITULO: "Capítulo", MEMORIA_CONGRESO: "Memoria de congreso", REGISTRO_SOFTWARE: "Registro de software", PATENTE: "Patente", OTRO: "Otro" };
 export const ETIQUETAS_FUENTE = { ORCID: "ORCID", SCOPUS: "Scopus", OPENALEX: "OpenAlex", CROSSREF: "Crossref", GOOGLE_SCHOLAR: "Google Scholar", MANUAL: "Captura manual" };
@@ -36,7 +37,7 @@ export function opcionesAnioPublicacion(anioActual: number) {
   });
 }
 
-export function analizarConsulta(parametros: ParametrosConsulta, anioActual = new Date().getUTCFullYear()) {
+export function analizarConsulta(parametros: ParametrosConsulta, anioActual = anioActualMexico()) {
   const anioEsquema = z.string({ error: "Indica un solo año." }).refine(
     (valor) => valor === "" || (/^\d{4}$/.test(valor) && Number(valor) >= ANIO_MINIMO_PUBLICACION && Number(valor) <= anioActual),
     `Indica un año entre ${ANIO_MINIMO_PUBLICACION} y ${anioActual}.`,

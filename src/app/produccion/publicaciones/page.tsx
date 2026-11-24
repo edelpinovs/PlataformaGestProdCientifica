@@ -3,6 +3,7 @@ import { EstadoVacio, Panel } from "@/components/ui";
 import { requireModulo } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { hayFiltrosActivos } from "@/lib/listados/consulta";
+import { anioActualMexico } from "@/modules/produccion/fechas-escaneo";
 import { analizarConsulta, type ErroresConsulta, type ParametrosConsulta } from "@/modules/produccion/consulta";
 import { FiltrosPublicaciones } from "../filtros-publicaciones";
 import { consultarPublicaciones } from "../consultas";
@@ -13,7 +14,7 @@ import { PaginacionPublicaciones } from "../paginacion-publicaciones";
 export default async function PublicacionesPage({ searchParams }: { searchParams: Promise<ParametrosConsulta> }) {
   const perfil = await requireModulo("produccion");
   const parametros = await searchParams;
-  const anioActual = new Date().getUTCFullYear();
+  const anioActual = anioActualMexico();
   const analisis = analizarConsulta(parametros, anioActual);
   const consulta = analisis.data;
   const errores: ErroresConsulta = {};
