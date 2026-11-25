@@ -26,6 +26,7 @@ export type CampoProfesor =
   | "genero"
   | "tipoContratacion"
   | "estatusLaboral"
+  | "goceDeSueldo"
   | "departamentoId"
   | "gradoId"
   | "cvu"
@@ -48,6 +49,7 @@ const CAMPOS: CampoProfesor[] = [
   "genero",
   "tipoContratacion",
   "estatusLaboral",
+  "goceDeSueldo",
   "departamentoId",
   "gradoId",
   "cvu",

@@ -47,7 +47,7 @@ const dadoDeBaja = {
   nombres: "Nora",
   apellidos: "Gil",
   codigo: "TC05",
-  estatusLaboral: "BAJA_TEMPORAL",
+  estatusLaboral: "LICENCIA",
 };
 
 const sinProdep3 = {

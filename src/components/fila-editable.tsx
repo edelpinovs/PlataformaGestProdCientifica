@@ -35,6 +35,12 @@ export type CampoFila = {
   opcional?: boolean;
   /** Marca de agua del campo, p. ej. el formato de ORCID. */
   placeholder?: string;
+  /** Casilla: si está marcada envía "si". */
+  tipo?: "casilla";
+  /** La casilla solo se puede marcar si este otro campo tiene uno de estos valores. */
+  habilitadaPor?: { campo: string; valores: string[] };
+  /** Texto corto que se muestra cuando la casilla está deshabilitada. */
+  ayuda?: string;
 };
 
 type Props = {
@@ -80,6 +86,12 @@ export function FilaEditable(props: Props) {
 
 function Edicion({ id, celdas, campos, editar, cerrar }: Props & { cerrar: () => void }) {
   const [estado, accion, guardando] = useActionState<EstadoFila, FormData>(editar, {});
+  const [vigentes, setVigentes] = useState<Record<string, string>>({});
+  const hayCasilla = campos.some((campo) => campo.tipo === "casilla");
+
+  const leer = (nombre: string, inicial: string) =>
+    nombre in vigentes ? vigentes[nombre] : (estado.valores?.[nombre] ?? inicial);
+  const cambiar = (nombre: string, valor: string) => setVigentes((prev) => ({ ...prev, [nombre]: valor }));
 
   return (
     <tr className={claseTabla.fila}>
@@ -90,11 +102,37 @@ function Edicion({ id, celdas, campos, editar, cerrar }: Props & { cerrar: () =>
             {campos.map((campo, i) => {
               const conError = estado.campo === campo.nombre;
               const valor = estado.valores?.[campo.nombre] ?? campo.valor;
+              if (campo.tipo === "casilla") {
+                const origen = campo.habilitadaPor
+                  ? leer(
+                    campo.habilitadaPor.campo,
+                    campos.find((otro) => otro.nombre === campo.habilitadaPor?.campo)?.valor ?? "",
+                  )
+                  : "";
+                const habilitada = !campo.habilitadaPor || campo.habilitadaPor.valores.includes(origen);
+                const marcada = habilitada && leer(campo.nombre, campo.valor) === "si";
+                return (
+                  <label key={campo.nombre} className="flex items-center gap-2 text-sm text-texto-2 sm:self-center">
+                    <input type="checkbox" name={campo.nombre} value="si" checked={marcada} disabled={!habilitada}
+                      onChange={(e) => cambiar(campo.nombre, e.target.checked ? "si" : "")}
+                      aria-invalid={conError} className="accent-[var(--marca)]" />
+                    <span>
+                      {campo.etiqueta}
+                      {!habilitada && campo.ayuda && (
+                        <span className="mt-0.5 block text-xs font-normal text-texto-3">{campo.ayuda}</span>
+                      )}
+                    </span>
+                  </label>
+                );
+              }
               return (
                 <label key={campo.nombre} className={`${claseEtiqueta} ${ANCHO[campo.ancho ?? "amplio"]}`}>
                   {campo.etiqueta}
                   {campo.opciones ? (
-                    <select name={campo.nombre} required={!campo.opcional} defaultValue={valor}
+                    <select name={campo.nombre} required={!campo.opcional}
+                      {...(hayCasilla
+                        ? { value: leer(campo.nombre, campo.valor), onChange: (e: React.ChangeEvent<HTMLSelectElement>) => cambiar(campo.nombre, e.target.value) }
+                        : { defaultValue: valor })}
                       aria-invalid={conError} className={claseCampo(conError)} autoFocus={i === 0}>
                       {campo.opciones.map((o) => <option key={o.valor} value={o.valor}>{o.texto}</option>)}
                     </select>

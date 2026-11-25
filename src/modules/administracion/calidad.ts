@@ -23,8 +23,9 @@ export const REGLAS_CALIDAD = {
 export type ReglaCalidad = keyof typeof REGLAS_CALIDAD;
 export const CLAVES_REGLA = Object.keys(REGLAS_CALIDAD) as ReglaCalidad[];
 
-// «Licencia» no cuenta como baja: la persona sigue vinculada a su cuerpo académico (D-246 está pendiente).
-const ESTATUS_DE_BAJA = new Set(["BAJA_TEMPORAL", "BAJA_POSDOCTORAL", "TRASLADADO"]);
+// D-273: baja temporal, baja posdoctoral y trasladado ya no existen.
+// Licencia y estancia posdoctoral no son baja: la persona sigue vinculada (D-246 está pendiente).
+const ESTATUS_DE_BAJA = new Set<string>();
 
 export type ProfesorCalidad = {
   id: number;
