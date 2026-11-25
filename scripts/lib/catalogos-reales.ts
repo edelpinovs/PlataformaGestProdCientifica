@@ -14,24 +14,30 @@ export interface DivisionReal {
 export interface DepartamentoReal {
   /** Debe coincidir con el nombre que trae el CSV de profesores (el cargador cruza por nombre). */
   nombre: string;
-  /** Confirmada por el equipo el 2026-11-24 (D-265); el cliente no dio una oficial. Se corrige desde la pantalla de Departamentos. */
+  /** El cliente no dio una oficial: confirmada por el equipo o propuesta (D-265, D-268). Se corrige con Editar. */
   nomenclatura: string;
   divisionClave: string;
 }
 
-// Confirmadas el 2026-11-24. La clave es la «clave interna (UdeG)». Faltan los demás departamentos del
-// listado (Naturales y Exactas, Económicas y Administrativas, Sociales y Humanidades): su división está por
-// confirmar con el cliente y no se asume. Se agregan aquí cuando se confirmen.
+// Divisiones confirmadas el 2026-11-24 (D-263 y D-267). La clave es la «clave interna (UdeG)».
+// POR CONFIRMAR (D-268): el nombre y la clave de CUCEA. El equipo dio solo las siglas; el nombre es el oficial
+// del centro y la clave `EA` sigue el patrón de las otras (EI, SA, SH). No se aplica hasta confirmarla.
 export const DIVISIONES_REALES: DivisionReal[] = [
   { clave: "EI", nombre: "Centro Universitario de Ciencias Exactas e Ingenierías" },
   { clave: "SA", nombre: "Centro Universitario de Ciencias de la Salud" },
   { clave: "SH", nombre: "Centro Universitario de Ciencias Sociales y Humanidades" },
+  { clave: "EA", nombre: "Centro Universitario de Ciencias Económico Administrativas" },
 ];
 
+// Los seis departamentos del listado de profesores. Las nomenclaturas DCCI, DCS y DCCOM las confirmó el equipo
+// (D-265); DCNE, DCEA y DCSH son PROPUESTAS por confirmar (D-268).
 export const DEPARTAMENTOS_REALES: DepartamentoReal[] = [
   { nombre: "Departamento de Ciencias Computacionales e Ingenierías", nomenclatura: "DCCI", divisionClave: "EI" },
   { nombre: "Departamento de Ciencias de la Salud", nomenclatura: "DCS", divisionClave: "SA" },
   { nombre: "Departamento de Ciencias del Comportamiento", nomenclatura: "DCCOM", divisionClave: "SH" },
+  { nombre: "Departamento de Ciencias Naturales y Exactas", nomenclatura: "DCNE", divisionClave: "EI" },
+  { nombre: "Departamento de Ciencias Económicas y Administrativas", nomenclatura: "DCEA", divisionClave: "EA" },
+  { nombre: "Departamento de Ciencias Sociales y Humanidades", nomenclatura: "DCSH", divisionClave: "SH" },
 ];
 
 export interface BaseCatalogos {

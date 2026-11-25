@@ -29,10 +29,10 @@ describe("definiciones reales", () => {
 });
 
 describe("planearCatalogos", () => {
-  it("con la base vacía crea las tres divisiones y los tres departamentos", () => {
+  it("con la base vacía crea las cuatro divisiones y los seis departamentos", () => {
     const plan = planearCatalogos(baseVacia);
-    expect(plan.divisionesNuevas.map((d) => d.clave)).toEqual(["EI", "SA", "SH"]);
-    expect(plan.departamentosNuevos).toHaveLength(3);
+    expect(plan.divisionesNuevas.map((d) => d.clave)).toEqual(["EI", "SA", "SH", "EA"]);
+    expect(plan.departamentosNuevos).toHaveLength(6);
     expect(plan.conflictos).toEqual([]);
   });
 
@@ -48,10 +48,10 @@ describe("planearCatalogos", () => {
       ],
     };
     const plan = planearCatalogos(base);
-    expect(plan.divisionesNuevas).toEqual([]);
+    expect(plan.divisionesNuevas.map((d) => d.clave)).toEqual(["EA"]);
     expect(plan.divisionesExistentes).toEqual(["EI", "SA", "SH"]);
     expect(plan.departamentosExistentes).toEqual(["Departamento de Ciencias de la Salud"]);
-    expect(plan.departamentosNuevos.map((d) => d.nomenclatura)).toEqual(["DCCI", "DCCOM"]);
+    expect(plan.departamentosNuevos.map((d) => d.nomenclatura)).toEqual(["DCCI", "DCCOM", "DCNE", "DCEA", "DCSH"]);
     expect(plan.conflictos).toEqual([]);
   });
 
@@ -61,8 +61,8 @@ describe("planearCatalogos", () => {
       departamentos: [],
     };
     const plan = planearCatalogos(base);
-    expect(plan.divisionesNuevas.map((d) => d.clave)).toEqual(["SA", "SH"]);
-    expect(plan.departamentosNuevos.map((d) => d.divisionClave)).toEqual(["SA", "SH"]);
+    expect(plan.divisionesNuevas.map((d) => d.clave)).toEqual(["SA", "SH", "EA"]);
+    expect(plan.departamentosNuevos.map((d) => d.divisionClave)).toEqual(["SA", "SH", "EA", "SH"]);
     expect(plan.conflictos.join(" ")).toContain("La clave «EI» ya la usa otra división");
     expect(plan.conflictos.join(" ")).toContain("su división «EI» no existe o tiene un conflicto");
   });
@@ -73,7 +73,7 @@ describe("planearCatalogos", () => {
       departamentos: [],
     };
     const plan = planearCatalogos(base);
-    expect(plan.divisionesNuevas.map((d) => d.clave)).toEqual(["EI", "SH"]);
+    expect(plan.divisionesNuevas.map((d) => d.clave)).toEqual(["EI", "SH", "EA"]);
     expect(plan.conflictos.join(" ")).toContain("Ya existe una división con el nombre");
   });
 
@@ -83,7 +83,7 @@ describe("planearCatalogos", () => {
       departamentos: [{ id: 1, nombre: "Otro departamento", nomenclatura: "dccom", divisionId: 8 }],
     };
     const plan = planearCatalogos(base);
-    expect(plan.departamentosNuevos.map((d) => d.nomenclatura)).toEqual(["DCCI", "DCS"]);
+    expect(plan.departamentosNuevos.map((d) => d.nomenclatura)).toEqual(["DCCI", "DCS", "DCNE", "DCEA", "DCSH"]);
     expect(plan.conflictos.join(" ")).toContain("Ya existe un departamento con la nomenclatura");
   });
 
@@ -93,7 +93,7 @@ describe("planearCatalogos", () => {
       departamentos: [{ id: 1, nombre: "Departamento de Ciencias de la Salud", nomenclatura: "XYZ", divisionId: 5 }],
     };
     const plan = planearCatalogos(base);
-    expect(plan.departamentosNuevos.map((d) => d.divisionClave)).toEqual(["EI", "SH"]);
+    expect(plan.departamentosNuevos.map((d) => d.divisionClave)).toEqual(["EI", "SH", "EI", "EA", "SH"]);
     expect(plan.conflictos.join(" ")).toContain("ya existe en otra división");
   });
 });
@@ -113,6 +113,28 @@ describe("compatibilidad con el cargador de profesores", () => {
       { departamentos, profesores: [] },
     );
     expect(plan.departamentosFaltantes.size).toBe(0);
-    expect(plan.cargar.map((p) => p.departamentoId).sort()).toEqual([100, 101, 102]);
+    expect(plan.cargar.map((p) => p.departamentoId).sort()).toEqual([100, 101, 102, 103, 104, 105]);
+  });
+});
+
+describe("cobertura del listado de profesores", () => {
+  it("define los seis departamentos que trae el CSV, con los nombres exactos y cada uno en una división definida", () => {
+    const delCsv = [
+      "Departamento de Ciencias Computacionales e Ingenierías",
+      "Departamento de Ciencias de la Salud",
+      "Departamento de Ciencias del Comportamiento",
+      "Departamento de Ciencias Naturales y Exactas",
+      "Departamento de Ciencias Económicas y Administrativas",
+      "Departamento de Ciencias Sociales y Humanidades",
+    ];
+    expect(DEPARTAMENTOS_REALES.map((d) => d.nombre).sort()).toEqual([...delCsv].sort());
+    const claves = DIVISIONES_REALES.map((d) => d.clave);
+    for (const d of DEPARTAMENTOS_REALES) expect(claves).toContain(d.divisionClave);
+  });
+
+  it("con las definiciones reales ningún departamento del listado queda sin crear ni sin división", () => {
+    const plan = planearCatalogos(baseVacia);
+    expect(plan.conflictos).toEqual([]);
+    expect(plan.departamentosNuevos.map((d) => d.nombre).sort()).toEqual(DEPARTAMENTOS_REALES.map((d) => d.nombre).sort());
   });
 });
