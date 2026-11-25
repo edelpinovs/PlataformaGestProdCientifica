@@ -7,45 +7,21 @@
 //   un CSV cuyo nombre contenga «scopus»    → autores de Scopus con departamento
 // Escribe <carpeta>/informe-validacion.md CON nombres (para revisarlo con el cliente). En la terminal
 // solo imprime conteos. Detalle en docs/IMPORTACION_DATOS_REALES.md.
-import { execFileSync } from "node:child_process";
-import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { writeFileSync } from "node:fs";
 import path from "node:path";
+import { leerCsvReales } from "./lib/datos-reales";
 import { informeDetallado, resumenAnonimo, validarProfesores } from "./lib/importar-profesores";
 
-const carpeta = path.resolve(process.argv[2] ?? "datos-reales");
-
-if (!existsSync(carpeta)) {
-  console.error(`No existe la carpeta ${carpeta}. Crea «datos-reales/» y copia ahí los CSV.`);
-  process.exit(1);
-}
-
 try {
-  execFileSync("git", ["check-ignore", "-q", carpeta], { stdio: "ignore" });
-} catch {
-  console.error(`La carpeta ${carpeta} NO está ignorada por git. El repositorio es público: agrégala a .gitignore antes de continuar.`);
+  const { carpeta, completo, scopus } = leerCsvReales(process.argv[2]);
+  const resultado = validarProfesores({ completo, scopus });
+
+  const salida = path.join(carpeta, "informe-validacion.md");
+  writeFileSync(salida, informeDetallado(resultado), "utf8");
+
+  console.log(resumenAnonimo(resultado));
+  console.log(`\nInforme con nombres: ${salida}`);
+} catch (error) {
+  console.error(error instanceof Error ? error.message : error);
   process.exit(1);
 }
-
-const csv = readdirSync(carpeta).filter((n) => n.toLowerCase().endsWith(".csv"));
-const buscar = (palabra: string) => csv.filter((n) => n.toLowerCase().includes(palabra));
-const completo = buscar("completo");
-const scopus = buscar("scopus");
-if (completo.length !== 1) {
-  console.error(`Se esperaba un CSV con «completo» en el nombre y hay ${completo.length}. Archivos: ${csv.join(", ") || "(ninguno)"}.`);
-  process.exit(1);
-}
-if (scopus.length > 1) {
-  console.error(`Hay ${scopus.length} CSV con «scopus» en el nombre; deja solo uno.`);
-  process.exit(1);
-}
-
-const resultado = validarProfesores({
-  completo: readFileSync(path.join(carpeta, completo[0]), "utf8"),
-  scopus: scopus.length === 1 ? readFileSync(path.join(carpeta, scopus[0]), "utf8") : "",
-});
-
-const salida = path.join(carpeta, "informe-validacion.md");
-writeFileSync(salida, informeDetallado(resultado), "utf8");
-
-console.log(resumenAnonimo(resultado));
-console.log(`\nInforme con nombres: ${salida}`);

@@ -50,7 +50,7 @@ Conteos confirmados con `npm run importar:validar` el 2026-11-24 (tabla de la se
 
 - **Código de CUValles, correo, género y tipo de contratación:** no vienen en ningún archivo; se guardan como pendientes marcados.
 - **Grado científico:** no viene; queda vacío (el campo es opcional).
-- **Departamentos:** los de la base son de ejemplo (`DEP-A1`…). Los siete reales del archivo de Scopus deben darse de alta, con su división, antes de asignarlos.
+- **Departamentos:** los de la base son de ejemplo (`DEP-A1`…). Los seis reales del archivo de Scopus deben darse de alta, con su división, antes de asignarlos.
 - **Estatus laboral:** no viene; entra como `ACTIVO` (valor por omisión del esquema). Confirmar con el cliente (ver D-246).
 
 ## Resultado de la validación
@@ -111,9 +111,27 @@ La carga **no se ha hecho**. Va en entregas aparte, cada una con su issue y su r
    - **Se ve como «Pendiente»** en el listado, la exportación y los reportes. En el reporte de convocatoria se cuenta aparte (no se suma a Masculino ni Femenino) y se puede filtrar.
    - **Al editar a una persona con `PENDIENTE`**, el select muestra «Pendiente» (para no guardar otro valor en silencio) y el guardado exige elegir uno real. Por eso, **editar a alguien importado obliga a completar género, contratación y también el código**, porque `PEND-0001` lleva guion y el formulario solo admite letras y números. Es intencional: no queda un código provisional por descuido. Si el equipo prefiere corregir un campo a la vez, hay que cambiar el marcador a `PEND0001` antes de cargar.
    - **No entra a PRODEP ni a Cuerpos Académicos** (requieren tiempo completo) y el mensaje dice que falta registrar la contratación.
-2. **Departamentos reales** dados de alta con su división.
-3. **Cargador** `scripts/importar-profesores.ts`: simulación por omisión, `--aplicar` para escribir, con las marcas `PEND-` y `@pendiente.invalid`, y comando de conteo y de limpieza con `WHERE` (como `db:demo`).
+2. **Departamentos reales** dados de alta con su división. El listado trae **seis**: Ciencias del Comportamiento, Ciencias Naturales y Exactas, Ciencias Computacionales e Ingenierías, Ciencias de la Salud, Ciencias Económicas y Administrativas y Ciencias Sociales y Humanidades. El nombre debe coincidir con el del CSV (sin importar acentos ni mayúsculas); la división de cada uno la define el cliente. Sin esto, `aplicar` se niega a correr.
+3. **Cargador** (hecho): ver la sección siguiente.
 4. **Revisión con el cliente** de las incidencias de este documento; cada una resuelta se corrige desde la pantalla de Profesores (Editar), no con SQL.
+
+## El cargador
+
+```bash
+npm run importar:simular                  # calcula qué se crearía; no escribe en la base
+npm run importar:aplicar -- --confirmo    # crea los profesores en la base compartida
+npm run importar:contar                   # cuántos hay con marca de pendiente
+npm run importar:limpiar                  # borra lo marcado que nadie ha tocado ni usado
+```
+
+- **`simular`** lee la base (profesores y departamentos) para comparar, pero no escribe. Imprime solo conteos y deja el detalle con nombres en `datos-reales/plan-carga.md` (ignorado por git).
+- **`aplicar`** se niega a correr si falta la migración de `PENDIENTE`, si faltan departamentos en la base (salvo `--sin-departamento`) o si no se pasa `--confirmo`. Crea todo en una transacción: o entran todos o ninguno.
+- **Qué crea:** código `PEND-0001…`, correo `pend-0001@pendiente.invalid`, género y contratación `PENDIENTE`, estatus `ACTIVO` (valor por omisión), nombres y apellidos en nombre propio («ABUNDIS GUTIÉRREZ» → «Abundis Gutiérrez») y los identificadores que no estaban en la lista de excluidos.
+- **Se puede repetir:** quien ya existe en la base por nombre (sin importar acentos ni mayúsculas) se omite, y la numeración continúa después del `PEND-` más alto. Lo omitido no recibe los identificadores del CSV; si hacen falta, se capturan al editar.
+- **Si un identificador ya lo tiene otra persona en la base**, se crea a la persona con ese campo vacío y queda anotado.
+- **`limpiar`** borra solo a quien conserva el código `PEND-` **y** el correo `@pendiente.invalid` y no tiene perfil, programas, reconocimientos, cuerpos académicos, LGAC, participaciones, resultados, autorías ni cortes. Quien ya fue corregido o usado no se toca. Cada borrado lleva su condición.
+
+Código en `scripts/importar-profesores.ts` y `scripts/lib/cargar-profesores.ts`; la parte pura está probada en `scripts/lib/cargar-profesores.test.ts`. **`aplicar` y `limpiar` no tienen prueba automática** porque escriben en la base compartida: se comprueban con `simular` y `contar` antes y después.
 
 ## Después de la carga
 
