@@ -1,18 +1,20 @@
 import { FilaEditable } from "@/components/fila-editable";
 import { BarraListado, EncabezadoOrdenable, PaginacionListado } from "@/components/listado";
 import { Marco } from "@/components/marco";
+import { ModalDetalle } from "@/components/modal-detalle";
 import { Aviso, Avatar, claseBotonContorno, claseTabla, EstadoVacio, EtiquetaEstado, Icono, ICONOS, Panel } from "@/components/ui";
 import { requireModulo } from "@/lib/auth/session";
-import { analizarListado, hayFiltrosActivos, paginar } from "@/lib/listados/consulta";
+import { analizarListado, enlaceListado, hayFiltrosActivos, paginar } from "@/lib/listados/consulta";
 import { prisma } from "@/lib/prisma";
 import {
   COLUMNAS_PROFESORES, filtroProfesores, listadoProfesores, ordenProfesores,
 } from "@/modules/profesores/profesores-listado";
 import { enlaceExportacionProfesores } from "@/modules/profesores/exportar";
+import { idDeDetalle, seccionesDetalleProfesor, subtituloDetalleProfesor } from "@/modules/profesores/profesores-detalle";
 import {
   ESTATUS_CON_GOCE, ETIQUETA_CONTRATACION, ETIQUETA_ESTATUS, opcionesContratacion, opcionesGenero,
 } from "@/modules/profesores/profesores";
-import { editarProfesor, eliminarProfesor } from "./actions";
+import { editarProfesor, eliminarProfesor, leerDetalleProfesor } from "./actions";
 import { RegistrarProfesor } from "./registrar-profesor";
 
 const BASE = "/profesores";
@@ -64,6 +66,18 @@ export default async function ProfesoresPage({ searchParams }: PageProps<"/profe
   });
   const contexto = { base: BASE, definicion, consulta: { ...consulta, pagina: paginacion.pagina } };
   const hayFiltros = hayFiltrosActivos(consulta);
+  const listadoUrl = enlaceListado(BASE, definicion, contexto.consulta);
+  const conParametro = (clave: string, valor: string) =>
+    `${listadoUrl}${listadoUrl.includes("?") ? "&" : "?"}${clave}=${encodeURIComponent(valor)}`;
+  const verTexto = typeof parametros.ver === "string" ? parametros.ver : undefined;
+  const editarTexto = typeof parametros.editar === "string" ? parametros.editar : undefined;
+  const verId = verTexto === undefined ? null : idDeDetalle.safeParse(verTexto);
+  const editarId = editarTexto === undefined ? null : idDeDetalle.safeParse(editarTexto);
+  const detalle = verId?.success ? await leerDetalleProfesor(verId.data) : null;
+  const avisoDetalle = verTexto === undefined ? null
+    : !verId?.success ? "Ese detalle no es válido."
+    : !detalle ? "Ese profesor ya no existe en el directorio."
+    : null;
 
   return (
     <Marco correo={perfil.correo} rol={perfil.rol} activo="profesores" titulo="Profesores"
@@ -84,8 +98,14 @@ export default async function ProfesoresPage({ searchParams }: PageProps<"/profe
           <RegistrarProfesor grados={grados} departamentos={departamentos} />
         </div>
       </div>
+      {detalle && verId?.success && (
+        <ModalDetalle titulo="Detalle del profesor" subtitulo={subtituloDetalleProfesor(detalle)}
+          urlCerrar={listadoUrl} focoAlCerrar={`ver-profesor-${verId.data}`}
+          secciones={seccionesDetalleProfesor(detalle)} editarHref={conParametro("editar", String(verId.data))} />
+      )}
       <Panel>
         {resultado && <div className="mb-4"><Aviso tipo="exito">{resultado}</Aviso></div>}
+        {avisoDetalle && <div className="mb-4"><Aviso tipo="error">{avisoDetalle}</Aviso></div>}
         <div className="flex flex-col gap-4">
           <BarraListado {...contexto} columnas={COLUMNAS_PROFESORES} errores={errores}
             etiquetaBusqueda="Buscar profesores" placeholder="Buscar por código, nombre o correo"
@@ -131,9 +151,12 @@ export default async function ProfesoresPage({ searchParams }: PageProps<"/profe
                     </span>
                   );
                   return (
-                    <FilaEditable key={`${p.id}-${p.actualizadoEn.getTime()}`}
+                    <FilaEditable key={`${p.id}-${p.actualizadoEn.getTime()}-${editarId?.success === true && editarId.data === p.id ? "editar" : "fila"}`}
                       id={p.id} nombre={nombre} detalle={p.codigo}
                       editar={editarProfesor} eliminar={eliminarProfesor}
+                      verDetalle={{ href: conParametro("ver", String(p.id)), idFoco: `ver-profesor-${p.id}` }}
+                      edicionInicial={editarId?.success === true && editarId.data === p.id}
+                      urlListado={listadoUrl}
                       celdas={[
                         {
                           contenido: (
