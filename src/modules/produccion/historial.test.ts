@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { analizarListado } from "@/lib/listados/consulta";
-import { ESTADOS_HISTORIAL, idRegistroHistorial, LISTADO_CONTINUIDAD, LISTADO_HISTORIAL, nombreProfesor, periodoProximaConsulta, sqlContinuidad, sqlHistorial, TIPOS_HISTORIAL } from "./historial";
+import { ESTADOS_HISTORIAL, idRegistroHistorial, LISTADO_CONTINUIDAD, LISTADO_HISTORIAL, nombreProfesor, periodoProximaConsulta, sqlContinuidad, sqlHistorial, textoAvance, TIPO_ESTADO_HISTORIAL, TIPOS_HISTORIAL } from "./historial";
 
 describe("historial y continuidad de Producción (#169)", () => {
   it("distingue primera consulta, Scopus inicial y solapamiento sin usar fechas de publicaciones", () => {
@@ -48,5 +48,23 @@ describe("historial y continuidad de Producción (#169)", () => {
   });
   it.each([undefined, ["1","2"], "0", "Infinity", "2147483648", "9007199254740992"])("rechaza un detalle inválido sin consultar un Job arbitrario (%j)", valor => {
     expect(idRegistroHistorial.safeParse(valor).success).toBe(false);
+  });
+});
+
+describe("presentación del historial (#330)", () => {
+  it("concuerda el avance en singular y plural", () => {
+    expect(textoAvance(1, 1)).toBe("1 de 1 profesor revisado");
+    expect(textoAvance(0, 1)).toBe("0 de 1 profesor revisado");
+    expect(textoAvance(3, 30)).toBe("3 de 30 profesores revisados");
+  });
+
+  it("da color a cada estado terminado y deja neutros los pendientes", () => {
+    expect(Object.keys(TIPO_ESTADO_HISTORIAL).sort()).toEqual(Object.keys(ESTADOS_HISTORIAL).sort());
+    expect(TIPO_ESTADO_HISTORIAL).toMatchObject({ COMPLETADO: "exito", FALLIDO: "aviso", PENDIENTE: null, EN_PROCESO: null });
+  });
+
+  it("muestra las fechas como dd/mm/aaaa hh:mm", () => {
+    const consulta = analizarListado(LISTADO_HISTORIAL, {}).consulta;
+    expect(JSON.stringify(sqlHistorial(consulta).contar)).toContain("DD/MM/YYYY HH24:MI");
   });
 });

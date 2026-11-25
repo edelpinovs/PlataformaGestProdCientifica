@@ -36,4 +36,24 @@ describe("Presentación segura del resultado del escaneo", () => {
     expect(resultado?.mensaje).toContain("Autorías nuevas: 0");
     expect(resultado?.mensaje).toContain("Guardadas o actualizadas: 0");
   });
+
+  it("muestra una sola línea por fuente con el motivo de su incidencia", () => {
+    const trabajo = datos(3, ["Scopus (Prof. 1): NO_API_KEY"]);
+    trabajo.resumen = { ...trabajo.resumen, consultasFuentes: [
+      { profesorId: 1, fuente: "ORCID", estado: "SIN_RESULTADOS", cantidad: 0 },
+      { profesorId: 1, fuente: "OPENALEX", estado: "NO_SELECCIONADA", cantidad: 0 },
+      { profesorId: 1, fuente: "SCOPUS", estado: "INCIDENCIA", cantidad: 0 },
+      { profesorId: 1, fuente: "CROSSREF", estado: "COMPLETADA", cantidad: 3 },
+      { profesorId: 1, fuente: "GOOGLE_SCHOLAR", estado: "NO_SELECCIONADA", cantidad: 0 },
+    ] } as typeof trabajo.resumen;
+    const resultado = presentarResultadoEscaneo("FALLIDO", trabajo);
+    expect(resultado?.fuentes).toEqual([
+      { fuente: "ORCID", estado: "sin resultados" },
+      { fuente: "OpenAlex", estado: "no seleccionada" },
+      { fuente: "Scopus", estado: "con incidencias", detalle: "falta configurar la clave de acceso en el servidor." },
+      { fuente: "Crossref", estado: "consultada" },
+      { fuente: "Google Scholar", estado: "no seleccionada" },
+    ]);
+    expect(resultado?.incidencias).toEqual([]);
+  });
 });

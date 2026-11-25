@@ -3,7 +3,7 @@ import { Aviso, Panel } from "@/components/ui";
 import { datosLoteEsquema } from "@/modules/produccion/lotes";
 import { rangoEfectivo } from "@/modules/produccion/rango-escaneo";
 import { debeEnriquecerAutores } from "@/modules/produccion/fuentes";
-import { fechaEscaneo, ZONA_FECHAS_ESCANEO } from "@/modules/produccion/fechas-escaneo";
+import { fechaEscaneo } from "@/modules/produccion/fechas-escaneo";
 import { requireModulo } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { FormularioEscaneo } from "../formulario-escaneo";
@@ -41,7 +41,7 @@ export default async function EscaneoPage() {
       {ultimoJob && <ResultadoEscaneo resultado={presentarResultadoEscaneo(ultimoJob.estado, ultimoJob.datos)} />}
       {ultimoJob && <div className="flex flex-col gap-4 text-sm text-texto-3">
         <p>Inicio: {fechaEscaneo(ultimoJob.creadoEn)}.</p>
-        <p>Última actualización de avance: {fechaEscaneo(ultimoJob.actualizadoEn)}. Zona horaria: {ZONA_FECHAS_ESCANEO}.</p>
+        <p>Última actualización de avance: {fechaEscaneo(ultimoJob.actualizadoEn)} (hora del centro de México).</p>
       </div>}
       <p className="text-sm text-texto-2">{ultimoJob ? `${ultimoJob.avance} de ${ultimoJob.total} profesores revisados` : "Todavía no hay escaneos registrados."}</p>
     </Panel>

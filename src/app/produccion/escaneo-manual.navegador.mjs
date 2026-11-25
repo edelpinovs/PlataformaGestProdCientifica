@@ -42,8 +42,8 @@ const comprobar=(c,m)=>{if(!c)throw Error(m)};
       window.solicitudes.push(Object.fromEntries(datos));
       await new Promise(resolve=>setTimeout(resolve,250));
       if(window.solicitudes.length===1) return {jobId:7,pendiente:true,avance:1,total:2,fuenteEnCurso:"ORCID"};
-      if(window.solicitudes.length===2) return {jobId:7,avance:2,total:2,resultado:{tipo:"aviso",mensaje:"Escaneo con resultados parciales.",incidencias:[]}};
-      return {jobId:8,avance:1,total:1,exito:true,resultado:{tipo:"exito",mensaje:"Escaneo finalizado.",incidencias:[]}};
+      if(window.solicitudes.length===2) return {jobId:7,avance:2,total:2,resultado:{tipo:"aviso",mensaje:"Escaneo con resultados parciales.",fuentes:[],incidencias:[]}};
+      return {jobId:8,avance:1,total:1,exito:true,resultado:{tipo:"exito",mensaje:"Escaneo finalizado.",fuentes:[],incidencias:[]}};
     }
   `}));
 }}]);
