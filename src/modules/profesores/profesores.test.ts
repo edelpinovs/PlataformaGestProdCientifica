@@ -9,7 +9,11 @@ import {
   generarNombreNormalizado,
   mensajeUnicidadPrisma,
   motivoProfesorNoEliminable,
+  opcionesContratacion,
+  opcionesGenero,
   registrarProfesor,
+  TIPOS_CONTRATACION,
+  ETIQUETA_CONTRATACION,
 } from "./profesores";
 
 const prismaFalso = vi.hoisted(() => ({
@@ -228,6 +232,16 @@ describe("asignacionLaboral (RF-006)", () => {
     expect(asignacionLaboral.safeParse({ tipoContratacion: "ASIGNATURA", estatusLaboral: "JUBILADO" }).success).toBe(false);
   });
 
+  it("no permite elegir PENDIENTE: pide un valor real, con mensaje en español (D-261)", () => {
+    const contratacion = asignacionLaboral.safeParse({ tipoContratacion: "PENDIENTE", estatusLaboral: "ACTIVO" });
+    expect(contratacion.success).toBe(false);
+    if (!contratacion.success) expect(contratacion.error.issues[0].message).toBe("Selecciona el tipo de contratación.");
+
+    const genero = registrarProfesor.safeParse({ ...datosValidos, genero: "PENDIENTE" });
+    expect(genero.success).toBe(false);
+    if (!genero.success) expect(genero.error.issues.map((i) => i.message)).toContain("Selecciona un género.");
+  });
+
   it("el alta del profesor conserva la contratación y el estatus elegidos", () => {
     const resultado = registrarProfesor.parse({
       ...datosValidos,
@@ -236,6 +250,24 @@ describe("asignacionLaboral (RF-006)", () => {
     });
     expect(resultado.tipoContratacion).toBe("ASIGNATURA");
     expect(resultado.estatusLaboral).toBe("LICENCIA");
+  });
+});
+
+describe("opciones de edición con PENDIENTE (D-261)", () => {
+  it("el menú de alta no ofrece PENDIENTE, pero la etiqueta existe para mostrarlo", () => {
+    expect(TIPOS_CONTRATACION).not.toContain("PENDIENTE");
+    expect(ETIQUETA_CONTRATACION.PENDIENTE).toBe("Pendiente");
+  });
+
+  it("quien tiene un valor real ve solo las opciones reales", () => {
+    expect(opcionesGenero("M").map((o) => o.valor)).toEqual(["M", "F"]);
+    expect(opcionesContratacion("ASIGNATURA").map((o) => o.valor)).toEqual(["TIEMPO_COMPLETO", "ASIGNATURA"]);
+  });
+
+  it("quien tiene PENDIENTE lo ve primero, para que el select refleje lo guardado y no elija otro valor en silencio", () => {
+    expect(opcionesGenero("PENDIENTE")[0]).toEqual({ valor: "PENDIENTE", texto: "Pendiente" });
+    expect(opcionesContratacion("PENDIENTE")[0]).toEqual({ valor: "PENDIENTE", texto: "Pendiente" });
+    expect(opcionesGenero("PENDIENTE")).toHaveLength(3);
   });
 });
 

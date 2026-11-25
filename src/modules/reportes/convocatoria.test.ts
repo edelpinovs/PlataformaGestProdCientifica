@@ -70,6 +70,25 @@ describe("clasificación de la convocatoria anual (RF-028)", () => {
     ]);
   });
 
+  it("cuenta aparte el género pendiente y permite filtrarlo, sin sumarlo a M ni F (D-261)", () => {
+    const dictamenes = [
+      snii({ id: 1, profesorId: 1, genero: "F" }),
+      snii({ id: 2, profesorId: 2, genero: "PENDIENTE" }),
+      snii({ id: 3, profesorId: 3, genero: "PENDIENTE" }),
+    ];
+    const todas = consultarConvocatoria(dictamenes, [], [], analizarConvocatoria({})).filas;
+    expect(todas).toEqual(expect.arrayContaining([
+      expect.objectContaining({ genero: "F", nuevosIngresos: 1 }),
+      expect.objectContaining({ genero: "PENDIENTE", nuevosIngresos: 2 }),
+    ]));
+
+    const estado = analizarConvocatoria({ genero: "PENDIENTE" });
+    expect(estado.errores.genero).toBeUndefined();
+    expect(consultarConvocatoria(dictamenes, [], [], estado).filas).toEqual([
+      expect.objectContaining({ genero: "PENDIENTE", nuevosIngresos: 2 }),
+    ]);
+  });
+
   it("acota por año y programa de la convocatoria", () => {
     const dictamenes = [
       snii({ anio: 2026, programa: "SNII" }),

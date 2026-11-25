@@ -67,6 +67,12 @@ describe("validarContratacionProdep", () => {
   it("rechaza a profesores por Asignatura con un mensaje claro", () => {
     expect(validarContratacionProdep("ASIGNATURA")).toBe("El Perfil Deseable PRODEP requiere Tiempo Completo.");
   });
+
+  it("explica que falta registrar la contratación cuando está pendiente (D-261)", () => {
+    expect(validarContratacionProdep("PENDIENTE")).toBe(
+      "Primero registra el tipo de contratación de la persona (hoy está pendiente). El Perfil Deseable PRODEP requiere Tiempo Completo.",
+    );
+  });
 });
 
 describe("tieneProdepActivo", () => {

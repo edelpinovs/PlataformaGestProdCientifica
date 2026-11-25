@@ -9,7 +9,9 @@ import {
   COLUMNAS_PROFESORES, filtroProfesores, listadoProfesores, ordenProfesores,
 } from "@/modules/profesores/profesores-listado";
 import { enlaceExportacionProfesores } from "@/modules/profesores/exportar";
-import { ETIQUETA_CONTRATACION, ETIQUETA_ESTATUS } from "@/modules/profesores/profesores";
+import {
+  ETIQUETA_CONTRATACION, ETIQUETA_ESTATUS, opcionesContratacion, opcionesGenero,
+} from "@/modules/profesores/profesores";
 import { editarProfesor, eliminarProfesor } from "./actions";
 import { RegistrarProfesor } from "./registrar-profesor";
 
@@ -22,11 +24,6 @@ const ESTATUS_TIPO = {
   BAJA_POSDOCTORAL: "aviso",
   TRASLADADO: "error",
 } as const;
-
-const OPCIONES_GENERO = [
-  { valor: "M", texto: "Masculino" },
-  { valor: "F", texto: "Femenino" },
-];
 
 export default async function ProfesoresPage({ searchParams }: PageProps<"/profesores">) {
   const perfil = await requireModulo("profesores");
@@ -44,7 +41,6 @@ export default async function ProfesoresPage({ searchParams }: PageProps<"/profe
     ...departamentos.map((d) => ({ valor: String(d.id), texto: d.nombre })),
   ];
   const opcionesEstatus = Object.entries(ETIQUETA_ESTATUS).map(([valor, texto]) => ({ valor, texto }));
-  const opcionesContratacion = Object.entries(ETIQUETA_CONTRATACION).map(([valor, texto]) => ({ valor, texto }));
 
   const parametros = await searchParams;
   const { editado, eliminado } = parametros;
@@ -181,9 +177,9 @@ export default async function ProfesoresPage({ searchParams }: PageProps<"/profe
                         { nombre: "nombres", etiqueta: "Nombres", valor: p.nombres, maxLength: 150 },
                         { nombre: "apellidos", etiqueta: "Apellidos", valor: p.apellidos, maxLength: 150 },
                         { nombre: "correo", etiqueta: "Correo institucional", valor: p.correo, maxLength: 200 },
-                        { nombre: "genero", etiqueta: "Género", valor: p.genero, opciones: OPCIONES_GENERO, ancho: "corto" },
+                        { nombre: "genero", etiqueta: "Género", valor: p.genero, opciones: opcionesGenero(p.genero), ancho: "corto" },
                         { nombre: "tipoContratacion", etiqueta: "Tipo de contratación", valor: p.tipoContratacion,
-                          opciones: opcionesContratacion, ancho: "medio" },
+                          opciones: opcionesContratacion(p.tipoContratacion), ancho: "medio" },
                         { nombre: "estatusLaboral", etiqueta: "Estatus laboral", valor: p.estatusLaboral,
                           opciones: opcionesEstatus, ancho: "medio" },
                         { nombre: "departamentoId", etiqueta: "Departamento", valor: p.departamentoId ? String(p.departamentoId) : "",

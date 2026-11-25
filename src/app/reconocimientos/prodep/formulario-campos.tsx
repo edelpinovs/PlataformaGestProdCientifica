@@ -15,7 +15,7 @@ export type ProfesorProdep = {
   codigo: string;
   nombres: string;
   apellidos: string;
-  tipoContratacion: "TIEMPO_COMPLETO" | "ASIGNATURA";
+  tipoContratacion: "TIEMPO_COMPLETO" | "ASIGNATURA" | "PENDIENTE";
 };
 
 export type ValoresProdep = {

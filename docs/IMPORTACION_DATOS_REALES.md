@@ -106,7 +106,11 @@ El código está en `scripts/validar-profesores.ts` y `scripts/lib/importar-prof
 
 La carga **no se ha hecho**. Va en entregas aparte, cada una con su issue y su revisión:
 
-1. **Migración `PENDIENTE`** en los enums `Genero` y `TipoContratacion` (cambia el esquema compartido: `npm run db:nueva-migracion`). Afecta a Profesores (formularios, validación, exportación), Cuerpos Académicos, PRODEP y Reportes; hay que revisar cada pantalla donde se elige o se cuenta género o contratación para que `PENDIENTE` se vea y se pueda corregir. Avisar al equipo antes (regla de `prisma/schema.prisma`).
+1. **Migración `PENDIENTE`** (hecha en el código; falta aplicarla a la base compartida con `npm run db:migrar`): agrega `PENDIENTE` a `Genero` y `TipoContratacion` y lo trata así:
+   - **No se puede elegir** en ningún formulario: el alta solo ofrece los valores reales y el servidor rechaza `PENDIENTE` con «Selecciona un género.» o «Selecciona el tipo de contratación.».
+   - **Se ve como «Pendiente»** en el listado, la exportación y los reportes. En el reporte de convocatoria se cuenta aparte (no se suma a Masculino ni Femenino) y se puede filtrar.
+   - **Al editar a una persona con `PENDIENTE`**, el select muestra «Pendiente» (para no guardar otro valor en silencio) y el guardado exige elegir uno real. Por eso, **editar a alguien importado obliga a completar género, contratación y también el código**, porque `PEND-0001` lleva guion y el formulario solo admite letras y números. Es intencional: no queda un código provisional por descuido. Si el equipo prefiere corregir un campo a la vez, hay que cambiar el marcador a `PEND0001` antes de cargar.
+   - **No entra a PRODEP ni a Cuerpos Académicos** (requieren tiempo completo) y el mensaje dice que falta registrar la contratación.
 2. **Departamentos reales** dados de alta con su división.
 3. **Cargador** `scripts/importar-profesores.ts`: simulación por omisión, `--aplicar` para escribir, con las marcas `PEND-` y `@pendiente.invalid`, y comando de conteo y de limpieza con `WHERE` (como `db:demo`).
 4. **Revisión con el cliente** de las incidencias de este documento; cada una resuelta se corrige desde la pantalla de Profesores (Editar), no con SQL.
