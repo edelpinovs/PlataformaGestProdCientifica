@@ -117,20 +117,45 @@ La carga **no se ha hecho**. Va en entregas aparte, cada una con su issue y su r
 
 ### Departamentos y divisiones
 
-El listado trae **seis** departamentos y ninguno existe todavía en la base, que solo tiene los de ejemplo (`DEP-A1`…, y las divisiones `DIV-A`, `DIV-B` y `DIV-C`). Los nombres deben coincidir con los del CSV, sin importar acentos ni mayúsculas. Las divisiones tampoco están dadas de alta.
+El listado trae **seis** departamentos y ninguno existe todavía en la base, que solo tiene los de ejemplo (`DEP-A1`…, y las divisiones `DIV-A`, `DIV-B` y `DIV-C`). Los nombres deben coincidir con los del CSV, sin importar acentos ni mayúsculas.
 
-| Departamento (como viene en el CSV) | Personas a crear | División | Estado |
-|---|---|---|---|
-| Departamento de Ciencias Computacionales e Ingenierías | 21 | CUCEI | Confirmada (2026-11-24) |
-| Departamento de Ciencias de la Salud | 19 | CUCS | Confirmada (2026-11-24) |
-| Departamento de Ciencias del Comportamiento | 5 | CUCSH | Confirmada (2026-11-24) |
-| Departamento de Ciencias Naturales y Exactas | 26 | — | **Por confirmar con el cliente** |
-| Departamento de Ciencias Económicas y Administrativas | 13 | — | **Por confirmar con el cliente** |
-| Departamento de Ciencias Sociales y Humanidades | 20 | — | **Por confirmar con el cliente** |
+**Divisiones confirmadas** (2026-11-24, D-263). La «clave» es la clave interna de la UdeG y es la que se guarda en la base:
 
+| Siglas | Nombre completo | Clave |
+|---|---|---|
+| CUCEI | Centro Universitario de Ciencias Exactas e Ingenierías | `EI` |
+| CUCS | Centro Universitario de Ciencias de la Salud | `SA` |
+| CUCSH | Centro Universitario de Ciencias Sociales y Humanidades | `SH` |
+
+La clave de centro de trabajo de la SEP (CCT) no tiene campo en el sistema y no se guarda.
+
+**Departamentos:**
+
+| Departamento (como viene en el CSV) | Personas a crear | División | Nomenclatura | Estado |
+|---|---|---|---|---|
+| Departamento de Ciencias Computacionales e Ingenierías | 21 | CUCEI (`EI`) | `DCCI` *(propuesta)* | División confirmada |
+| Departamento de Ciencias de la Salud | 19 | CUCS (`SA`) | `DCS` *(propuesta)* | División confirmada |
+| Departamento de Ciencias del Comportamiento | 5 | CUCSH (`SH`) | `DCCOM` *(propuesta)* | División confirmada |
+| Departamento de Ciencias Naturales y Exactas | 26 | — | — | **División por confirmar con el cliente** |
+| Departamento de Ciencias Económicas y Administrativas | 13 | — | — | **División por confirmar con el cliente** |
+| Departamento de Ciencias Sociales y Humanidades | 20 | — | — | **División por confirmar con el cliente** |
+
+- **Las nomenclaturas son una propuesta nuestra (D-264):** el cliente no las dio y la base exige una, única, por departamento. Si tienen una oficial, se cambian en `scripts/lib/catalogos-reales.ts` antes de aplicar, o después desde la pantalla de Departamentos (Editar).
 - Las personas son las que arrojó `npm run importar:simular` el 2026-11-24: 104 de las 122 a crear traen departamento (las otras 18 no aparecen en el archivo de Scopus). Las tres divisiones por confirmar cubren **59 de las 104**.
-- **Falta el nombre completo y la clave de cada división** (la base exige ambos: `clave` es única) antes de darlas de alta.
-- No se asume ninguna división sin confirmar. Mientras falten, se pueden dar de alta solo los tres departamentos confirmados; `aplicar` seguirá negándose a cargar mientras falte cualquiera de los seis (o hay que usar `--sin-departamento`, que no se recomienda: dejaría a esas personas sin departamento y asignarlas después sería una por una).
+- No se asume ninguna división sin confirmar. Cuando se confirmen, se agregan a `DIVISIONES_REALES` y `DEPARTAMENTOS_REALES` en `scripts/lib/catalogos-reales.ts`.
+- `importar:aplicar` seguirá negándose a cargar mientras falte cualquiera de los seis departamentos (o hay que usar `--sin-departamento`, que no se recomienda: dejaría a esas personas sin departamento y asignarlas después sería una por una).
+
+#### Alta de lo confirmado
+
+```bash
+npm run importar:catalogos:simular                 # qué se crearía y qué choca; no escribe
+npm run importar:catalogos:aplicar -- --confirmo   # crea las tres divisiones y los tres departamentos
+```
+
+- **Solo crea:** nunca edita ni borra. Se puede repetir: lo que ya existe (sin importar acentos ni mayúsculas) se omite.
+- **Si algo choca** (una clave, un nombre o una nomenclatura ya en uso, o un departamento con el mismo nombre en otra división), no escribe nada y lo explica. Se resuelve desde las pantallas del catálogo.
+- Usa las mismas validaciones y la misma detección de duplicados que las pantallas de Divisiones y Departamentos, y todo va en una transacción.
+- Para deshacerlo, se eliminan desde esas pantallas (que no dejan borrar lo que ya tiene personas asignadas). El código está en `scripts/alta-catalogos-reales.ts` y `scripts/lib/catalogos-reales.ts`; el plan está probado en `scripts/lib/catalogos-reales.test.ts`. **`aplicar` no tiene prueba automática** (escribe en la base compartida): se comprueba con `simular` antes y después.
 
 ## El cargador
 
