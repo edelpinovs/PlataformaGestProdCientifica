@@ -15,11 +15,12 @@ function motivo(error: string): string {
 
 /** Presenta únicamente mensajes permitidos; nunca devuelve errores técnicos guardados. */
 export function presentarResultadoEscaneo(estado: string, datos: unknown) {
-  if (estado !== "COMPLETADO" && estado !== "FALLIDO") return null;
+  if (estado !== "COMPLETADO" && estado !== "FALLIDO" && estado !== "CANCELADO") return null;
+  const cancelado = estado === "CANCELADO";
   const lectura = datosLoteEsquema.safeParse(datos);
   if (!lectura.success) return {
-    tipo: estado === "FALLIDO" ? "error" as const : "exito" as const,
-    mensaje: estado === "FALLIDO" ? "No se pudo completar el escaneo. Puedes reintentarlo." : "Escaneo finalizado.",
+    tipo: estado === "FALLIDO" ? "error" as const : cancelado ? "aviso" as const : "exito" as const,
+    mensaje: estado === "FALLIDO" ? "No se pudo completar el escaneo. Puedes reintentarlo." : cancelado ? "La búsqueda se canceló antes de terminar." : "Escaneo finalizado.",
     fuentes: [] as FuenteResultado[],
     incidencias: [] as string[],
   };
@@ -44,8 +45,8 @@ export function presentarResultadoEscaneo(estado: string, datos: unknown) {
   }
   if (estado === "FALLIDO" && !incidencias.size && !fuentes.some(f => f.detalle)) incidencias.add("El trabajo no pudo completarse. Puedes reintentar el escaneo.");
   return {
-    tipo: parcial ? "aviso" as const : conIncidencias ? "error" as const : "exito" as const,
-    mensaje: `${parcial ? "Escaneo con resultados parciales." : conIncidencias ? "Escaneo con incidencias." : "Escaneo finalizado."} Publicaciones encontradas: ${resumen.publicacionesEncontradas}. Guardadas o actualizadas: ${resumen.publicacionesGuardadas}. Autorías nuevas: ${resumen.autoriasCreadas}.${resumen.autoriasRechazadasOmitidas ? ` Autorías omitidas por rechazo previo: ${resumen.autoriasRechazadasOmitidas}. No se volvieron a proponer para revisión.` : ""}${!conIncidencias && !resumen.publicacionesEncontradas ? " No se encontraron publicaciones para el periodo consultado." : ""}`,
+    tipo: cancelado || parcial ? "aviso" as const : conIncidencias ? "error" as const : "exito" as const,
+    mensaje: `${cancelado ? "La búsqueda se canceló antes de terminar; se conserva lo guardado hasta ese momento." : parcial ? "Escaneo con resultados parciales." : conIncidencias ? "Escaneo con incidencias." : "Escaneo finalizado."} Publicaciones encontradas: ${resumen.publicacionesEncontradas}. Guardadas o actualizadas: ${resumen.publicacionesGuardadas}. Autorías nuevas: ${resumen.autoriasCreadas}.${resumen.autoriasRechazadasOmitidas ? ` Autorías omitidas por rechazo previo: ${resumen.autoriasRechazadasOmitidas}. No se volvieron a proponer para revisión.` : ""}${!cancelado && !conIncidencias && !resumen.publicacionesEncontradas ? " No se encontraron publicaciones para el periodo consultado." : ""}`,
     fuentes,
     incidencias: [...incidencias],
   };

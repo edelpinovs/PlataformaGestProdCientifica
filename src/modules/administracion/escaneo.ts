@@ -8,7 +8,7 @@ import { FUENTES_ESCANEO, NOMBRES_FUENTE, type FuenteEscaneo } from "@/modules/p
 export const VENTANA_DIAS = 30;
 const MS_DIA = 24 * 60 * 60 * 1000;
 
-export type EstadoTrabajo = "PENDIENTE" | "EN_PROCESO" | "COMPLETADO" | "FALLIDO";
+export type EstadoTrabajo = "PENDIENTE" | "EN_PROCESO" | "COMPLETADO" | "FALLIDO" | "CANCELADO";
 
 export type TrabajoResumen = {
   id: number;

@@ -35,9 +35,9 @@ const comprobar=(c,m)=>{if(!c)throw Error(m)};
  document.getElementById("resultado").textContent="CORRECTO: inicio, fuente actual, progreso automático, resultado parcial y éxito";
 }catch(e){document.getElementById("resultado").textContent="FALLO: "+e.message}})();
 `, "escaneo-manual", [{name:"accion-simulada",setup(b){
-  b.onResolve({filter:/^\.\/actions$/},args=>args.importer.endsWith("formulario-escaneo.tsx")?{path:"accion",namespace:"escaneo"}:undefined);
+  b.onResolve({filter:/^\.\/actions$/},args=>/(formulario-escaneo|control-busqueda)\.tsx$/.test(args.importer)?{path:"accion",namespace:"escaneo"}:undefined);
   b.onLoad({filter:/.*/,namespace:"escaneo"},()=>({contents:`
-    export async function iniciarEscaneoAction(_,datos){
+    export async function cancelarEscaneoAction(){window.cancelada=true;return {mensaje:"Búsqueda cancelada."}}export async function reintentarEscaneoAction(){return {}}export async function iniciarEscaneoAction(_,datos){
       window.solicitudes=(window.solicitudes||[]);
       window.solicitudes.push(Object.fromEntries(datos));
       await new Promise(resolve=>setTimeout(resolve,250));

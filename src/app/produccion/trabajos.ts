@@ -1,15 +1,20 @@
 import { prisma } from "@/lib/prisma";
 import { ejecutarEscaneo } from "@/modules/produccion/escaneo";
-import { avanzarLote, datosLoteEsquema, resumenVacio, type DatosLote } from "@/modules/produccion/lotes";
+import { avanzarLote, datosLoteEsquema, resumenVacio, TIEMPO_RESERVA_MS, type DatosLote } from "@/modules/produccion/lotes";
 import { repositorioPrisma } from "./repositorio";
 import { debeEnriquecerAutores, FUENTES_ANTERIORES, type FuenteEscaneo } from "@/modules/produccion/fuentes";
 import { TrabajoEscaneoPendiente } from "@/modules/produccion/fechas-escaneo";
 import { rangoEfectivo, type RangoEscaneo } from "@/modules/produccion/rango-escaneo";
 
 export const TIPOS_ESCANEO = ["escaneo-manual", "escaneo-diario"];
-const TIEMPO_RESERVA_MS = 10 * 60 * 1000;
+export const MENSAJE_REINTENTO_SIN_ACTIVOS = "Ninguno de los profesores sigue activo para reintentar.";
 
-export async function crearTrabajoEscaneo(tipo: string, profesorId?: number, rango?: RangoEscaneo, fuentes?: FuenteEscaneo[], enriquecerAutores?: boolean) {
+
+/**
+ * Crea la búsqueda. `profesores` es un profesor, una lista (reintentos, #279) o nada para todos;
+ * en cualquier caso solo entran los profesores activos (#259).
+ */
+export async function crearTrabajoEscaneo(tipo: string, profesores?: number | number[], rango?: RangoEscaneo, fuentes?: FuenteEscaneo[], enriquecerAutores?: boolean) {
   return prisma.$transaction(async transaccion => {
     // Serializa el inicio en todas las instancias, sin depender de un bloqueo en memoria.
     // $executeRaw y no $queryRaw: la función devuelve void y el adaptador de Prisma no puede leer esa columna.
@@ -19,20 +24,23 @@ export async function crearTrabajoEscaneo(tipo: string, profesorId?: number, ran
       orderBy: [{ creadoEn: "asc" }, { id: "asc" }],
     });
     if (pendiente) throw new TrabajoEscaneoPendiente(pendiente.id);
-    const profesores = await transaccion.profesor.findMany({
-      where: { estatusLaboral: "ACTIVO", ...(profesorId ? { id: profesorId } : {}) },
+    const lista = Array.isArray(profesores);
+    const elegidos = await transaccion.profesor.findMany({
+      where: { estatusLaboral: "ACTIVO", ...(Array.isArray(profesores) ? { id: { in: profesores } } : profesores ? { id: profesores } : {}) },
       select: { id: true }, orderBy: { id: "asc" },
     });
-    if (profesorId && profesores.length === 0) throw new Error("El profesor no está disponible para escanear.");
+    if (profesores !== undefined && elegidos.length === 0) {
+      throw new Error(lista ? MENSAJE_REINTENTO_SIN_ACTIVOS : "El profesor no está disponible para escanear.");
+    }
     const datos: DatosLote = {
-      version: 1, profesoresIds: profesores.map((profesor) => profesor.id), indice: 0,
+      version: 1, profesoresIds: elegidos.map((profesor) => profesor.id), indice: 0,
       ...(rango ? { desde: rango.desde, hasta: rango.hasta } : {}), resumen: resumenVacio(),
       fuentes: fuentes ?? [...FUENTES_ANTERIORES],
       ...(enriquecerAutores === undefined ? {} : { enriquecerAutores }),
     };
     return transaccion.job.create({ data: {
-      tipo, estado: profesores.length ? "PENDIENTE" : "COMPLETADO",
-      total: profesores.length, datos,
+      tipo, estado: elegidos.length ? "PENDIENTE" : "COMPLETADO",
+      total: elegidos.length, datos,
     } });
   });
 }
@@ -86,6 +94,19 @@ export async function procesarSiguienteProfesor(jobId: number) {
       estado: "FALLIDO", error: "No se pudo completar el lote. Inicia otro escaneo para reintentarlo.",
     } });
   }
+}
+
+/**
+ * Detiene una búsqueda pendiente o en proceso (#279). Un profesor que se esté procesando termina,
+ * pero su cierre exige EN_PROCESO y ya no sobrescribe el estado; lo guardado se conserva.
+ * Devuelve false si la búsqueda ya había terminado o no existe.
+ */
+export async function cancelarTrabajoEscaneo(jobId: number) {
+  const { count } = await prisma.job.updateMany({
+    where: { id: jobId, tipo: { in: TIPOS_ESCANEO }, estado: { in: ["PENDIENTE", "EN_PROCESO"] } },
+    data: { estado: "CANCELADO", error: "La búsqueda se canceló antes de terminar." },
+  });
+  return count > 0;
 }
 
 export async function obtenerTrabajoPendiente() {

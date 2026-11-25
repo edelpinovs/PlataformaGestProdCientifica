@@ -6,6 +6,7 @@ import { useFormStatus } from "react-dom";
 import { Aviso, claseBoton, claseCampo, claseEtiqueta } from "@/components/ui";
 import { iniciarEscaneoAction, type EstadoEscaneo } from "./actions";
 import { ResultadoEscaneo } from "./resultado-escaneo";
+import { ControlBusqueda } from "./control-busqueda";
 import { SelectorProfesor } from "@/components/selector-profesor";
 import { ANIO_MINIMO_ESCANEO, MAXIMO_ANIOS_RANGO, type RangoEscaneo } from "@/modules/produccion/rango-escaneo";
 import { resumenBusqueda } from "@/modules/produccion/resumen-busqueda";
@@ -177,6 +178,7 @@ export function FormularioEscaneo({
         </div>
       </form>
       <ProgresoEscaneo estado={estado} enviando={enviando} />
+      {(estado.pendiente || estado.continuar) && estado.jobId && <ControlBusqueda key={estado.jobId} jobId={estado.jobId} cancelar reintentar={false} />}
       {estado.error && !estado.resultado && <Aviso tipo="error">{estado.error}</Aviso>}
       {!enviando && estado.resultado && <ResultadoEscaneo resultado={estado.resultado} />}
       {estado.pendiente && (
