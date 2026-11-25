@@ -2,6 +2,7 @@
 // Diseñado como lógica de dominio pura que delega la persistencia al RepositorioProduccion.
 
 import { aniosDelRango, dentroDelRango, rangoDeAnio, type RangoEscaneo } from "./rango-escaneo";
+import { anioDesdeContinuidad } from "./continuidad";
 import { consultarOpenAlex } from "./conectores/openalex";
 import { consultarOrcid } from "./conectores/orcid";
 import { consultarCrossref } from "./conectores/crossref-busqueda";
@@ -194,7 +195,7 @@ export async function ejecutarEscaneo(
         else {
           await informarFuenteSinBloquear(opciones, fuente);
           const corte = !rango ? await repo.obtenerUltimoCorte?.(prof.id,fuente) : null;
-          const desde = anios?.desde ?? (corte ? Math.max(1900,corte.getUTCFullYear()-1) : fuente === "SCOPUS" ? inicioEscaneo.getUTCFullYear() : undefined);
+          const desde = anios?.desde ?? anioDesdeContinuidad(fuente, corte, inicioEscaneo);
           if (fuente === "CROSSREF") res = await (conectores.consultarCrossref ?? consultarCrossref)(prof,desde,anios?.hasta ?? inicioEscaneo.getUTCFullYear());
           else if (fuente === "GOOGLE_SCHOLAR") res = await (conectores.consultarGoogleScholar ?? consultarGoogleScholar)(prof,desde,anios?.hasta ?? inicioEscaneo.getUTCFullYear());
           else if (fuente === "SCOPUS") {

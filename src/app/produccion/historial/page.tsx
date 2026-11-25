@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { Marco } from "@/components/marco";
 import { BarraListado, EncabezadoOrdenable, PaginacionListado } from "@/components/listado";
 import { Aviso, claseBotonSecundario, claseCampo, claseEtiqueta, claseTabla, EstadoVacio, Panel } from "@/components/ui";
-import { COLUMNAS_HISTORIAL, ESTADOS_HISTORIAL, FilaHistorial, idRegistroHistorial, LISTADO_HISTORIAL, sqlHistorial } from "@/modules/produccion/historial";
+import { COLUMNAS_HISTORIAL, ESTADOS_HISTORIAL, FilaHistorial, idRegistroHistorial, LISTADO_HISTORIAL, nombreProfesor, sqlHistorial } from "@/modules/produccion/historial";
 import { datosLoteEsquema } from "@/modules/produccion/lotes";
 import { rangoEfectivo, textoRango } from "@/modules/produccion/rango-escaneo";
 import { presentarResultadoEscaneo } from "@/modules/produccion/resultado-escaneo";
@@ -26,13 +26,15 @@ export default async function HistorialPage({ searchParams }: { searchParams: Pr
   const detalle = idRegistroHistorial.safeParse(parametros.registro);
   const registro = detalle.success ? await prisma.job.findFirst({ where: { id: detalle.data, tipo: { in: ["escaneo-manual", "escaneo-diario"] } } }) : null;
   const datos = datosLoteEsquema.safeParse(registro?.datos);
+  const siguienteId = datos.success ? datos.data.profesoresIds[datos.data.indice] : undefined;
+  const siguiente = siguienteId === undefined ? null : await prisma.profesor.findUnique({ where: { id: siguienteId }, select: { apellidos: true, nombres: true, codigo: true } });
   const enlaceRegistro = (id: number) => `${enlaceListado(contexto.base, LISTADO_HISTORIAL, consulta)}${enlaceListado(contexto.base, LISTADO_HISTORIAL, consulta).includes("?") ? "&" : "?"}registro=${id}`;
   return <Marco correo={perfil.correo} rol={perfil.rol} activo="produccion" titulo="Historial de búsquedas" subtitulo="Fechas mostradas en America/Mexico_City. El historial conserva la trazabilidad y no se edita ni elimina." volver={{ href: "/produccion/escaneo", texto: "Escaneo de producción" }}>
     <NavegacionProduccion actual="historial" />
     <Link href="/produccion/continuidad" className={claseBotonSecundario}>Ver hasta dónde llegó cada profesor y fuente</Link>
     {parametros.registro !== undefined && (!detalle.success || !registro) && <Aviso tipo="error">No se encontró una búsqueda válida para consultar.</Aviso>}
     {registro && <Panel titulo={`Búsqueda #${registro.id}`} descripcion="Se muestra el avance confirmado; una fuente fallida conserva su último corte válido.">
-      <p className="text-sm text-texto-2">{registro.avance} de {registro.total} profesores revisados. {datos.success && datos.data.profesoresIds[datos.data.indice] !== undefined ? `Siguiente profesor pendiente: #${datos.data.profesoresIds[datos.data.indice]}.` : ""}</p>
+      <p className="text-sm text-texto-2">{registro.avance} de {registro.total} profesores revisados. {siguienteId !== undefined ? `Siguiente profesor pendiente: ${siguiente ? nombreProfesor(siguiente) : `#${siguienteId}`}.` : ""}</p>
       <ResultadoEscaneo resultado={presentarResultadoEscaneo(registro.estado, registro.datos)} />
       {datos.success && <p className="text-sm text-texto-3">{rangoEfectivo(datos.data) ? `Periodo solicitado: ${textoRango(rangoEfectivo(datos.data)!)}. Esta consulta histórica no adelanta los cortes incrementales.` : "Consulta incremental: conserva el solapamiento para recuperar indexaciones tardías."}</p>}
       <p className="text-sm text-texto-3">Fecha de finalización: {datos.success && datos.data.finalizadoEn ? new Intl.DateTimeFormat("es-MX", { dateStyle: "medium", timeStyle: "short", hourCycle: "h23", timeZone: "America/Mexico_City" }).format(new Date(datos.data.finalizadoEn)) : "No registrada"}. La actualización del avance no equivale a una finalización.</p>
