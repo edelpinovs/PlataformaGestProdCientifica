@@ -11,7 +11,7 @@ Notas de la validación de los listados reales y del criterio acordado para impo
 3. **Los campos obligatorios que el cliente no entregó se guardan como pendientes marcados**, nunca inventados (D-260, ajustado por D-262):
    - `codigo`: `PEND0001`, `PEND0002`… (el código real es el de CUValles).
    - `correo`: `pend-0001@pendiente.invalid`.
-   - `genero` y `tipoContratacion`: valor `PENDIENTE` (requiere agregarlo a los enums; ver «Pendiente antes de cargar»).
+   - `genero` y `tipoContratacion`: valor `PENDIENTE` (agregado a los enums, D-261; ver «Estado de la carga a la base»).
    - Nunca se infiere el género por el nombre.
 4. **Todo lo cargado es identificable y reversible**, igual que los datos demo: por el prefijo `PEND` y el dominio `@pendiente.invalid`. Los datos demo siguen conviviendo con los reales (D-259).
 
@@ -102,31 +102,60 @@ El código está en `scripts/validar-profesores.ts` y `scripts/lib/importar-prof
 - Aplica las mismas reglas del formulario de Profesores: ORCID `0000-0000-0000-0000`, Scholar ID de 5 a 50 caracteres sin `&` ni `=`, Scopus ID de 4 a 20 dígitos, nombres sin dígitos.
 - Deja vacío cualquier identificador con varios valores o repetido entre personas.
 
-## Pendiente antes de cargar a la base
+## Estado de la carga a la base
 
-La carga **no se ha hecho**. Va en entregas aparte, cada una con su issue y su revisión:
+**La carga se hizo el 2026-11-24** (resultado abajo). Se hizo en entregas aparte, cada una con su issue y su revisión:
 
 1. **Migración `PENDIENTE`** (aplicada a la base compartida el 2026-11-24; pantallas en el PR #309): agrega `PENDIENTE` a `Genero` y `TipoContratacion` y lo trata así:
    - **No se puede elegir** en ningún formulario: el alta solo ofrece los valores reales y el servidor rechaza `PENDIENTE` con «Selecciona un género.» o «Selecciona el tipo de contratación.».
    - **Se ve como «Pendiente»** en el listado, la exportación y los reportes. En el reporte de convocatoria se cuenta aparte (no se suma a Masculino ni Femenino) y se puede filtrar.
    - **Al editar a una persona con `PENDIENTE`**, el select muestra «Pendiente» (para no guardar otro valor en silencio) y el guardado exige elegir uno real. Por eso, **editar a alguien importado obliga a completar género y contratación**, aunque solo se quiera cambiar otro campo. El código `PEND0001` y el correo `pend-0001@pendiente.invalid` sí pasan la validación del formulario (el código sin guion es válido), así que se pueden reemplazar cuando el cliente entregue los reales, sin que bloqueen otras correcciones (D-262).
    - **No entra a PRODEP ni a Cuerpos Académicos** (requieren tiempo completo) y el mensaje dice que falta registrar la contratación.
-2. **Departamentos y divisiones reales** dados de alta, con la división de cada uno (tabla de abajo). **Hechos tres de seis** (2026-11-24); los otros tres tienen ya su división confirmada y esperan el alta, que depende de confirmar el nombre y la clave de CUCEA (D-268). Sin ellos, `aplicar` se niega a correr.
+2. **Departamentos y divisiones reales** dados de alta, con la división de cada uno (tabla de abajo). **Hechos los seis departamentos y las cuatro divisiones** (2026-11-24).
 3. **Cargador** (hecho): ver la sección siguiente.
 4. **Revisión con el cliente** de las incidencias de este documento; cada una resuelta se corrige desde la pantalla de Profesores (Editar), no con SQL.
 
+### Resultado de la carga (2026-11-24)
+
+Se ejecutó `npm run importar:aplicar -- --confirmo` en la base compartida, con los CSV del cliente (D-259 a D-262, D-270):
+
+| Concepto | Cantidad |
+|---|---|
+| Profesores creados | **122** (códigos `PEND0001` a `PEND0122`) |
+| Con departamento | 104 |
+| Sin departamento (no aparecen en el archivo de Scopus) | 18 |
+| Omitidas porque ya existían en la base | 3 |
+| Excluidas por aparecer solo en el archivo de Scopus | 14 |
+| Importadas con algún identificador excluido por ambigüedad | 13 |
+
+Todos entraron con género y tipo de contratación `PENDIENTE`, estatus `ACTIVO` y correo `pend-0001@pendiente.invalid`.
+
+**Cómo se verificó:** `importar:contar` da 122 (18 sin departamento); una segunda `importar:simular` da 0 a crear y 125 omitidas; y el cliente de Prisma actual lee las 122 filas con `PENDIENTE` sin error. **No se vieron las pantallas en el navegador.**
+
+**Pendiente de completar** (cada punto se corrige desde la pantalla de Profesores, con Editar, no con SQL):
+
+1. Género y tipo de contratación de las 122 personas: los entregará el cliente. Al guardar, el formulario exige elegir un valor real.
+2. Código institucional y correo reales (hoy `PEND…` y `@pendiente.invalid`).
+3. Departamento de las 18 personas que no aparecen en el archivo de Scopus.
+4. Las 14 personas excluidas y las 13 con identificador excluido (ver «Hallazgos»): se revisan con el cliente.
+5. Quien tiene la contratación pendiente no cuenta como tiempo completo en PRODEP, Cuerpos Académicos ni en las cifras de tiempo completo de los reportes: esas cifras subestiman hasta completar cada registro.
+
+**Aviso operativo:** un cliente de Prisma anterior al PR #309 fallaría al leer estas filas. Quien tenga código anterior debe hacer `git pull` y `npx prisma generate`. La base compartida también la usa el sitio publicado: estos profesores ya son visibles ahí para quien tenga acceso.
+
+Para revertir lo que nadie ha tocado ni usado: `npm run importar:limpiar`.
+
 ### Departamentos y divisiones
 
-El listado trae **seis** departamentos. Desde el 2026-11-24 existen tres en la base (dados de alta con `importar:catalogos:aplicar`); los otros tres tienen ya su división confirmada y esperan el alta (ver «Por confirmar»). La base conserva además los de ejemplo (`DEP-A1`…, y las divisiones `DIV-A`, `DIV-B` y `DIV-C`). Los nombres deben coincidir con los del CSV, sin importar acentos ni mayúsculas.
+Los seis departamentos del listado y sus cuatro divisiones **están dados de alta en la base desde el 2026-11-24** (D-263, D-265, D-267 y D-269). La base conserva además los de ejemplo (`DEP-A1`…, y las divisiones `DIV-A`, `DIV-B` y `DIV-C`). Los nombres de los departamentos coinciden con los del CSV, sin importar acentos ni mayúsculas.
 
-**Divisiones** (D-263 y D-267). La «clave» es la clave interna de la UdeG y es la que se guarda en la base:
+**Divisiones.** La «clave» es la clave interna de la UdeG y es la que se guarda en la base:
 
 | Siglas | Nombre completo | Clave | Estado |
 |---|---|---|---|
 | CUCEI | Centro Universitario de Ciencias Exactas e Ingenierías | `EI` | Dada de alta (2026-11-24) |
 | CUCS | Centro Universitario de Ciencias de la Salud | `SA` | Dada de alta (2026-11-24) |
 | CUCSH | Centro Universitario de Ciencias Sociales y Humanidades | `SH` | Dada de alta (2026-11-24) |
-| CUCEA | Centro Universitario de Ciencias Económico Administrativas | `EA` | **Nombre y clave por confirmar (D-268)** |
+| CUCEA | Centro Universitario de Ciencias Económico Administrativas | `EA` | Dada de alta (2026-11-24) |
 
 La clave de centro de trabajo de la SEP (CCT) no tiene campo en el sistema y no se guarda.
 
@@ -134,27 +163,23 @@ La clave de centro de trabajo de la SEP (CCT) no tiene campo en el sistema y no 
 
 | Departamento (como viene en el CSV) | Personas a crear | División | Nomenclatura | Estado |
 |---|---|---|---|---|
-| Departamento de Ciencias Computacionales e Ingenierías | 21 | CUCEI (`EI`) | `DCCI` *(confirmada)* | Dado de alta (2026-11-24) |
-| Departamento de Ciencias de la Salud | 19 | CUCS (`SA`) | `DCS` *(confirmada)* | Dado de alta (2026-11-24) |
-| Departamento de Ciencias del Comportamiento | 5 | CUCSH (`SH`) | `DCCOM` *(confirmada)* | Dado de alta (2026-11-24) |
-| Departamento de Ciencias Naturales y Exactas | 26 | CUCEI (`EI`) | `DCNE` *(propuesta)* | Por dar de alta |
-| Departamento de Ciencias Económicas y Administrativas | 13 | CUCEA (`EA`) | `DCEA` *(propuesta)* | Por dar de alta; espera la división CUCEA |
-| Departamento de Ciencias Sociales y Humanidades | 20 | CUCSH (`SH`) | `DCSH` *(propuesta)* | Por dar de alta |
+| Departamento de Ciencias Computacionales e Ingenierías | 21 | CUCEI (`EI`) | `DCCI` | Dado de alta (2026-11-24) |
+| Departamento de Ciencias de la Salud | 19 | CUCS (`SA`) | `DCS` | Dado de alta (2026-11-24) |
+| Departamento de Ciencias del Comportamiento | 5 | CUCSH (`SH`) | `DCCOM` | Dado de alta (2026-11-24) |
+| Departamento de Ciencias Naturales y Exactas | 26 | CUCEI (`EI`) | `DCNE` | Dado de alta (2026-11-24) |
+| Departamento de Ciencias Económicas y Administrativas | 13 | CUCEA (`EA`) | `DCEA` | Dado de alta (2026-11-24) |
+| Departamento de Ciencias Sociales y Humanidades | 20 | CUCSH (`SH`) | `DCSH` | Dado de alta (2026-11-24) |
 
-**Por confirmar (D-268):** el nombre completo y la clave de CUCEA (se dieron solo las siglas; el nombre es el oficial del centro y la clave `EA` sigue el patrón de las otras) y las nomenclaturas `DCNE`, `DCEA` y `DCSH`, que son una propuesta nuestra: el cliente no dio ninguna y la base exige una, única, por departamento. Si el cliente da una oficial, se corrige desde la pantalla de Departamentos (Editar).
+El equipo confirmó el nombre y la clave de CUCEA y las seis nomenclaturas (D-265 y D-269). El cliente no dio nomenclaturas oficiales: si las da, se corrigen desde la pantalla de Departamentos (Editar).
 
-- Las personas son las que arrojó `npm run importar:simular` el 2026-11-24: 104 de las 122 a crear traen departamento (las otras 18 no aparecen en el archivo de Scopus).
-- Ya están definidas en `scripts/lib/catalogos-reales.ts` las cuatro divisiones y los seis departamentos; `importar:catalogos:simular` crea solo lo que falta.
-- `importar:aplicar` (profesores) seguirá negándose a cargar mientras falte cualquiera de los seis departamentos (o hay que usar `--sin-departamento`, que no se recomienda: dejaría a esas personas sin departamento y asignarlas después sería una por una).
-
-#### Alta de lo confirmado
+#### Alta de divisiones y departamentos
 
 ```bash
 npm run importar:catalogos:simular                 # qué se crearía y qué choca; no escribe
 npm run importar:catalogos:aplicar -- --confirmo   # crea lo que falta
 ```
 
-- **Primera alta (aplicada el 2026-11-24):** tres divisiones y tres departamentos. Falta la segunda: CUCEA y los tres departamentos restantes, cuando se confirme el nombre y la clave.
+- **Aplicada en dos tandas el 2026-11-24:** tres divisiones y tres departamentos; después CUCEA y los tres departamentos restantes. Una simulación posterior no encuentra nada por crear (4 divisiones y 6 departamentos ya existen).
 - **Solo crea:** nunca edita ni borra. Se puede repetir: lo que ya existe (sin importar acentos ni mayúsculas) se omite.
 - **Si algo choca** (una clave, un nombre o una nomenclatura ya en uso, o un departamento con el mismo nombre en otra división), no escribe nada y lo explica. Se resuelve desde las pantallas del catálogo.
 - Usa las mismas validaciones y la misma detección de duplicados que las pantallas de Divisiones y Departamentos, y todo va en una transacción.
