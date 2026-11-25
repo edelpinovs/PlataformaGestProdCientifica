@@ -1,5 +1,6 @@
 import { BarraListado } from "@/components/listado";
 import { SelectorProfesor } from "@/components/selector-profesor";
+import { claseCampo, claseEtiqueta } from "@/components/ui";
 import { COLUMNAS_PUBLICACIONES, RUTA_PUBLICACIONES, ETIQUETAS_TIPO, ETIQUETAS_FUENTE, ETIQUETAS_ESTADO, opcionesAnioPublicacion, type ConsultaPublicaciones, type ErroresConsulta } from "@/modules/produccion/consulta";
 
 export function FiltrosPublicaciones({ consulta, profesores, errores, anioActual }: {
@@ -15,6 +16,8 @@ export function FiltrosPublicaciones({ consulta, profesores, errores, anioActual
       const valor = consulta.filtros[["tipo", "fuente", "estado"][indice]];
       return valor && (etiquetas as Record<string, string>)[valor];
     }),
+    consulta.filtros.desde && `Desde: ${consulta.filtros.desde}`,
+    consulta.filtros.hasta && `Hasta: ${consulta.filtros.hasta}`,
   ].filter(Boolean);
   const opciones = (etiquetas: Record<string, string>) => Object.entries(etiquetas).map(([valor, texto]) => ({ valor, texto }));
   return <div className="flex flex-col gap-4">
@@ -35,6 +38,14 @@ export function FiltrosPublicaciones({ consulta, profesores, errores, anioActual
             { clave: "tipo", etiqueta: "Tipo", opciones: opciones(ETIQUETAS_TIPO) },
             { clave: "fuente", etiqueta: "Fuente", opciones: opciones(ETIQUETAS_FUENTE) },
             { clave: "estado", etiqueta: "Estado de autoría", opciones: opciones(ETIQUETAS_ESTADO) },
+            ...([{ clave: "desde", etiqueta: "Fecha de publicación desde" }, { clave: "hasta", etiqueta: "Fecha de publicación hasta" }] as const).map(({ clave, etiqueta }) => ({
+              clave, etiqueta, opciones: [],
+              contenido: <label className={claseEtiqueta}>
+                {etiqueta}
+                <input type="date" name={clave} defaultValue={consulta.filtros[clave]} aria-invalid={Boolean(errores[clave])}
+                  className={`${claseCampo(Boolean(errores[clave]))} w-full`} />
+              </label>,
+            })),
           ]} />
       </div>
     </details>
