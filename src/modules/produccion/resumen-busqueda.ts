@@ -24,6 +24,6 @@ export function resumenBusqueda({ fuentes, profesor, desde, hasta }: {
   const cuando = desde && hasta ? `del ${fechaCorta(desde)} al ${fechaCorta(hasta)}`
     : desde ? `del ${fechaCorta(desde)} a hoy`
       : hasta ? "falta la fecha Desde"
-        : "solo novedades";
+        : "sin periodo fijo, desde la última búsqueda de cada fuente";
   return `Se buscará ${enFuentes}, para ${quien}, ${cuando}.`;
 }

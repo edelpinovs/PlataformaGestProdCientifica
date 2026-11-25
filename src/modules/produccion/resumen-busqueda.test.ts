@@ -4,7 +4,7 @@ import { resumenBusqueda } from "./resumen-busqueda";
 describe("RF-020: resumen de la búsqueda antes de escanear", () => {
   it("resume la búsqueda por omisión con fuentes en el orden de la pantalla", () => {
     expect(resumenBusqueda({ fuentes: ["SCOPUS", "ORCID", "OPENALEX"], profesor: "todos", desde: "", hasta: "" }))
-      .toBe("Se buscará en ORCID, OpenAlex y Scopus, para todos los profesores activos, solo novedades.");
+      .toBe("Se buscará en ORCID, OpenAlex y Scopus, para todos los profesores activos, sin periodo fijo, desde la última búsqueda de cada fuente.");
   });
 
   it("nombra al profesor elegido y el periodo completo", () => {

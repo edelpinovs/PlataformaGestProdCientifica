@@ -29,7 +29,7 @@ createRoot(document.getElementById("raiz")).render(<Ejemplo/>);
  comprobar(window.solicitudes[0].profesorId==="1","No envía el identificador elegido");
  comprobar(window.solicitudes[0].desde==="2010-01-01" && window.solicitudes[0].hasta==="2025-12-31","No envía el rango de fechas");
  comprobar(document.querySelector('input[name="hasta"]').getAttribute("aria-invalid")==="true","No marca el campo Hasta con error");
- comprobar(document.body.textContent.includes("El rango puede abarcar como máximo 10 años."),"No explica el error del rango");
+ comprobar(document.body.textContent.includes("El rango puede abarcar como máximo 10 años calendario."),"No explica el error del rango");
  comprobar(document.querySelector('input[name="desde"]').value==="2010-01-01","Una respuesta del servidor borró el rango escrito");
  comprobar(document.querySelector('input[name="profesorId"]').value==="1","Una respuesta del servidor borró la selección");
  await escribir("sin coincidencias");await esperar(()=>document.body.textContent.includes("No se encontraron profesores"));
@@ -50,7 +50,7 @@ createRoot(document.getElementById("raiz")).render(<Ejemplo/>);
  comprobar(document.documentElement.scrollWidth<=innerWidth,"Desbordamiento horizontal");
  document.getElementById("resultado").textContent="CORRECTO: búsqueda, teclado, validación, rango de fechas, selección conservada y trabajo pendiente bloqueado";
 }catch(e){document.getElementById("resultado").textContent="FALLO: "+e.message}})();
-`, "selector-escaneo", [{name:"accion-ficticia",setup(b){b.onResolve({filter:/^\.\/actions$/},args=>/(formulario-escaneo|control-busqueda)\.tsx$/.test(args.importer)?{path:"accion",namespace:"seleccion"}:undefined);b.onLoad({filter:/.*/,namespace:"seleccion"},()=>({contents:'export async function cancelarEscaneoAction(){window.cancelada=true;return {mensaje:"Búsqueda cancelada."}}export async function reintentarEscaneoAction(){return {}}export async function iniciarEscaneoAction(_,datos){window.solicitudes=window.solicitudes||[];window.solicitudes.push(Object.fromEntries(datos));return window.solicitudes.length===1?{error:"El rango puede abarcar como máximo 10 años.",erroresCampos:{hasta:"El rango puede abarcar como máximo 10 años."}}:{exito:true}}'}));}}]);
+`, "selector-escaneo", [{name:"accion-ficticia",setup(b){b.onResolve({filter:/^\.\/actions$/},args=>/(formulario-escaneo|control-busqueda)\.tsx$/.test(args.importer)?{path:"accion",namespace:"seleccion"}:undefined);b.onLoad({filter:/.*/,namespace:"seleccion"},()=>({contents:'export async function cancelarEscaneoAction(){window.cancelada=true;return {mensaje:"Búsqueda cancelada."}}export async function reintentarEscaneoAction(){return {}}export async function iniciarEscaneoAction(_,datos){window.solicitudes=window.solicitudes||[];window.solicitudes.push(Object.fromEntries(datos));return window.solicitudes.length===1?{error:"El rango puede abarcar como máximo 10 años calendario.",erroresCampos:{hasta:"El rango puede abarcar como máximo 10 años calendario."}}:{exito:true}}'}));}}]);
 
 await probarEnChrome(`
 import React from "react";import {createRoot} from "react-dom/client";

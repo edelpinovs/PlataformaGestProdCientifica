@@ -22,7 +22,7 @@ describe("RF-020: reglas de lotes", () => {
     [{ desde: ["2025-01-01", "2025-02-01"], hasta: "" }, "desde", "Indica una fecha válida."],
     [{ desde: "", hasta: "2025-01-01" }, "desde", "Indica la fecha inicial del rango."],
     [{ desde: "2025-06-01", hasta: "2025-01-01" }, "hasta", "La fecha final debe ser igual o posterior a la fecha inicial."],
-    [{ desde: "2010-01-01", hasta: "2025-12-31" }, "hasta", "El rango puede abarcar como máximo 10 años."],
+    [{ desde: "2010-01-01", hasta: "2025-12-31" }, "hasta", "El rango puede abarcar como máximo 10 años calendario."],
   ])("rechaza un rango atípico con mensaje en español: %j", (rango, campo, mensaje) => {
     const resultado = solicitudEscaneoEsquema.safeParse({ profesorId: "todos", ...rango, fuentes: ["ORCID"] });
     expect(resultado.success).toBe(false);

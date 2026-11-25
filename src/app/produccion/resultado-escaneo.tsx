@@ -4,7 +4,7 @@ import type { EstadoFuenteResultado, presentarResultadoEscaneo } from "@/modules
 
 /** Color de cada estado; «no seleccionada» es neutra porque no es un resultado. */
 const TIPO_ESTADO: Record<EstadoFuenteResultado, "exito" | "aviso" | "error" | null> = {
-  consultada: "exito", "sin resultados": "aviso", "con incidencias": "error", "no seleccionada": null,
+  consultada: "exito", "sin resultados": "aviso", "falló": "error", "no seleccionada": null,
 };
 
 export function ResultadoEscaneo({ resultado }: { resultado: ReturnType<typeof presentarResultadoEscaneo> }) {

@@ -43,6 +43,15 @@ export function nombreProfesorSql(alias: string) {
 export type FilaHistorial = { id: number; creadoEn: Date; actualizadoEn: Date; inicio: string; actualizacion: string; estado: keyof typeof ESTADOS_HISTORIAL; estadoTexto: string; tipoTexto: string; alcance: string; fuentes: string; avance: number; total: number };
 export type FilaContinuidad = { profesorId: number; profesor: string; fuente: string; corte: Date | null };
 
+/**
+ * «AAAA-MM-DD» guardado en `Job.datos` → «DD/MM/AAAA» solo recortando texto: sin `::date`, una fecha
+ * imposible con esa forma (2024-02-30) no hace fallar la consulta de todo el historial.
+ */
+export function fechaGuardadaSql(campo: "desde" | "hasta") {
+  const valor = Prisma.sql`(j.datos->>${Prisma.raw(`'${campo}'`)})`;
+  return Prisma.sql`substr(${valor}, 9, 2) || '/' || substr(${valor}, 6, 2) || '/' || substr(${valor}, 1, 4)`;
+}
+
 /** Todo identificador SQL proviene de este mapa; el texto y los filtros son parámetros. */
 export function sqlHistorial(consulta: ConsultaListado) {
   const base = Prisma.sql`SELECT j.id, j."creadoEn", j."actualizadoEn", j.estado, j.avance, j.total,
@@ -57,7 +66,7 @@ export function sqlHistorial(consulta: ConsultaListado) {
         'Profesor #' || (j.datos->'profesoresIds'->>0))
       ELSE 'Profesores: ' || jsonb_array_length(j.datos->'profesoresIds')::text END
       || CASE WHEN (j.datos->>'desde') ~ '^\\d{4}-\\d{2}-\\d{2}$' AND (j.datos->>'hasta') ~ '^\\d{4}-\\d{2}-\\d{2}$'
-           THEN '; del ' || to_char((j.datos->>'desde')::date, 'DD/MM/YYYY') || ' al ' || to_char((j.datos->>'hasta')::date, 'DD/MM/YYYY')
+           THEN '; del ' || ${fechaGuardadaSql("desde")} || ' al ' || ${fechaGuardadaSql("hasta")}
          WHEN (j.datos->>'anio') ~ '^\\d{4}$' THEN '; año ' || (j.datos->>'anio') ELSE '; novedades' END
     ELSE 'No registrado' END alcance,
     CASE WHEN jsonb_typeof(j.datos->'fuentes') = 'array' THEN
