@@ -50,10 +50,18 @@ describe("Presentación segura del resultado del escaneo", () => {
     expect(resultado?.fuentes).toEqual([
       { fuente: "ORCID", estado: "sin resultados" },
       { fuente: "OpenAlex", estado: "no seleccionada" },
-      { fuente: "Scopus", estado: "con incidencias", detalle: "falta configurar la clave de acceso en el servidor." },
+      { fuente: "Scopus", estado: "falló", detalle: "falta configurar la clave de acceso en el servidor." },
       { fuente: "Crossref", estado: "consultada" },
       { fuente: "Google Scholar", estado: "no seleccionada" },
     ]);
     expect(resultado?.incidencias).toEqual([]);
+  });
+
+  it("une los motivos distintos de una misma fuente sin repetirlos", () => {
+    const trabajo = datos(0, ["Scopus (Prof. 1): HTTP_429", "Scopus (Prof. 2): FALTA_IDENTIFICADOR", "Scopus (Prof. 3): HTTP_429"]);
+    trabajo.resumen = { ...trabajo.resumen, consultasFuentes: [1, 2, 3].map((profesorId) => ({ profesorId, fuente: "SCOPUS" as const, estado: "INCIDENCIA" as const, cantidad: 0 })) };
+    const scopus = presentarResultadoEscaneo("FALLIDO", trabajo)?.fuentes.find((linea) => linea.fuente === "Scopus");
+    expect(scopus).toEqual({ fuente: "Scopus", estado: "falló",
+      detalle: "se alcanzó el límite del proveedor. Reintenta más tarde. · falta un identificador o perfil necesario para consultar." });
   });
 });

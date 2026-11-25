@@ -68,11 +68,13 @@ export function validarRango(desde: string, hasta: string, hoy: string, contexto
   const limiteFinal = `${anioDe(hoy) + 1}-12-31`;
   if (!desde && hasta) contexto.addIssue({ code: "custom", path: ["desde"], message: "Indica la fecha inicial del rango." });
   if (!desde) return;
+  // Solo «Desde» en el futuro: el error es de la fecha inicial, no de una «Hasta» que la persona dejó vacía.
+  if (!hasta && desde > hoy) { contexto.addIssue({ code: "custom", path: ["desde"], message: "La fecha inicial no puede ser posterior a hoy. Indica también la fecha final." }); return; }
   const final = hasta || hoy;
   if (desde < `${ANIO_MINIMO_ESCANEO}-01-01`) contexto.addIssue({ code: "custom", path: ["desde"], message: `La fecha inicial no puede ser anterior al 01/01/${ANIO_MINIMO_ESCANEO}.` });
   if (final > limiteFinal) contexto.addIssue({ code: "custom", path: ["hasta"], message: `La fecha final no puede ser posterior al ${fechaCorta(limiteFinal)}.` });
   if (desde > final) contexto.addIssue({ code: "custom", path: ["hasta"], message: "La fecha final debe ser igual o posterior a la fecha inicial." });
-  else if (anioDe(final) - anioDe(desde) + 1 > MAXIMO_ANIOS_RANGO) contexto.addIssue({ code: "custom", path: ["hasta"], message: `El rango puede abarcar como máximo ${MAXIMO_ANIOS_RANGO} años.` });
+  else if (anioDe(final) - anioDe(desde) + 1 > MAXIMO_ANIOS_RANGO) contexto.addIssue({ code: "custom", path: ["hasta"], message: `El rango puede abarcar como máximo ${MAXIMO_ANIOS_RANGO} años calendario.` });
 }
 
 export function rangoDeSolicitud(desde: string, hasta: string, hoy: string): RangoEscaneo | undefined {

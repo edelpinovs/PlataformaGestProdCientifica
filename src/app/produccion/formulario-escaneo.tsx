@@ -79,7 +79,7 @@ export function FormularioEscaneo({
   const hastaMostrado = bloqueado ? rangoGuardado?.hasta ?? "" : hastaElegido;
   const profesorDeLista = profesores.find(profesor => String(profesor.id) === profesorElegido);
   const nombreElegido = profesorElegido === "todos" ? "todos"
-    : profesorDeLista ? `${profesorDeLista.nombres} ${profesorDeLista.apellidos}`
+    : profesorDeLista ? `${profesorDeLista.apellidos}, ${profesorDeLista.nombres} · ${profesorDeLista.codigo}`
       : profesorElegido ? `el profesor del trabajo #${profesorElegido}` : "";
 
   useEffect(() => {
@@ -161,13 +161,13 @@ export function FormularioEscaneo({
                 />
               </label>
             </div>
-            <p className="text-xs text-texto-3">{`Sin fechas se buscan novedades (la primera vez, todo el historial). Máximo ${MAXIMO_ANIOS_RANGO} años; sin Hasta, se busca hasta hoy. Revisar un periodo no mueve el punto de continuación.`}</p>
+            <p className="text-xs text-texto-3">{`Sin fechas, cada fuente sigue desde su última búsqueda; la primera vez trae todo el historial, salvo Scopus, que empieza en el año en curso. Máximo ${MAXIMO_ANIOS_RANGO} años calendario; sin Hasta, se busca hasta hoy. Revisar un periodo no mueve el punto de continuación.`}</p>
             {[estado.erroresCampos?.desde, estado.erroresCampos?.hasta].filter(Boolean).map(mensaje => <Aviso key={mensaje} tipo="error">{mensaje}</Aviso>)}
           </fieldset>
         </div>
 
         <div className="flex flex-col gap-4 border-t border-linea pt-4 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-texto-2">{resumenBusqueda({ fuentes: fuentesMostradas, profesor: nombreElegido, desde: desdeMostrado, hasta: hastaMostrado })}</p>
+          <p aria-live="polite" className="text-sm text-texto-2">{resumenBusqueda({ fuentes: fuentesMostradas, profesor: nombreElegido, desde: desdeMostrado, hasta: hastaMostrado })}</p>
           <BotonEscanear enCurso={Boolean(estado.pendiente)} continuar={Boolean(estado.continuar)} periodo={Boolean(desdeMostrado)} />
         </div>
       </form>

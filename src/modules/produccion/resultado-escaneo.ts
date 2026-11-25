@@ -1,8 +1,8 @@
 import { datosLoteEsquema } from "./lotes";
 import { FUENTES_ESCANEO, NOMBRES_FUENTE } from "./fuentes";
 
-export type EstadoFuenteResultado = "consultada" | "sin resultados" | "con incidencias" | "no seleccionada";
-/** Una línea por fuente; `detalle` explica la incidencia de esa fuente, si la hubo. */
+export type EstadoFuenteResultado = "consultada" | "sin resultados" | "falló" | "no seleccionada";
+/** Una línea por fuente; `detalle` une los motivos distintos de su fallo, si lo hubo. */
 export type FuenteResultado = { fuente: string; estado: EstadoFuenteResultado; detalle?: string };
 
 /** Motivo legible de un error guardado de una fuente; nunca repite el texto técnico. */
@@ -26,7 +26,7 @@ export function presentarResultadoEscaneo(estado: string, datos: unknown) {
   const resumen = lectura.data.resumen;
   const fuentes: FuenteResultado[] = (resumen.consultasFuentes?.length ? FUENTES_ESCANEO : []).map(fuente => {
     const consultas = resumen.consultasFuentes!.filter(c => c.fuente === fuente);
-    const estado: EstadoFuenteResultado = consultas.every(c => c.estado === "NO_SELECCIONADA") ? "no seleccionada" : consultas.some(c => c.estado === "INCIDENCIA") ? "con incidencias" : consultas.every(c => c.estado === "SIN_RESULTADOS" || c.estado === "NO_SELECCIONADA") ? "sin resultados" : "consultada";
+    const estado: EstadoFuenteResultado = consultas.every(c => c.estado === "NO_SELECCIONADA") ? "no seleccionada" : consultas.some(c => c.estado === "INCIDENCIA") ? "falló" : consultas.every(c => c.estado === "SIN_RESULTADOS" || c.estado === "NO_SELECCIONADA") ? "sin resultados" : "consultada";
     return { fuente: NOMBRES_FUENTE[fuente], estado };
   });
   const conIncidencias = estado === "FALLIDO" || resumen.errores.length > 0;
@@ -37,8 +37,10 @@ export function presentarResultadoEscaneo(estado: string, datos: unknown) {
     const nombre = /^(Scopus|OpenAlex|ORCID|Crossref|Google Scholar) \(Prof\. \d+\):/.exec(error)?.[1];
     if (!nombre) { incidencias.add("No se pudo completar una consulta o guardar todos sus resultados. Puedes reintentar el escaneo."); continue; }
     const linea = fuentes.find(f => f.fuente === nombre);
-    if (linea && !linea.detalle) linea.detalle = motivo(error);
-    else if (!linea) incidencias.add(`${nombre}: ${motivo(error)}`);
+    if (!linea) { incidencias.add(`${nombre}: ${motivo(error)}`); continue; }
+    // Una misma fuente puede fallar por varias causas en distintos profesores: se muestran todas, sin repetir.
+    const motivos = linea.detalle ? linea.detalle.split(" · ") : [];
+    if (!motivos.includes(motivo(error))) linea.detalle = [...motivos, motivo(error)].join(" · ");
   }
   if (estado === "FALLIDO" && !incidencias.size && !fuentes.some(f => f.detalle)) incidencias.add("El trabajo no pudo completarse. Puedes reintentar el escaneo.");
   return {

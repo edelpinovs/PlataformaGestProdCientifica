@@ -67,4 +67,11 @@ describe("presentación del historial (#330)", () => {
     const consulta = analizarListado(LISTADO_HISTORIAL, {}).consulta;
     expect(JSON.stringify(sqlHistorial(consulta).contar)).toContain("DD/MM/YYYY HH24:MI");
   });
+
+  it("muestra el periodo guardado sin convertirlo a fecha en SQL, para que un valor imposible no tumbe el historial", () => {
+    const consulta = analizarListado(LISTADO_HISTORIAL, {}).consulta;
+    const texto = JSON.stringify(sqlHistorial(consulta).contar);
+    expect(texto).not.toContain("::date");
+    expect(texto).toContain("substr(");
+  });
 });

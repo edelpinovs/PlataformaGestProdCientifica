@@ -50,6 +50,12 @@ describe("rango de búsqueda del escaneo con fechas completas (#266)", () => {
       expect(esquema.parse({ desde: "2026-01-01", hasta: "" })).toEqual({ desde: "2026-01-01", hasta: "2026-11-24" });
       expect(esquema.parse({ desde: "2025-01-01", hasta: "2025-01-01" })).toEqual({ desde: "2025-01-01", hasta: "2025-01-01" });
     });
+    it("con «Desde» futuro y «Hasta» indicada sigue siendo válido dentro de los límites", () => {
+      expect(esquema.parse({ desde: "2026-12-01", hasta: "2026-12-31" })).toEqual({ desde: "2026-12-01", hasta: "2026-12-31" });
+      const soloDesde = esquema.safeParse({ desde: "2026-12-01", hasta: "" });
+      expect(soloDesde.success).toBe(false);
+      if (!soloDesde.success) expect(soloDesde.error.issues.map((error) => error.path[0])).toEqual(["desde"]);
+    });
     it(`acepta hasta ${MAXIMO_ANIOS_RANGO} años calendario y rechaza uno más`, () => {
       expect(esquema.safeParse({ desde: "2016-01-01", hasta: "2025-12-31" }).success).toBe(true);
       expect(esquema.safeParse({ desde: "2015-12-31", hasta: "2025-01-01" }).success).toBe(false);
@@ -60,6 +66,8 @@ describe("rango de búsqueda del escaneo con fechas completas (#266)", () => {
       [{ desde: "2025-13-01", hasta: "" }, "desde", "Indica una fecha válida."],
       [{ desde: "0000-01-01", hasta: "" }, "desde", "Indica una fecha válida."],
       [{ desde: "2025-01-01", hasta: "mañana" }, "hasta", "Indica una fecha válida."],
+      [{ desde: "2026-11-25", hasta: "" }, "desde", "La fecha inicial no puede ser posterior a hoy. Indica también la fecha final."],
+      [{ desde: "2015-12-31", hasta: "2025-01-01" }, "hasta", "El rango puede abarcar como máximo 10 años calendario."],
     ])("rechaza %j con mensaje en español", (datos, campo, mensaje) => {
       const resultado = esquema.safeParse(datos);
       expect(resultado.success).toBe(false);
