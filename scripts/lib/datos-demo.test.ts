@@ -63,7 +63,8 @@ describe("datos de demostración", () => {
   it("tiene variedad para ver la interfaz", () => {
     const tc = datos.profesores.filter((p) => p.tipoContratacion === "TIEMPO_COMPLETO").length;
     expect(tc).toBe(35);
-    expect(new Set(datos.profesores.map((p) => p.estatusLaboral)).size).toBe(5);
+    expect(new Set(datos.profesores.map((p) => p.estatusLaboral)).size).toBe(3);
+    expect(datos.profesores.filter((p) => p.goceDeSueldo).map((p) => p.estatusLaboral)).toEqual(["LICENCIA"]);
     expect(datos.profesores.some((p) => p.departamento === null)).toBe(true);
     expect(datos.profesores.some((p) => p.grado === null)).toBe(true);
     expect(datos.profesores.some((p) => p.nombres.length > 60)).toBe(true);

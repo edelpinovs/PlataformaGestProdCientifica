@@ -64,8 +64,8 @@ describe("listado de profesores", () => {
   it("busca también por las etiquetas visibles de contratación y estatus, sin acentos ni mayúsculas", () => {
     const completo = filtroProfesores(analizar({ q: "TIEMPO" }).consulta) as { AND: { OR: object[] }[] };
     expect(completo.AND[0].OR).toContainEqual({ tipoContratacion: { in: ["TIEMPO_COMPLETO"] } });
-    const baja = filtroProfesores(analizar({ q: "baja" }).consulta) as { AND: { OR: object[] }[] };
-    expect(baja.AND[0].OR).toContainEqual({ estatusLaboral: { in: ["BAJA_TEMPORAL", "BAJA_POSDOCTORAL"] } });
+    const estancia = filtroProfesores(analizar({ q: "estancia" }).consulta) as { AND: { OR: object[] }[] };
+    expect(estancia.AND[0].OR).toContainEqual({ estatusLaboral: { in: ["ESTANCIA_POSDOCTORAL"] } });
     const sinAcento = filtroProfesores(analizar({ q: "asignatura" }).consulta) as { AND: { OR: object[] }[] };
     expect(sinAcento.AND[0].OR).toContainEqual({ tipoContratacion: { in: ["ASIGNATURA"] } });
   });

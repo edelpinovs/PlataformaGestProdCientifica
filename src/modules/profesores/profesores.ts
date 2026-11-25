@@ -49,7 +49,25 @@ const textoOpcional = (max: number, mensaje: string) =>
 
 // RF-006: el administrador asigna contratación y estatus; no hay valor implícito.
 export const TIPOS_CONTRATACION = ["TIEMPO_COMPLETO", "ASIGNATURA"] as const;
-export const ESTATUS_LABORALES = ["ACTIVO", "LICENCIA", "BAJA_TEMPORAL", "BAJA_POSDOCTORAL", "TRASLADADO"] as const;
+export const ESTATUS_LABORALES = ["ACTIVO", "LICENCIA", "ESTANCIA_POSDOCTORAL"] as const;
+/** Licencia y estancia pueden marcar goce de sueldo (D-274). Activo no. */
+export const ESTATUS_CON_GOCE = ["LICENCIA", "ESTANCIA_POSDOCTORAL"] as const;
+
+export function admiteGoceDeSueldo(estatus: string) {
+  return (ESTATUS_CON_GOCE as readonly string[]).includes(estatus);
+}
+
+/** Activo cuenta siempre. Licencia o estancia cuentan solo si tienen goce de sueldo. */
+export function cuentaEnPlantilla(profesor: { estatusLaboral: string; goceDeSueldo: boolean }) {
+  return profesor.estatusLaboral === "ACTIVO" || (admiteGoceDeSueldo(profesor.estatusLaboral) && profesor.goceDeSueldo);
+}
+
+export const FILTRO_CUENTA_EN_PLANILLA = {
+  OR: [
+    { estatusLaboral: "ACTIVO" as const },
+    { estatusLaboral: { in: [...ESTATUS_CON_GOCE] }, goceDeSueldo: true },
+  ],
+};
 
 // Para MOSTRAR (incluye PENDIENTE, D-261). Lo que se puede ELEGIR en un formulario es TIPOS_CONTRATACION.
 export const ETIQUETA_CONTRATACION = {
@@ -86,9 +104,7 @@ export function opcionesContratacion(actual: string): Opcion[] {
 export const ETIQUETA_ESTATUS = {
   ACTIVO: "Activo",
   LICENCIA: "Licencia",
-  BAJA_TEMPORAL: "Baja temporal",
-  BAJA_POSDOCTORAL: "Baja posdoctoral",
-  TRASLADADO: "Trasladado",
+  ESTANCIA_POSDOCTORAL: "Estancia posdoctoral",
 } as const;
 
 export const asignacionLaboral = z.object({
@@ -131,7 +147,14 @@ export const registrarProfesor = asignacionLaboral.extend({
     (s) => (typeof s === "string" && s.trim() !== "" ? limpiar(s) : undefined),
     z.string().regex(/^\d{4,20}$/, "El Scopus ID debe tener de 4 a 20 dígitos.").optional(),
   ),
-});
+  goceDeSueldo: z.preprocess(
+    (v) => v === "si" || v === "on" || v === "true" || v === true,
+    z.boolean(),
+  ),
+}).transform((datos) => ({
+  ...datos,
+  goceDeSueldo: admiteGoceDeSueldo(datos.estatusLaboral) && datos.goceDeSueldo,
+}));
 
 export type RegistrarProfesor = z.infer<typeof registrarProfesor>;
 

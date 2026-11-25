@@ -4,6 +4,7 @@ import { Prisma } from "../../generated/prisma/client";
 import {
   asignacionLaboral,
   buscarDuplicadoProfesor,
+  cuentaEnPlantilla,
   ESTATUS_LABORALES,
   filtroCandidatosDuplicado,
   generarNombreNormalizado,
@@ -250,6 +251,28 @@ describe("asignacionLaboral (RF-006)", () => {
     });
     expect(resultado.tipoContratacion).toBe("ASIGNATURA");
     expect(resultado.estatusLaboral).toBe("LICENCIA");
+  });
+});
+
+describe("goce de sueldo (D-274)", () => {
+  it("en licencia o estancia conserva la casilla marcada y en activo la apaga", () => {
+    expect(registrarProfesor.parse({ ...datosValidos, estatusLaboral: "LICENCIA", goceDeSueldo: "si" }).goceDeSueldo).toBe(true);
+    expect(registrarProfesor.parse({ ...datosValidos, estatusLaboral: "ESTANCIA_POSDOCTORAL", goceDeSueldo: "si" }).goceDeSueldo).toBe(true);
+    expect(registrarProfesor.parse({ ...datosValidos, estatusLaboral: "ACTIVO", goceDeSueldo: "si" }).goceDeSueldo).toBe(false);
+    expect(registrarProfesor.parse({ ...datosValidos, estatusLaboral: "LICENCIA" }).goceDeSueldo).toBe(false);
+  });
+
+  it("rechaza los estatus que ya no existen", () => {
+    expect(registrarProfesor.safeParse({ ...datosValidos, estatusLaboral: "BAJA_TEMPORAL" }).success).toBe(false);
+    expect(registrarProfesor.safeParse({ ...datosValidos, estatusLaboral: "TRASLADADO" }).success).toBe(false);
+  });
+
+  it("cuenta en la plantilla al activo y a quien tiene goce en licencia o estancia", () => {
+    expect(cuentaEnPlantilla({ estatusLaboral: "ACTIVO", goceDeSueldo: false })).toBe(true);
+    expect(cuentaEnPlantilla({ estatusLaboral: "LICENCIA", goceDeSueldo: true })).toBe(true);
+    expect(cuentaEnPlantilla({ estatusLaboral: "ESTANCIA_POSDOCTORAL", goceDeSueldo: true })).toBe(true);
+    expect(cuentaEnPlantilla({ estatusLaboral: "LICENCIA", goceDeSueldo: false })).toBe(false);
+    expect(cuentaEnPlantilla({ estatusLaboral: "ESTANCIA_POSDOCTORAL", goceDeSueldo: false })).toBe(false);
   });
 });
 

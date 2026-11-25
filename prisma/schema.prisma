@@ -124,9 +124,7 @@ enum TipoContratacion {
 enum EstatusLaboral {
   ACTIVO
   LICENCIA
-  BAJA_TEMPORAL
-  BAJA_POSDOCTORAL
-  TRASLADADO
+  ESTANCIA_POSDOCTORAL
 }
 
 model Profesor {
@@ -140,6 +138,8 @@ model Profesor {
   genero                Genero
   tipoContratacion      TipoContratacion
   estatusLaboral        EstatusLaboral              @default(ACTIVO)
+  // Solo aplica en licencia o estancia posdoctoral (D-274). En activo se guarda en falso.
+  goceDeSueldo          Boolean                     @default(false)
   gradoId               Int?
   grado                 GradoCientifico?            @relation(fields: [gradoId], references: [id])
   departamentoId        Int?

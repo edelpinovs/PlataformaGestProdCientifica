@@ -10,7 +10,7 @@ import {
 } from "@/modules/profesores/profesores-listado";
 import { enlaceExportacionProfesores } from "@/modules/profesores/exportar";
 import {
-  ETIQUETA_CONTRATACION, ETIQUETA_ESTATUS, opcionesContratacion, opcionesGenero,
+  ESTATUS_CON_GOCE, ETIQUETA_CONTRATACION, ETIQUETA_ESTATUS, opcionesContratacion, opcionesGenero,
 } from "@/modules/profesores/profesores";
 import { editarProfesor, eliminarProfesor } from "./actions";
 import { RegistrarProfesor } from "./registrar-profesor";
@@ -20,9 +20,7 @@ const BASE = "/profesores";
 const ESTATUS_TIPO = {
   ACTIVO: "exito",
   LICENCIA: "aviso",
-  BAJA_TEMPORAL: "aviso",
-  BAJA_POSDOCTORAL: "aviso",
-  TRASLADADO: "error",
+  ESTANCIA_POSDOCTORAL: "aviso",
 } as const;
 
 export default async function ProfesoresPage({ searchParams }: PageProps<"/profesores">) {
@@ -124,10 +122,13 @@ export default async function ProfesoresPage({ searchParams }: PageProps<"/profe
               <tbody>
                 {profesores.map((p) => {
                   const nombre = `${p.nombres} ${p.apellidos}`;
-                  const etiquetaEstatus = (
-                    <EtiquetaEstado tipo={ESTATUS_TIPO[p.estatusLaboral]}>
-                      {ETIQUETA_ESTATUS[p.estatusLaboral]}
-                    </EtiquetaEstado>
+                  const etiquetaEstatus = () => (
+                    <span className="inline-flex flex-col items-start gap-1">
+                      <EtiquetaEstado tipo={ESTATUS_TIPO[p.estatusLaboral]}>
+                        {ETIQUETA_ESTATUS[p.estatusLaboral]}
+                      </EtiquetaEstado>
+                      {p.goceDeSueldo && <span className="text-xs font-normal text-texto-3">Con goce de sueldo</span>}
+                    </span>
                   );
                   return (
                     <FilaEditable key={`${p.id}-${p.actualizadoEn.getTime()}`}
@@ -146,7 +147,7 @@ export default async function ProfesoresPage({ searchParams }: PageProps<"/profe
                                   <span className="font-mono">{p.codigo}</span>
                                   {p.grado && <span>· {p.grado.nombre}</span>}
                                   {p.departamento && <span>· {p.departamento.nombre}</span>}
-                                  {etiquetaEstatus}
+                                  {etiquetaEstatus()}
                                 </span>
                               </span>
                             </span>
@@ -170,7 +171,7 @@ export default async function ProfesoresPage({ searchParams }: PageProps<"/profe
                           ),
                           className: "hidden sm:table-cell",
                         },
-                        { contenido: etiquetaEstatus, className: "hidden sm:table-cell" },
+                        { contenido: etiquetaEstatus(), className: "hidden sm:table-cell" },
                       ]}
                       campos={[
                         { nombre: "codigo", etiqueta: "Código CUValles", valor: p.codigo, maxLength: 20, ancho: "corto" },
@@ -182,6 +183,9 @@ export default async function ProfesoresPage({ searchParams }: PageProps<"/profe
                           opciones: opcionesContratacion(p.tipoContratacion), ancho: "medio" },
                         { nombre: "estatusLaboral", etiqueta: "Estatus laboral", valor: p.estatusLaboral,
                           opciones: opcionesEstatus, ancho: "medio" },
+                        { nombre: "goceDeSueldo", etiqueta: "Con goce de sueldo", valor: p.goceDeSueldo ? "si" : "",
+                          tipo: "casilla", habilitadaPor: { campo: "estatusLaboral", valores: [...ESTATUS_CON_GOCE] },
+                          ayuda: "Se habilita en licencia o estancia posdoctoral.", opcional: true },
                         { nombre: "departamentoId", etiqueta: "Departamento", valor: p.departamentoId ? String(p.departamentoId) : "",
                           opciones: opcionesDepartamento, ancho: "medio", opcional: true },
                         { nombre: "gradoId", etiqueta: "Grado científico", valor: p.gradoId ? String(p.gradoId) : "",

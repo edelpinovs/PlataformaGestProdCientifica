@@ -56,17 +56,14 @@ describe("calidad de datos", () => {
     expect(h[0].detalle).toContain("Apellido3 Nombre3 (C3)");
   });
 
-  it("detecta integrantes de baja o trasladados, pero no a quien está en licencia", () => {
+  it("no marca como baja a quien está en licencia o estancia posdoctoral", () => {
     const profesores = [
       profesor(1),
-      profesor(2, { estatusLaboral: "BAJA_TEMPORAL" }),
-      profesor(3, { estatusLaboral: "TRASLADADO" }),
-      profesor(4, { estatusLaboral: "LICENCIA" }),
+      profesor(2, { estatusLaboral: "LICENCIA" }),
+      profesor(3, { estatusLaboral: "ESTANCIA_POSDOCTORAL" }),
     ];
-    const h = analizarCalidad({ profesores, cuerpos: [cuerpo(1, { integrantes: [1, 2, 3, 4] })] });
-    expect(reglas(h)).toEqual(["INTEGRANTE_DE_BAJA", "INTEGRANTE_DE_BAJA"]);
-    expect(h.map((x) => x.clave)).toEqual(["INTEGRANTE_DE_BAJA:1-2", "INTEGRANTE_DE_BAJA:1-3"]);
-    expect(h[0].detalle).toContain("baja temporal");
+    const h = analizarCalidad({ profesores, cuerpos: [cuerpo(1, { integrantes: [1, 2, 3] })] });
+    expect(h.filter((x) => x.regla === "INTEGRANTE_DE_BAJA")).toEqual([]);
   });
 
   it("un profesor activo sin ORCID ni Scopus se señala; con uno de los dos, no", () => {
@@ -90,7 +87,7 @@ describe("calidad de datos", () => {
 
   it("quien no está activo no se señala por identificadores ni por perfil", () => {
     const h = analizarCalidad({
-      profesores: [profesor(1, { estatusLaboral: "BAJA_TEMPORAL", orcid: null, tienePerfil: false })],
+      profesores: [profesor(1, { estatusLaboral: "LICENCIA", orcid: null, tienePerfil: false })],
       cuerpos: [],
     });
     expect(h).toEqual([]);

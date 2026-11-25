@@ -26,10 +26,10 @@ describe("tablaProfesores", () => {
   });
 
   it("escribe las etiquetas visibles de contratación y estatus, no los valores internos", () => {
-    const [fila] = tablaProfesores([{ ...completo, estatusLaboral: "BAJA_POSDOCTORAL" }]).filas;
+    const [fila] = tablaProfesores([{ ...completo, estatusLaboral: "ESTANCIA_POSDOCTORAL" }]).filas;
     expect(fila).toEqual([
       "DEMO0001", "Apellido Uno", "Nombre Uno", "Doctorado", "Departamento DEP-A1",
-      "Tiempo completo", "Baja posdoctoral", "profesor01@demo.invalid",
+      "Tiempo completo", "Estancia posdoctoral", "profesor01@demo.invalid",
     ]);
   });
 
