@@ -17,9 +17,9 @@ function esErrorUnicidad(error: unknown): boolean {
 export const repositorioPrisma: RepositorioProduccion = {
   obtenerClaveScopus,
   async obtenerProfesores(filtro) {
-    const where = filtro.profesorId
-      ? { id: filtro.profesorId }
-      : { estatusLaboral: "ACTIVO" as const };
+    // #259: a un profesor inactivo no se le buscan publicaciones, aunque se pida por su id
+    // (por ejemplo, si causó baja mientras avanzaba un lote ya creado).
+    const where = { estatusLaboral: "ACTIVO" as const, ...(filtro.profesorId ? { id: filtro.profesorId } : {}) };
 
     const profesores = await prisma.profesor.findMany({
       where,
