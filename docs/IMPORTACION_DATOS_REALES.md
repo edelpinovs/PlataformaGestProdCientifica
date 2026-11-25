@@ -111,9 +111,54 @@ La carga **no se ha hecho**. Va en entregas aparte, cada una con su issue y su r
    - **Se ve como «Pendiente»** en el listado, la exportación y los reportes. En el reporte de convocatoria se cuenta aparte (no se suma a Masculino ni Femenino) y se puede filtrar.
    - **Al editar a una persona con `PENDIENTE`**, el select muestra «Pendiente» (para no guardar otro valor en silencio) y el guardado exige elegir uno real. Por eso, **editar a alguien importado obliga a completar género y contratación**, aunque solo se quiera cambiar otro campo. El código `PEND0001` y el correo `pend-0001@pendiente.invalid` sí pasan la validación del formulario (el código sin guion es válido), así que se pueden reemplazar cuando el cliente entregue los reales, sin que bloqueen otras correcciones (D-262).
    - **No entra a PRODEP ni a Cuerpos Académicos** (requieren tiempo completo) y el mensaje dice que falta registrar la contratación.
-2. **Departamentos reales** dados de alta con su división. El listado trae **seis**: Ciencias del Comportamiento, Ciencias Naturales y Exactas, Ciencias Computacionales e Ingenierías, Ciencias de la Salud, Ciencias Económicas y Administrativas y Ciencias Sociales y Humanidades. El nombre debe coincidir con el del CSV (sin importar acentos ni mayúsculas); la división de cada uno la define el cliente. Sin esto, `aplicar` se niega a correr.
+2. **Departamentos y divisiones reales** dados de alta, con la división de cada uno (tabla de abajo). **Hechos tres de seis** (2026-11-24); los otros tres tienen ya su división confirmada y esperan el alta, que depende de confirmar el nombre y la clave de CUCEA (D-268). Sin ellos, `aplicar` se niega a correr.
 3. **Cargador** (hecho): ver la sección siguiente.
 4. **Revisión con el cliente** de las incidencias de este documento; cada una resuelta se corrige desde la pantalla de Profesores (Editar), no con SQL.
+
+### Departamentos y divisiones
+
+El listado trae **seis** departamentos. Desde el 2026-11-24 existen tres en la base (dados de alta con `importar:catalogos:aplicar`); los otros tres tienen ya su división confirmada y esperan el alta (ver «Por confirmar»). La base conserva además los de ejemplo (`DEP-A1`…, y las divisiones `DIV-A`, `DIV-B` y `DIV-C`). Los nombres deben coincidir con los del CSV, sin importar acentos ni mayúsculas.
+
+**Divisiones** (D-263 y D-267). La «clave» es la clave interna de la UdeG y es la que se guarda en la base:
+
+| Siglas | Nombre completo | Clave | Estado |
+|---|---|---|---|
+| CUCEI | Centro Universitario de Ciencias Exactas e Ingenierías | `EI` | Dada de alta (2026-11-24) |
+| CUCS | Centro Universitario de Ciencias de la Salud | `SA` | Dada de alta (2026-11-24) |
+| CUCSH | Centro Universitario de Ciencias Sociales y Humanidades | `SH` | Dada de alta (2026-11-24) |
+| CUCEA | Centro Universitario de Ciencias Económico Administrativas | `EA` | **Nombre y clave por confirmar (D-268)** |
+
+La clave de centro de trabajo de la SEP (CCT) no tiene campo en el sistema y no se guarda.
+
+**Departamentos:**
+
+| Departamento (como viene en el CSV) | Personas a crear | División | Nomenclatura | Estado |
+|---|---|---|---|---|
+| Departamento de Ciencias Computacionales e Ingenierías | 21 | CUCEI (`EI`) | `DCCI` *(confirmada)* | Dado de alta (2026-11-24) |
+| Departamento de Ciencias de la Salud | 19 | CUCS (`SA`) | `DCS` *(confirmada)* | Dado de alta (2026-11-24) |
+| Departamento de Ciencias del Comportamiento | 5 | CUCSH (`SH`) | `DCCOM` *(confirmada)* | Dado de alta (2026-11-24) |
+| Departamento de Ciencias Naturales y Exactas | 26 | CUCEI (`EI`) | `DCNE` *(propuesta)* | Por dar de alta |
+| Departamento de Ciencias Económicas y Administrativas | 13 | CUCEA (`EA`) | `DCEA` *(propuesta)* | Por dar de alta; espera la división CUCEA |
+| Departamento de Ciencias Sociales y Humanidades | 20 | CUCSH (`SH`) | `DCSH` *(propuesta)* | Por dar de alta |
+
+**Por confirmar (D-268):** el nombre completo y la clave de CUCEA (se dieron solo las siglas; el nombre es el oficial del centro y la clave `EA` sigue el patrón de las otras) y las nomenclaturas `DCNE`, `DCEA` y `DCSH`, que son una propuesta nuestra: el cliente no dio ninguna y la base exige una, única, por departamento. Si el cliente da una oficial, se corrige desde la pantalla de Departamentos (Editar).
+
+- Las personas son las que arrojó `npm run importar:simular` el 2026-11-24: 104 de las 122 a crear traen departamento (las otras 18 no aparecen en el archivo de Scopus).
+- Ya están definidas en `scripts/lib/catalogos-reales.ts` las cuatro divisiones y los seis departamentos; `importar:catalogos:simular` crea solo lo que falta.
+- `importar:aplicar` (profesores) seguirá negándose a cargar mientras falte cualquiera de los seis departamentos (o hay que usar `--sin-departamento`, que no se recomienda: dejaría a esas personas sin departamento y asignarlas después sería una por una).
+
+#### Alta de lo confirmado
+
+```bash
+npm run importar:catalogos:simular                 # qué se crearía y qué choca; no escribe
+npm run importar:catalogos:aplicar -- --confirmo   # crea lo que falta
+```
+
+- **Primera alta (aplicada el 2026-11-24):** tres divisiones y tres departamentos. Falta la segunda: CUCEA y los tres departamentos restantes, cuando se confirme el nombre y la clave.
+- **Solo crea:** nunca edita ni borra. Se puede repetir: lo que ya existe (sin importar acentos ni mayúsculas) se omite.
+- **Si algo choca** (una clave, un nombre o una nomenclatura ya en uso, o un departamento con el mismo nombre en otra división), no escribe nada y lo explica. Se resuelve desde las pantallas del catálogo.
+- Usa las mismas validaciones y la misma detección de duplicados que las pantallas de Divisiones y Departamentos, y todo va en una transacción.
+- Para deshacerlo, se eliminan desde esas pantallas (que no dejan borrar lo que ya tiene personas asignadas). El código está en `scripts/alta-catalogos-reales.ts` y `scripts/lib/catalogos-reales.ts`; el plan está probado en `scripts/lib/catalogos-reales.test.ts`. **`aplicar` no tiene prueba automática** (escribe en la base compartida): se comprueba con `simular` antes y después.
 
 ## El cargador
 
