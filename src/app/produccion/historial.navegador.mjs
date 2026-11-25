@@ -8,10 +8,25 @@ import Pagina from ${JSON.stringify(path.join(process.cwd(),`src/app/produccion/
 (async()=>{window.vista=${JSON.stringify(vista)};
 const pagina=await Pagina({searchParams:Promise.resolve(window.vista==="historial"?{pagina:"2",registro:"12"}:{pagina:"2"})});
 createRoot(document.getElementById("raiz")).render(<>{pagina}<output id="resultado">EN CURSO</output></>);
-setTimeout(()=>{try{
+setTimeout(async()=>{try{
  if(!document.body.textContent.includes("Mostrando 11–20 de 23"))throw Error("Falta el resumen paginado");
  if(document.querySelectorAll("tbody tr").length!==10)throw Error("La página no tiene diez filas");
  if(window.vista==="historial"){if(!document.body.textContent.includes("Búsqueda #12"))throw Error("Falta el detalle");if(!document.body.textContent.includes("1 de 1 profesor revisado"))throw Error("Avance sin concordancia");if([...document.querySelectorAll("li")].filter(li=>li.textContent.includes("Scopus")).length!==1)throw Error("Scopus debe tener una sola línea en el detalle");if(!document.querySelector("tr[aria-current]"))throw Error("No resalta la búsqueda abierta");if(!document.body.textContent.includes("Publicaciones guardadas en esta búsqueda (2)"))throw Error("Faltan las publicaciones de la búsqueda");if(!document.body.textContent.includes("Nueva")||!document.body.textContent.includes("Ya existía, actualizada"))throw Error("No distingue nuevas de existentes");if(!document.body.textContent.includes("3 obras"))throw Error("Falta el conteo de obras por fuente");if(!document.body.textContent.includes("10 min"))throw Error("Falta la duración");if(![...document.querySelectorAll("button")].some(b=>b.textContent==="Reintentar lo que falló"))throw Error("Falta reintentar una búsqueda con incidencias");if([...document.querySelectorAll("button")].some(b=>b.textContent==="Cancelar búsqueda"))throw Error("No se cancela una búsqueda terminada");}
+ if(window.vista==="historial"){
+  const dialogo=document.querySelector("dialog");
+  if(!dialogo?.open)throw Error("El detalle no se abre en un modal");
+  if(!dialogo.textContent.includes("Búsqueda #12"))throw Error("El modal no tiene el detalle");
+  const icono=document.getElementById("ver-busqueda-12");
+  if(!icono||icono.getAttribute("aria-label")!=="Ver detalle de la búsqueda 12"||!icono.querySelector("svg"))throw Error("Falta el icono con nombre accesible");
+  if(document.body.textContent.includes("Ver detalle de"))throw Error("Queda el enlace de texto");
+  window.solicitudTecla={key:"Escape"};
+  for(let i=0;i<200&&dialogo.open;i++)await new Promise(r=>setTimeout(r,10));
+  if(dialogo.open)throw Error("Escape no cierra el modal");
+  if(!window.reemplazo||window.reemplazo.includes("registro="))throw Error("Cerrar no vuelve al listado sin el detalle");
+  if(!window.reemplazo.includes("pagina=2"))throw Error("Cerrar pierde la página");
+  for(let i=0;i<50&&document.activeElement!==icono;i++)await new Promise(r=>setTimeout(r,10));
+  if(document.activeElement!==icono)throw Error("El foco no vuelve al icono de la fila");
+ }
  if(document.documentElement.scrollWidth>innerWidth)throw Error("Hay desplazamiento horizontal");
  if(!document.querySelector('nav[aria-label="Paginación"]'))throw Error("Falta navegación entre páginas");
  if(innerWidth<640 && ![...document.querySelectorAll("label")].some(e=>e.textContent.includes("Ordenar por")))throw Error("Falta orden móvil");

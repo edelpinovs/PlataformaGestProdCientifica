@@ -4,7 +4,7 @@ import { requireModulo } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { Marco } from "@/components/marco";
 import { BarraListado, EncabezadoOrdenable, PaginacionListado } from "@/components/listado";
-import { Aviso, claseBotonContorno, claseBotonSecundario, claseCampo, claseEtiqueta, claseTabla, EstadoVacio, EtiquetaEstado, Panel } from "@/components/ui";
+import { Aviso, claseAccionIcono, claseBotonContorno, claseBotonSecundario, claseCampo, claseEtiqueta, claseTabla, EstadoVacio, EtiquetaEstado, Icono, Panel } from "@/components/ui";
 import { COLUMNAS_HISTORIAL, ESTADOS_HISTORIAL, FilaHistorial, idRegistroHistorial, LISTADO_HISTORIAL, nombreProfesor, sqlHistorial, textoAvance, TIPO_ESTADO_HISTORIAL } from "@/modules/produccion/historial";
 import { datosLoteEsquema } from "@/modules/produccion/lotes";
 import { rangoEfectivo, textoRango } from "@/modules/produccion/rango-escaneo";
@@ -13,6 +13,7 @@ import { fechaEscaneo } from "@/modules/produccion/fechas-escaneo";
 import { NOMBRES_FUENTE } from "@/modules/produccion/fuentes";
 import { ResultadoEscaneo } from "../resultado-escaneo";
 import { ControlBusqueda } from "../control-busqueda";
+import { DialogoDetalle, ICONO_VER } from "../dialogo-detalle";
 import { analizarBusqueda, LIMITE_DETALLE, textoDuracion } from "@/modules/produccion/detalle-busqueda";
 import { ETIQUETAS_TIPO, RUTA_PUBLICACIONES } from "@/modules/produccion/consulta";
 import { NavegacionProduccion } from "../navegacion-produccion";
@@ -68,7 +69,7 @@ export default async function HistorialPage({ searchParams }: { searchParams: Pr
     <NavegacionProduccion actual="historial" />
     <Link href="/produccion/continuidad" className={`${claseBotonContorno} w-fit`}>Ver hasta dónde llegó cada profesor y fuente</Link>
     {parametros.registro !== undefined && (!detalle.success || !registro) && <Aviso tipo="error">No se encontró una búsqueda válida para consultar.</Aviso>}
-    {registro && <Panel titulo={`Búsqueda #${registro.id}`}>
+    {registro && <DialogoDetalle key={registro.id} titulo={`Búsqueda #${registro.id}`} urlCerrar={enlaceListado(contexto.base, LISTADO_HISTORIAL, consulta)} focoAlCerrar={`ver-busqueda-${registro.id}`}>
       <div className="flex flex-col gap-4">
         <dl className="grid grid-cols-1 gap-x-5 gap-y-3 text-sm sm:grid-cols-2 xl:grid-cols-3">
           {datosDetalle.map(([termino, valor]) => <div key={termino} className="flex min-w-0 flex-col gap-1">
@@ -127,7 +128,7 @@ export default async function HistorialPage({ searchParams }: { searchParams: Pr
           cancelar={registro.estado === "PENDIENTE" || registro.estado === "EN_PROCESO"}
           reintentar={registro.estado === "FALLIDO" || registro.estado === "CANCELADO"} />}
       </div>
-    </Panel>}
+    </DialogoDetalle>}
     <Panel titulo="Búsquedas registradas">
       <BarraListado base={contexto.base} consulta={consulta} columnas={COLUMNAS_HISTORIAL} errores={errores} placeholder="Profesor, fuente, estado o fecha"
         etiquetaBusqueda="Buscar en el historial" filtros={[
@@ -145,9 +146,10 @@ export default async function HistorialPage({ searchParams }: { searchParams: Pr
           const celdas: React.ReactNode[] = [f.inicio, <EstadoBusqueda key="estado" estado={f.estado} texto={f.estadoTexto} />, f.tipoTexto, f.alcance, f.fuentes, `${f.avance} de ${f.total}`, f.actualizacion];
           return <tr key={f.id} aria-current={abierta ? "true" : undefined} className={`${claseTabla.fila} flex flex-col xl:table-row ${abierta ? "bg-marca-tenue" : ""}`}>
             {celdas.map((valor, i) => <td key={i} className={`${claseTabla.celda} break-words ${i === 5 ? "xl:whitespace-nowrap" : ""}`}><span className="text-xs text-texto-3 xl:hidden">{COLUMNAS_HISTORIAL[i].texto}: </span>{valor}</td>)}
-            <td className={`${claseTabla.celda} xl:whitespace-nowrap`}>{abierta
-              ? <span className="text-sm font-medium text-texto-2">Abierta arriba</span>
-              : <Link href={enlaceRegistro(f.id)} className="text-marca" aria-label={`Ver detalle de la búsqueda ${f.id}`}>Ver detalle</Link>}</td>
+            <td className={claseTabla.celda}>
+              <Link id={`ver-busqueda-${f.id}`} href={enlaceRegistro(f.id)} scroll={false} aria-label={`Ver detalle de la búsqueda ${f.id}`} title="Ver detalle"
+                className={claseAccionIcono()}><Icono d={ICONO_VER} /></Link>
+            </td>
           </tr>;
         })}</tbody></table> : <EstadoVacio>No hay búsquedas que coincidan con estos criterios.</EstadoVacio>}
       <PaginacionListado {...contexto} paginacion={paginacion} nombre="búsquedas" />
