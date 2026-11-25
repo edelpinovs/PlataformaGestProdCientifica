@@ -111,9 +111,26 @@ La carga **no se ha hecho**. Va en entregas aparte, cada una con su issue y su r
    - **Se ve como «Pendiente»** en el listado, la exportación y los reportes. En el reporte de convocatoria se cuenta aparte (no se suma a Masculino ni Femenino) y se puede filtrar.
    - **Al editar a una persona con `PENDIENTE`**, el select muestra «Pendiente» (para no guardar otro valor en silencio) y el guardado exige elegir uno real. Por eso, **editar a alguien importado obliga a completar género y contratación**, aunque solo se quiera cambiar otro campo. El código `PEND0001` y el correo `pend-0001@pendiente.invalid` sí pasan la validación del formulario (el código sin guion es válido), así que se pueden reemplazar cuando el cliente entregue los reales, sin que bloqueen otras correcciones (D-262).
    - **No entra a PRODEP ni a Cuerpos Académicos** (requieren tiempo completo) y el mensaje dice que falta registrar la contratación.
-2. **Departamentos reales** dados de alta con su división. El listado trae **seis**: Ciencias del Comportamiento, Ciencias Naturales y Exactas, Ciencias Computacionales e Ingenierías, Ciencias de la Salud, Ciencias Económicas y Administrativas y Ciencias Sociales y Humanidades. El nombre debe coincidir con el del CSV (sin importar acentos ni mayúsculas); la división de cada uno la define el cliente. Sin esto, `aplicar` se niega a correr.
+2. **Departamentos y divisiones reales** dados de alta, con la división de cada uno (tabla de abajo). Sin esto, `aplicar` se niega a correr.
 3. **Cargador** (hecho): ver la sección siguiente.
 4. **Revisión con el cliente** de las incidencias de este documento; cada una resuelta se corrige desde la pantalla de Profesores (Editar), no con SQL.
+
+### Departamentos y divisiones
+
+El listado trae **seis** departamentos y ninguno existe todavía en la base, que solo tiene los de ejemplo (`DEP-A1`…, y las divisiones `DIV-A`, `DIV-B` y `DIV-C`). Los nombres deben coincidir con los del CSV, sin importar acentos ni mayúsculas. Las divisiones tampoco están dadas de alta.
+
+| Departamento (como viene en el CSV) | Personas a crear | División | Estado |
+|---|---|---|---|
+| Departamento de Ciencias Computacionales e Ingenierías | 21 | CUCEI | Confirmada (2026-11-24) |
+| Departamento de Ciencias de la Salud | 19 | CUCS | Confirmada (2026-11-24) |
+| Departamento de Ciencias del Comportamiento | 5 | CUCSH | Confirmada (2026-11-24) |
+| Departamento de Ciencias Naturales y Exactas | 26 | — | **Por confirmar con el cliente** |
+| Departamento de Ciencias Económicas y Administrativas | 13 | — | **Por confirmar con el cliente** |
+| Departamento de Ciencias Sociales y Humanidades | 20 | — | **Por confirmar con el cliente** |
+
+- Las personas son las que arrojó `npm run importar:simular` el 2026-11-24: 104 de las 122 a crear traen departamento (las otras 18 no aparecen en el archivo de Scopus). Las tres divisiones por confirmar cubren **59 de las 104**.
+- **Falta el nombre completo y la clave de cada división** (la base exige ambos: `clave` es única) antes de darlas de alta.
+- No se asume ninguna división sin confirmar. Mientras falten, se pueden dar de alta solo los tres departamentos confirmados; `aplicar` seguirá negándose a cargar mientras falte cualquiera de los seis (o hay que usar `--sin-departamento`, que no se recomienda: dejaría a esas personas sin departamento y asignarlas después sería una por una).
 
 ## El cargador
 
