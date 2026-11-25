@@ -7,6 +7,7 @@ import { Aviso, claseBoton, claseCampo, claseEtiqueta } from "@/components/ui";
 import { iniciarEscaneoAction, type EstadoEscaneo } from "./actions";
 import { ResultadoEscaneo } from "./resultado-escaneo";
 import { SelectorProfesor } from "@/components/selector-profesor";
+import { ANIO_MINIMO_ESCANEO, MAXIMO_ANIOS_RANGO, type RangoEscaneo } from "@/modules/produccion/rango-escaneo";
 
 function BotonEscanear({ enCurso, continuar }: { enCurso: boolean; continuar: boolean }) {
   const { pending } = useFormStatus();
@@ -42,25 +43,29 @@ export function FormularioEscaneo({
   fuentesTrabajo,
   enriquecerTrabajo,
   profesorTrabajo,
-  anioTrabajo,
+  rangoTrabajo,
 }: {
   profesores: { id: number; nombres: string; apellidos: string; codigo: string }[];
   trabajoPendiente?: number;
   fuentesTrabajo?: FuenteEscaneo[];
   enriquecerTrabajo?: boolean;
   profesorTrabajo?: string;
-  anioTrabajo?: number;
+  rangoTrabajo?: RangoEscaneo;
 }) {
   const [estado, formAction, enviando] = useActionState<EstadoEscaneo, FormData>(
     async (anterior,datos) => ({ ...await iniciarEscaneoAction(anterior,datos), intento: (anterior.intento ?? 0) + 1 }),
-    trabajoPendiente ? { jobId: trabajoPendiente, continuar: true, fuentes: fuentesTrabajo ?? [...FUENTES_ANTERIORES], enriquecerAutores: enriquecerTrabajo } : {},
+    trabajoPendiente ? { jobId: trabajoPendiente, continuar: true, fuentes: fuentesTrabajo ?? [...FUENTES_ANTERIORES], enriquecerAutores: enriquecerTrabajo, rango: rangoTrabajo } : {},
   );
   const [fuentes, elegirFuentes] = useState<FuenteEscaneo[]>(trabajoPendiente ? fuentesTrabajo ?? [...FUENTES_ANTERIORES] : [...FUENTES_POR_OMISION]);
   const [enriquecer, elegirEnriquecer] = useState(trabajoPendiente ? enriquecerTrabajo ?? false : true);
   const [profesorElegido, elegirProfesor] = useState(profesorTrabajo ?? "todos");
-  const [anioElegido, elegirAnio] = useState(anioTrabajo ? String(anioTrabajo) : "");
+  const [desdeElegido, elegirDesde] = useState(rangoTrabajo?.desde ?? "");
+  const [hastaElegido, elegirHasta] = useState(rangoTrabajo?.hasta ?? "");
   const fuentesMostradas = estado.pendiente || estado.continuar ? estado.fuentes ?? fuentes : fuentes;
   const enriquecerMostrado = estado.pendiente || estado.continuar ? estado.enriquecerAutores ?? enriquecer : enriquecer;
+  // Al continuar se muestra el rango guardado en el trabajo, no el que se haya escrito.
+  const rangoGuardado = estado.pendiente || estado.continuar ? estado.rango ?? rangoTrabajo : undefined;
+  const bloqueado = Boolean(estado.pendiente || estado.continuar);
 
   useEffect(() => {
     if (!estado.pendiente || !estado.jobId) return;
@@ -104,24 +109,41 @@ export function FormularioEscaneo({
             {estado.erroresCampos?.profesorId && profesorElegido === "todos" && <Aviso tipo="error">{estado.erroresCampos.profesorId}</Aviso>}
           </fieldset>
 
-          <label className={claseEtiqueta}>
-            Año de publicación (opcional)
-            <input
-              type="number"
-              name="anio"
-              value={anioElegido}
-              onChange={evento => elegirAnio(evento.target.value)}
-              min="1990"
-              max={new Date().getUTCFullYear() + 1}
-              disabled={estado.pendiente || estado.continuar}
-              aria-invalid={Boolean(estado.erroresCampos?.anio)}
-              placeholder="Vacío para historial inicial o actualización"
-              className={claseCampo(Boolean(estado.erroresCampos?.anio))}
-            />
-          </label>
+          <fieldset disabled={bloqueado} className="flex min-w-0 flex-col gap-4">
+            <legend className="mb-2 text-sm font-semibold">Rango de búsqueda (opcional)</legend>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <label className={claseEtiqueta}>
+                Desde
+                <input
+                  type="date"
+                  name="desde"
+                  value={bloqueado ? rangoGuardado?.desde ?? "" : desdeElegido}
+                  onChange={evento => elegirDesde(evento.target.value)}
+                  min={`${ANIO_MINIMO_ESCANEO}-01-01`}
+                  disabled={bloqueado}
+                  aria-invalid={Boolean(estado.erroresCampos?.desde)}
+                  className={`${claseCampo(Boolean(estado.erroresCampos?.desde))} w-full min-w-0`}
+                />
+              </label>
+              <label className={claseEtiqueta}>
+                Hasta
+                <input
+                  type="date"
+                  name="hasta"
+                  value={bloqueado ? rangoGuardado?.hasta ?? "" : hastaElegido}
+                  onChange={evento => elegirHasta(evento.target.value)}
+                  min={`${ANIO_MINIMO_ESCANEO}-01-01`}
+                  disabled={bloqueado}
+                  aria-invalid={Boolean(estado.erroresCampos?.hasta)}
+                  className={`${claseCampo(Boolean(estado.erroresCampos?.hasta))} w-full min-w-0`}
+                />
+              </label>
+            </div>
+            {[estado.erroresCampos?.desde, estado.erroresCampos?.hasta].filter(Boolean).map(mensaje => <Aviso key={mensaje} tipo="error">{mensaje}</Aviso>)}
+          </fieldset>
         </div>
 
-        <p className="text-sm text-texto-3">Sin año, ORCID y OpenAlex recuperan el historial si no existe un escaneo previo; después consultan novedades. Para revisar un año concreto, indícalo arriba.</p>
+        <p className="text-sm text-texto-3">{`Sin fechas, ORCID y OpenAlex recuperan el historial si no existe un escaneo previo; después consultan novedades. Para revisar un periodo, indica Desde y Hasta (máximo ${MAXIMO_ANIOS_RANGO} años); sin Hasta se busca hasta hoy. Un periodo no adelanta los puntos de continuación.`}</p>
 
         <div className="flex justify-end pt-2">
           <BotonEscanear enCurso={Boolean(estado.pendiente)} continuar={Boolean(estado.continuar)} />

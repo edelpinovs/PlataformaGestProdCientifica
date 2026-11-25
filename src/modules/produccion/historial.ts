@@ -35,7 +35,9 @@ export function sqlHistorial(consulta: ConsultaListado) {
     CASE WHEN jsonb_typeof(j.datos->'profesoresIds') = 'array' THEN
       CASE WHEN jsonb_array_length(j.datos->'profesoresIds') = 1 THEN 'Profesor #' || (j.datos->'profesoresIds'->>0)
       ELSE 'Profesores: ' || jsonb_array_length(j.datos->'profesoresIds')::text END
-      || CASE WHEN (j.datos->>'anio') ~ '^\\d{4}$' THEN '; año ' || (j.datos->>'anio') ELSE '; novedades' END
+      || CASE WHEN (j.datos->>'desde') ~ '^\\d{4}-\\d{2}-\\d{2}$' AND (j.datos->>'hasta') ~ '^\\d{4}-\\d{2}-\\d{2}$'
+           THEN '; del ' || to_char((j.datos->>'desde')::date, 'DD/MM/YYYY') || ' al ' || to_char((j.datos->>'hasta')::date, 'DD/MM/YYYY')
+         WHEN (j.datos->>'anio') ~ '^\\d{4}$' THEN '; año ' || (j.datos->>'anio') ELSE '; novedades' END
     ELSE 'No registrado' END alcance,
     CASE WHEN jsonb_typeof(j.datos->'fuentes') = 'array' THEN
       (SELECT string_agg(CASE f WHEN 'SCOPUS' THEN 'Scopus' WHEN 'OPENALEX' THEN 'OpenAlex' WHEN 'CROSSREF' THEN 'Crossref' WHEN 'GOOGLE_SCHOLAR' THEN 'Google Scholar' WHEN 'ORCID' THEN 'ORCID' ELSE 'Fuente no reconocida' END, ', ' ORDER BY f) FROM jsonb_array_elements_text(j.datos->'fuentes') valores(f))
