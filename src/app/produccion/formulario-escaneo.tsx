@@ -1,7 +1,7 @@
 "use client";
 
 import { startTransition, useActionState, useEffect, useState } from "react";
-import { FUENTES_ANTERIORES, FUENTES_ESCANEO, NOMBRES_FUENTE, type FuenteEscaneo } from "@/modules/produccion/fuentes";
+import { FUENTES_ANTERIORES, FUENTES_ESCANEO, FUENTES_POR_OMISION, NOMBRES_FUENTE, type FuenteEscaneo } from "@/modules/produccion/fuentes";
 import { useFormStatus } from "react-dom";
 import { Aviso, claseBoton, claseCampo, claseEtiqueta } from "@/components/ui";
 import { iniciarEscaneoAction, type EstadoEscaneo } from "./actions";
@@ -40,23 +40,27 @@ export function FormularioEscaneo({
   profesores,
   trabajoPendiente,
   fuentesTrabajo,
+  enriquecerTrabajo,
   profesorTrabajo,
   anioTrabajo,
 }: {
   profesores: { id: number; nombres: string; apellidos: string; codigo: string }[];
   trabajoPendiente?: number;
   fuentesTrabajo?: FuenteEscaneo[];
+  enriquecerTrabajo?: boolean;
   profesorTrabajo?: string;
   anioTrabajo?: number;
 }) {
   const [estado, formAction, enviando] = useActionState<EstadoEscaneo, FormData>(
     async (anterior,datos) => ({ ...await iniciarEscaneoAction(anterior,datos), intento: (anterior.intento ?? 0) + 1 }),
-    trabajoPendiente ? { jobId: trabajoPendiente, continuar: true, fuentes: fuentesTrabajo ?? [...FUENTES_ANTERIORES] } : {},
+    trabajoPendiente ? { jobId: trabajoPendiente, continuar: true, fuentes: fuentesTrabajo ?? [...FUENTES_ANTERIORES], enriquecerAutores: enriquecerTrabajo } : {},
   );
-  const [fuentes, elegirFuentes] = useState<FuenteEscaneo[]>(trabajoPendiente ? fuentesTrabajo ?? [...FUENTES_ANTERIORES] : [...FUENTES_ESCANEO]);
+  const [fuentes, elegirFuentes] = useState<FuenteEscaneo[]>(trabajoPendiente ? fuentesTrabajo ?? [...FUENTES_ANTERIORES] : [...FUENTES_POR_OMISION]);
+  const [enriquecer, elegirEnriquecer] = useState(trabajoPendiente ? enriquecerTrabajo ?? false : true);
   const [profesorElegido, elegirProfesor] = useState(profesorTrabajo ?? "todos");
   const [anioElegido, elegirAnio] = useState(anioTrabajo ? String(anioTrabajo) : "");
   const fuentesMostradas = estado.pendiente || estado.continuar ? estado.fuentes ?? fuentes : fuentes;
+  const enriquecerMostrado = estado.pendiente || estado.continuar ? estado.enriquecerAutores ?? enriquecer : enriquecer;
 
   useEffect(() => {
     if (!estado.pendiente || !estado.jobId) return;
@@ -76,7 +80,12 @@ export function FormularioEscaneo({
           <legend className="mb-2 text-sm font-semibold">Fuentes de búsqueda</legend>
           <div className="flex flex-wrap gap-4">{FUENTES_ESCANEO.map(fuente => <label key={fuente} className="flex items-center gap-2 text-sm text-texto-2"><input type="checkbox" name="fuentes" value={fuente} checked={fuentesMostradas.includes(fuente)} onChange={evento => { const marcada=evento.target.checked; elegirFuentes(actual => marcada ? [...actual,fuente] : actual.filter(f => f !== fuente)); }} aria-invalid={Boolean(estado.erroresCampos?.fuentes)} />{NOMBRES_FUENTE[fuente]}</label>)}</div>
           <div><button type="button" className="rounded-xl px-3 py-2 text-sm text-marca hover:bg-hover" onClick={() => elegirFuentes([...FUENTES_ESCANEO])}>Seleccionar todas</button></div>
-          <p className="text-sm text-texto-3">Se consultarán únicamente las fuentes elegidas. Google Scholar está sujeto a la cuota del proveedor. Al continuar un trabajo se respetan sus fuentes guardadas.</p>
+          <p className="text-sm text-texto-3">Se consultarán únicamente las fuentes elegidas. Crossref y Google Scholar son opcionales; Google Scholar está sujeto a la cuota del proveedor. Al continuar un trabajo se respetan sus fuentes guardadas.</p>
+          <label className="flex items-center gap-2 text-sm text-texto-2">
+            <input type="checkbox" name="enriquecerAutores" value="si" checked={enriquecerMostrado} onChange={evento => elegirEnriquecer(evento.target.checked)} aria-invalid={Boolean(estado.erroresCampos?.enriquecerAutores)} />
+            Completar autores por DOI con Crossref
+          </label>
+          <p className="text-sm text-texto-3">Scopus solo entrega el primer autor: esta opción completa los coautores con Crossref aunque no lo elijas como fuente de obras.</p>
         </fieldset>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <fieldset disabled={estado.pendiente || estado.continuar} className="flex min-w-0 flex-col gap-4">

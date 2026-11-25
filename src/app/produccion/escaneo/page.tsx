@@ -1,6 +1,7 @@
 import { Marco } from "@/components/marco";
 import { Aviso, Panel } from "@/components/ui";
 import { datosLoteEsquema } from "@/modules/produccion/lotes";
+import { debeEnriquecerAutores } from "@/modules/produccion/fuentes";
 import { fechaEscaneo, ZONA_FECHAS_ESCANEO } from "@/modules/produccion/fechas-escaneo";
 import { requireModulo } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
@@ -36,7 +37,7 @@ export default async function EscaneoPage() {
       <Link href="/produccion/demostracion" className={claseBotonSecundario}>Abrir demostración sin base de datos</Link>
     </Panel>}
     <Panel titulo="Escanear producción científica" descripcion="Elige un profesor activo o inicia el escaneo de todos. El avance se guarda por profesor.">
-      {puedeEscanear(perfil.rol) ? <FormularioEscaneo profesores={profesores} trabajoPendiente={pendiente?.id} fuentesTrabajo={datosPendientes.data?.fuentes} profesorTrabajo={datosPendientes.data?.profesoresIds.length === 1 ? String(datosPendientes.data.profesoresIds[0]) : "todos"} anioTrabajo={datosPendientes.data?.anio} /> : <Aviso tipo="aviso">{AVISO_SIN_PERMISO_ESCANEO}</Aviso>}
+      {puedeEscanear(perfil.rol) ? <FormularioEscaneo profesores={profesores} trabajoPendiente={pendiente?.id} fuentesTrabajo={datosPendientes.data?.fuentes} enriquecerTrabajo={datosPendientes.success ? debeEnriquecerAutores(datosPendientes.data) : undefined} profesorTrabajo={datosPendientes.data?.profesoresIds.length === 1 ? String(datosPendientes.data.profesoresIds[0]) : "todos"} anioTrabajo={datosPendientes.data?.anio} /> : <Aviso tipo="aviso">{AVISO_SIN_PERMISO_ESCANEO}</Aviso>}
     </Panel>
     <Panel titulo="Último escaneo registrado">
       {ultimoJob && <ResultadoEscaneo resultado={presentarResultadoEscaneo(ultimoJob.estado, ultimoJob.datos)} />}

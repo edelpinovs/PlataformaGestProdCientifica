@@ -107,14 +107,18 @@ model ProgramaEducativo {
 
 // ─── M2 Profesores (RF-004 a RF-006) · Integrante 2 ─────────────────────────
 
+// PENDIENTE (D-261): dato que el cliente no entregó en la importación de datos reales.
+// Los formularios no permiten elegirlo: solo lo asigna la importación y se corrige al editar.
 enum Genero {
   M
   F
+  PENDIENTE
 }
 
 enum TipoContratacion {
   TIEMPO_COMPLETO
   ASIGNATURA
+  PENDIENTE
 }
 
 enum EstatusLaboral {

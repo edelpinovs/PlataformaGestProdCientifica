@@ -45,7 +45,7 @@ describe("RF-020: cola persistida de escaneo", () => {
     expect(trabajo.datos.resumen.publicacionesGuardadas).toBe(54);
     expect(dobles.ejecutarEscaneo.mock.calls.map(([opciones]) => opciones.profesorId)).toEqual(trabajo.datos.profesoresIds);
     expect(dobles.ejecutarEscaneo).toHaveBeenLastCalledWith({
-      profesorId: 27, anio: undefined, fuentes: ["SCOPUS","OPENALEX","ORCID"], limiteProfesores: 1,
+      profesorId: 27, anio: undefined, fuentes: ["SCOPUS","OPENALEX","ORCID"], limiteProfesores: 1, enriquecerAutores: false,
       informarFuente: expect.any(Function),
     }, {});
   });

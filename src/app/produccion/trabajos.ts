@@ -2,13 +2,13 @@ import { prisma } from "@/lib/prisma";
 import { ejecutarEscaneo } from "@/modules/produccion/escaneo";
 import { avanzarLote, datosLoteEsquema, resumenVacio, type DatosLote } from "@/modules/produccion/lotes";
 import { repositorioPrisma } from "./repositorio";
-import { FUENTES_ANTERIORES, type FuenteEscaneo } from "@/modules/produccion/fuentes";
+import { debeEnriquecerAutores, FUENTES_ANTERIORES, type FuenteEscaneo } from "@/modules/produccion/fuentes";
 import { TrabajoEscaneoPendiente } from "@/modules/produccion/fechas-escaneo";
 
 export const TIPOS_ESCANEO = ["escaneo-manual", "escaneo-diario"];
 const TIEMPO_RESERVA_MS = 10 * 60 * 1000;
 
-export async function crearTrabajoEscaneo(tipo: string, profesorId?: number, anio?: number, fuentes?: FuenteEscaneo[]) {
+export async function crearTrabajoEscaneo(tipo: string, profesorId?: number, anio?: number, fuentes?: FuenteEscaneo[], enriquecerAutores?: boolean) {
   return prisma.$transaction(async transaccion => {
     // Serializa el inicio en todas las instancias, sin depender de un bloqueo en memoria.
     // $executeRaw y no $queryRaw: la función devuelve void y el adaptador de Prisma no puede leer esa columna.
@@ -27,6 +27,7 @@ export async function crearTrabajoEscaneo(tipo: string, profesorId?: number, ani
       version: 1, profesoresIds: profesores.map((profesor) => profesor.id), indice: 0,
       ...(anio ? { anio } : {}), resumen: resumenVacio(),
       fuentes: fuentes ?? [...FUENTES_ANTERIORES],
+      ...(enriquecerAutores === undefined ? {} : { enriquecerAutores }),
     };
     return transaccion.job.create({ data: {
       tipo, estado: profesores.length ? "PENDIENTE" : "COMPLETADO",
@@ -60,6 +61,7 @@ export async function procesarSiguienteProfesor(jobId: number) {
     // El orquestador no controla este Job: el avance corresponde a toda la cola.
     const resultado = await ejecutarEscaneo({
       profesorId, anio: datos.anio, fuentes: datos.fuentes ?? [...FUENTES_ANTERIORES], limiteProfesores: 1,
+      enriquecerAutores: debeEnriquecerAutores(datos),
       informarFuente: async (fuenteEnCurso) => {
         await prisma.job.updateMany({
           where: condicionReserva,

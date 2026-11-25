@@ -39,13 +39,14 @@ export const ETIQUETA_COLUMNA_CONVOCATORIA: Record<ColumnaConvocatoria, string> 
   noAprobados: "No aprobados",
 };
 
-export const ETIQUETA_GENERO = { M: "Masculino", F: "Femenino" } as const;
+// PENDIENTE (D-261): género que el cliente no entregó. Se cuenta aparte para no falsear los totales por género.
+export const ETIQUETA_GENERO = { M: "Masculino", F: "Femenino", PENDIENTE: "Pendiente" } as const;
 export type Genero = keyof typeof ETIQUETA_GENERO;
 
 export const LISTADO_CONVOCATORIA: DefinicionListado = {
   columnas: COLUMNAS_CONVOCATORIA,
   ordenInicial: { columna: "departamento", dir: "asc" },
-  filtros: { programa: PROGRAMAS, genero: ["M", "F"] },
+  filtros: { programa: PROGRAMAS, genero: ["M", "F", "PENDIENTE"] },
 };
 
 export type ClaseConvocatoria = "vigente" | "nuevo-ingreso" | "promocion" | "no-aprobado";
