@@ -9,6 +9,7 @@ import { ResultadoEscaneo } from "./resultado-escaneo";
 import { SelectorProfesor } from "@/components/selector-profesor";
 import { ANIO_MINIMO_ESCANEO, MAXIMO_ANIOS_RANGO, type RangoEscaneo } from "@/modules/produccion/rango-escaneo";
 import { resumenBusqueda } from "@/modules/produccion/resumen-busqueda";
+import { hoyMexico } from "@/modules/produccion/fechas-escaneo";
 
 function BotonEscanear({ enCurso, continuar, periodo }: { enCurso: boolean; continuar: boolean; periodo: boolean }) {
   const { pending } = useFormStatus();
@@ -75,6 +76,8 @@ export function FormularioEscaneo({
   // Al continuar se muestra el rango guardado en el trabajo, no el que se haya escrito.
   const rangoGuardado = estado.pendiente || estado.continuar ? estado.rango ?? rangoTrabajo : undefined;
   const bloqueado = Boolean(estado.pendiente || estado.continuar);
+  // D-276: el navegador no ofrece fechas futuras; el servidor lo vuelve a validar.
+  const hoy = hoyMexico();
   const desdeMostrado = bloqueado ? rangoGuardado?.desde ?? "" : desdeElegido;
   const hastaMostrado = bloqueado ? rangoGuardado?.hasta ?? "" : hastaElegido;
   const profesorDeLista = profesores.find(profesor => String(profesor.id) === profesorElegido);
@@ -142,6 +145,7 @@ export function FormularioEscaneo({
                   value={desdeMostrado}
                   onChange={evento => elegirDesde(evento.target.value)}
                   min={`${ANIO_MINIMO_ESCANEO}-01-01`}
+                  max={hoy}
                   disabled={bloqueado}
                   aria-invalid={Boolean(estado.erroresCampos?.desde)}
                   className={`${claseCampo(Boolean(estado.erroresCampos?.desde))} w-full min-w-0`}
@@ -155,13 +159,14 @@ export function FormularioEscaneo({
                   value={hastaMostrado}
                   onChange={evento => elegirHasta(evento.target.value)}
                   min={`${ANIO_MINIMO_ESCANEO}-01-01`}
+                  max={hoy}
                   disabled={bloqueado}
                   aria-invalid={Boolean(estado.erroresCampos?.hasta)}
                   className={`${claseCampo(Boolean(estado.erroresCampos?.hasta))} w-full min-w-0`}
                 />
               </label>
             </div>
-            <p className="text-xs text-texto-3">{`Sin fechas, cada fuente sigue desde su última búsqueda; la primera vez trae todo el historial, salvo Scopus, que empieza en el año en curso. Máximo ${MAXIMO_ANIOS_RANGO} años calendario; sin Hasta, se busca hasta hoy. Revisar un periodo no mueve el punto de continuación.`}</p>
+            <p className="text-xs text-texto-3">{`Sin fechas, cada fuente sigue desde su última búsqueda; la primera vez trae todo el historial, salvo Scopus, que empieza en el año en curso. Máximo ${MAXIMO_ANIOS_RANGO} años calendario y sin fechas futuras; sin Hasta, se busca hasta hoy. Revisar un periodo no mueve el punto de continuación.`}</p>
             {[estado.erroresCampos?.desde, estado.erroresCampos?.hasta].filter(Boolean).map(mensaje => <Aviso key={mensaje} tipo="error">{mensaje}</Aviso>)}
           </fieldset>
         </div>
