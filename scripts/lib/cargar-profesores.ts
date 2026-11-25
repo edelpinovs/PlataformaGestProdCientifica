@@ -5,7 +5,7 @@ import { generarNombreNormalizado } from "../../src/modules/profesores/profesore
 import { limpiarTexto, sinAcentos, type PersonaImportable } from "./importar-profesores";
 
 // Marcas de lo que entra por esta importación; permiten contarlo y borrarlo sin tocar lo demás.
-export const PREFIJO_CODIGO = "PEND-";
+export const PREFIJO_CODIGO = "PEND";
 export const DOMINIO_PENDIENTE = "pendiente.invalid";
 
 const PARTICULAS = new Set(["de", "del", "la", "las", "los", "y", "e"]);

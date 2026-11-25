@@ -6,7 +6,7 @@
 // Opciones: una carpeta distinta de datos-reales/ (primer argumento sin guiones) y, solo en aplicar,
 //   --sin-departamento   carga aunque falten departamentos en la base (quedan sin departamento).
 //
-// Lo que se crea lleva marca: código «PEND-0001…», correo «pend-0001@pendiente.invalid» y género y
+// Lo que se crea lleva marca: código «PEND0001…», correo «pend-0001@pendiente.invalid» y género y
 // contratación en PENDIENTE. Nada se inventa. Nunca usa TRUNCATE ni borrados sin WHERE.
 import "dotenv/config";
 import { writeFileSync } from "node:fs";

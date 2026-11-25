@@ -7,6 +7,7 @@ import {
   prepararCarga,
   type EstadoBase,
 } from "./cargar-profesores";
+import { registrarProfesor } from "../../src/modules/profesores/profesores";
 import type { PersonaImportable } from "./importar-profesores";
 
 const persona = (parcial: Partial<PersonaImportable> = {}): PersonaImportable => ({
@@ -36,8 +37,22 @@ describe("capitalizarNombre", () => {
 });
 
 describe("marcas de lo pendiente", () => {
+  it("el código y el correo pendientes pasan la validación del formulario de Profesores (D-262)", () => {
+    // Si no pasaran, editar a una persona importada obligaría a reemplazarlos aunque solo se quisiera cambiar otro campo.
+    const resultado = registrarProfesor.safeParse({
+      codigo: codigoPendiente(12),
+      nombres: "Lorena",
+      apellidos: "Solís Vera",
+      correo: correoPendiente(12),
+      genero: "F",
+      tipoContratacion: "TIEMPO_COMPLETO",
+      estatusLaboral: "ACTIVO",
+    });
+    expect(resultado.success).toBe(true);
+  });
+
   it("el código y el correo comparten el número y llevan la marca", () => {
-    expect(codigoPendiente(7)).toBe("PEND-0007");
+    expect(codigoPendiente(7)).toBe("PEND0007");
     expect(correoPendiente(7)).toBe("pend-0007@pendiente.invalid");
   });
 });
@@ -49,26 +64,26 @@ describe("prepararCarga", () => {
       baseVacia,
     );
     expect(plan.cargar.map((p) => [p.codigo, p.apellidos])).toEqual([
-      ["PEND-0001", "Ávila"],
-      ["PEND-0002", "Zamora"],
+      ["PEND0001", "Ávila"],
+      ["PEND0002", "Zamora"],
     ]);
     expect(plan.cargar[0].correo).toBe("pend-0001@pendiente.invalid");
     expect(plan.cargar[0].nombreNormalizado).toBe("avila beto");
   });
 
-  it("continúa la numeración después del código PEND- más alto que ya exista", () => {
+  it("continúa la numeración después del código PEND más alto que ya exista", () => {
     const base: EstadoBase = {
       departamentos: [],
-      profesores: [{ codigo: "PEND-0041", nombreNormalizado: "otra persona", orcid: null, scholarId: null, scopusId: null },
+      profesores: [{ codigo: "PEND0041", nombreNormalizado: "otra persona", orcid: null, scholarId: null, scopusId: null },
         { codigo: "ABC123", nombreNormalizado: "real persona", orcid: null, scholarId: null, scopusId: null }],
     };
-    expect(prepararCarga([persona()], base).cargar[0].codigo).toBe("PEND-0042");
+    expect(prepararCarga([persona()], base).cargar[0].codigo).toBe("PEND0042");
   });
 
   it("omite a quien ya existe por nombre, sin importar acentos ni mayúsculas, para poder repetir la carga", () => {
     const base: EstadoBase = {
       departamentos: [],
-      profesores: [{ codigo: "PEND-0001", nombreNormalizado: "solis vera lorena", orcid: null, scholarId: null, scopusId: null }],
+      profesores: [{ codigo: "PEND0001", nombreNormalizado: "solis vera lorena", orcid: null, scholarId: null, scopusId: null }],
     };
     const plan = prepararCarga([persona()], base);
     expect(plan.cargar).toHaveLength(0);
@@ -113,6 +128,6 @@ describe("prepararCarga", () => {
     const plan = prepararCarga([persona()], baseVacia);
     const texto = informePlan(plan);
     expect(texto).toContain("A crear: 1");
-    expect(texto).toContain("PEND-0001 · Solís Vera, Lorena");
+    expect(texto).toContain("PEND0001 · Solís Vera, Lorena");
   });
 });

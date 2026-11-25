@@ -2,7 +2,7 @@
 
 Datos **ficticios** para ver las pantallas con contenido. Viven en la base de desarrollo compartida, están marcados y se pueden borrar sin tocar datos reales (decisión D-008 en [`DECISIONES.md`](DECISIONES.md)).
 
-Los datos demo **conviven con los datos reales** de profesores (D-259). Los reales se cargan aparte, con otro flujo y otras marcas (`PEND-` y `@pendiente.invalid`): ver [`IMPORTACION_DATOS_REALES.md`](IMPORTACION_DATOS_REALES.md). Los totales de inicio y de reportes suman ambos hasta que se limpie el demo.
+Los datos demo **conviven con los datos reales** de profesores (D-259). Los reales se cargan aparte, con otro flujo y otras marcas (`PEND` y `@pendiente.invalid`): ver [`IMPORTACION_DATOS_REALES.md`](IMPORTACION_DATOS_REALES.md). Los totales de inicio y de reportes suman ambos hasta que se limpie el demo.
 
 ## Comandos
 
