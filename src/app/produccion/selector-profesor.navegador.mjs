@@ -49,7 +49,7 @@ import React from "react";import {createRoot} from "react-dom/client";
 import {FiltrosPublicaciones} from ${importar("src/app/produccion/filtros-publicaciones.tsx")};
 import {Panel} from ${importar("src/components/ui.tsx")};
 ${herramientas}
-const consulta={pagina:3,q:"agua",orden:"revista",dir:"desc",filtros:{profesor:"1",anio:"2025",tipo:"ARTICULO",fuente:"ORCID",estado:"VALIDADA"}};
+const consulta={pagina:3,q:"agua",orden:"revista",dir:"desc",filtros:{profesor:"1",anio:"2025",tipo:"ARTICULO",fuente:"ORCID",estado:"VALIDADA",desde:"2025-03-15",hasta:"2025-06-30"}};
 createRoot(document.getElementById("raiz")).render(<main className="min-h-screen bg-fondo p-5 text-texto"><Panel titulo="Buscar publicaciones"><FiltrosPublicaciones consulta={consulta} profesores={opciones} errores={{}}/></Panel><output id="resultado">EN CURSO</output></main>);
 document.addEventListener("submit",e=>{e.preventDefault();window.filtrosEnviados=Object.fromEntries(new FormData(e.target))});
 (async()=>{try{
@@ -58,7 +58,7 @@ document.addEventListener("submit",e=>{e.preventDefault();window.filtrosEnviados
  await escribir("DEMO-003");await esperar(()=>document.querySelectorAll('[role="option"]').length===1);await teclear("Enter");
  document.querySelector("form").requestSubmit();await esperar(()=>window.filtrosEnviados);
  comprobar(window.filtrosEnviados.profesor==="3","No permite consultar publicaciones de un profesor no activo");
- for(const [campo,valor] of Object.entries({q:"agua",anio:"2025",tipo:"ARTICULO",fuente:"ORCID",estado:"VALIDADA",orden:"revista",dir:"desc"}))comprobar(window.filtrosEnviados[campo]===valor,"Perdió el filtro u orden: "+campo);
+ for(const [campo,valor] of Object.entries({q:"agua",anio:"2025",tipo:"ARTICULO",fuente:"ORCID",estado:"VALIDADA",orden:"revista",dir:"desc",desde:"2025-03-15",hasta:"2025-06-30"}))comprobar(window.filtrosEnviados[campo]===valor,"Perdió el filtro u orden: "+campo);
  comprobar(!("pagina" in window.filtrosEnviados),"No vuelve a la primera página al buscar");
  document.querySelector('[aria-label="Quitar profesor seleccionado"]').click();await esperar(()=>document.querySelector('input[name="profesor"]').value==="");
  document.querySelector("form").requestSubmit();comprobar(window.filtrosEnviados.profesor==="","No permite consultar todos los profesores");

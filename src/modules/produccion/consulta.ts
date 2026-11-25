@@ -21,12 +21,17 @@ export type ParametrosConsulta = ParametrosListado;
 export type ErroresConsulta = ErroresListado;
 export const RUTA_PUBLICACIONES = "/produccion/publicaciones";
 export const CONSULTA_INICIAL: ConsultaPublicaciones = {
-  pagina: 1, q: "", orden: "titulo", dir: "asc", filtros: { profesor: "", anio: "", tipo: "", fuente: "", estado: "" },
+  pagina: 1, q: "", orden: "titulo", dir: "asc", filtros: { profesor: "", anio: "", tipo: "", fuente: "", estado: "", desde: "", hasta: "" },
 };
 
 const profesorEsquema = z.string({ error: "Selecciona un solo profesor." }).refine(
   (valor) => valor === "" || (/^[1-9]\d*$/.test(valor) && Number(valor) <= 2147483647), "Selecciona un profesor válido.",
 );
+const mensajeFechaInvalida = "Indica una fecha válida.";
+const fechaEsquema = z.union([
+  z.literal(""),
+  z.iso.date({ error: mensajeFechaInvalida }).refine((fecha) => !fecha.startsWith("0000"), mensajeFechaInvalida),
+], { error: mensajeFechaInvalida });
 const anioEsquema = z.string({ error: "Indica un solo año." }).refine(
   (valor) => valor === "" || (/^\d{4}$/.test(valor) && Number(valor) >= 1900 && Number(valor) <= 2100), "Indica un año entre 1900 y 2100.",
 );
@@ -38,6 +43,15 @@ export function analizarConsulta(parametros: ParametrosConsulta) {
     const resultado = esquema.safeParse(parametros[clave] ?? "");
     consulta.filtros[clave] = resultado.success ? resultado.data : "";
     if (!resultado.success) errores[clave] = resultado.error.issues[0].message;
+  }
+  for (const clave of ["desde", "hasta"] as const) {
+    const resultado = fechaEsquema.safeParse(parametros[clave] ?? "");
+    consulta.filtros[clave] = resultado.success ? resultado.data : "";
+    if (!resultado.success) errores[clave] = resultado.error.issues[0].message;
+  }
+  const { desde, hasta } = consulta.filtros;
+  if (desde && hasta && desde > hasta) {
+    errores.hasta = "La fecha final debe ser igual o posterior a la fecha inicial.";
   }
   // Solo se reconocen los tamaños de enlaces antiguos: la lectura siempre es de 10.
   if (parametros.tamanio !== undefined && !z.enum(["10", "20", "50", "100"]).safeParse(parametros.tamanio).success) {
@@ -51,6 +65,7 @@ export function analizarConsulta(parametros: ParametrosConsulta) {
 }
 
 export function filtroPublicaciones(consulta: ConsultaPublicaciones) {
+  const { desde, hasta } = consulta.filtros;
   const tipo = tipoPublicacionEnum.options.find((valor) => valor === consulta.filtros.tipo);
   const fuente = fuentePublicacionEnum.options.find((valor) => valor === consulta.filtros.fuente);
   const estado = estadoAutoriaEnum.options.find((valor) => valor === consulta.filtros.estado);
@@ -72,6 +87,10 @@ export function filtroPublicaciones(consulta: ConsultaPublicaciones) {
       gte: new Date(Date.UTC(Number(consulta.filtros.anio), 0, 1)),
       lt: new Date(Date.UTC(Number(consulta.filtros.anio) + 1, 0, 1)),
     } } : {}),
+    ...(desde || hasta ? { AND: [{ fechaPublicacion: {
+      ...(desde ? { gte: new Date(`${desde}T00:00:00Z`) } : {}),
+      ...(hasta ? { lte: new Date(`${hasta}T00:00:00Z`) } : {}),
+    } }] } : {}),
     ...(consulta.filtros.profesor || estado ? { autorias: { some: {
       ...(consulta.filtros.profesor ? { profesorId: Number(consulta.filtros.profesor) } : {}), ...(estado ? { estado } : {}),
     } } } : {}),
@@ -107,7 +126,7 @@ export const paginarPublicaciones = (total: number, consulta: ConsultaPublicacio
 export const enlaceConsulta = (consulta: ConsultaPublicaciones, pagina: number) => `${enlaceListado(RUTA_PUBLICACIONES, LISTADO_PUBLICACIONES, consulta, { pagina })}#publicaciones`;
 
 export function redireccionConsultaAnterior(parametros: ParametrosConsulta): string | null {
-  const claves = ["q", "texto", "pagina", "orden", "dir", "profesor", "anio", "tipo", "fuente", "estado", "tamanio"];
+  const claves = ["q", "texto", "pagina", "orden", "dir", "profesor", "anio", "tipo", "fuente", "estado", "tamanio", "desde", "hasta"];
   if (!claves.some((clave) => parametros[clave] !== undefined)) return null;
   const busqueda = new URLSearchParams();
   for (const clave of claves) {

@@ -2,6 +2,43 @@ import { describe, expect, it } from "vitest";
 import { analizarConsulta, CONSULTA_INICIAL, enlaceConsulta, filtroPublicaciones, paginarPublicaciones, paginasVisibles, redireccionConsultaAnterior, ordenPublicaciones, tramosPorEtiqueta, ETIQUETAS_TIPO } from "./consulta";
 
 describe("RF-PC-01, RF-PC-09 y RF-PC-10: consulta de publicaciones", () => {
+  it("combina un intervalo inclusivo con el año y conserva las fechas al paginar", () => {
+    const resultado = analizarConsulta({ anio: "2024", desde: "2024-02-29", hasta: "2024-03-31" });
+    expect(resultado.success).toBe(true);
+    expect(filtroPublicaciones(resultado.data)).toMatchObject({
+      fechaPublicacion: { gte: new Date("2024-01-01"), lt: new Date("2025-01-01") },
+      AND: [{ fechaPublicacion: { gte: new Date("2024-02-29"), lte: new Date("2024-03-31") } }],
+    });
+    const enlace = new URL(enlaceConsulta(resultado.data, 2), "https://ejemplo.mx");
+    expect(enlace.searchParams.get("desde")).toBe("2024-02-29");
+    expect(enlace.searchParams.get("hasta")).toBe("2024-03-31");
+  });
+
+  it.each([
+    ["desde", "gte"], ["hasta", "lte"],
+  ])("acepta el límite independiente %s", (campo, operador) => {
+    const resultado = analizarConsulta({ [campo]: "2025-01-01" });
+    expect(resultado.success).toBe(true);
+    expect(filtroPublicaciones(resultado.data).AND).toEqual([
+      { fechaPublicacion: { [operador]: new Date("2025-01-01") } },
+    ]);
+  });
+
+  it.each([
+    { desde: "2025-02-29" }, { hasta: ["2025-01-01", "2025-01-02"] }, { desde: "0000-01-01" },
+  ])("rechaza fechas de URL inválidas: %j", (parametros) => {
+    expect(analizarConsulta(parametros)).toMatchObject({
+      success: false, error: { issues: [{ message: "Indica una fecha válida." }] },
+    });
+  });
+
+  it("acepta buscar un solo día y avisa si el intervalo está invertido", () => {
+    expect(analizarConsulta({ desde: "2025-01-01", hasta: "2025-01-01" }).success).toBe(true);
+    expect(analizarConsulta({ desde: "2025-01-02", hasta: "2025-01-01" })).toMatchObject({
+      success: false,
+      error: { issues: [{ path: ["hasta"], message: "La fecha final debe ser igual o posterior a la fecha inicial." }] },
+    });
+  });
   it("sin parámetros empieza en la primera página con límite de 10", () => {
     const resultado = analizarConsulta({});
     expect(resultado.success).toBe(true);
