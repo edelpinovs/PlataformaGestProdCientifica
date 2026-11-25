@@ -14,8 +14,7 @@ describe("año en curso en Ciudad de México (#252, revisión del PR #289)", () 
 describe("fechas de búsquedas manuales (#170)", () => {
   it("muestra la fecha de Ciudad de México, incluso al cambiar de día respecto de UTC", () => {
     expect(ZONA_FECHAS_ESCANEO).toBe("America/Mexico_City");
-    expect(fechaEscaneo("2026-01-01T04:00:00Z")).toMatch(/31.*dic.*2025/);
-    expect(fechaEscaneo("2026-01-01T04:00:00Z")).toContain("22:00");
+    expect(fechaEscaneo("2026-01-01T04:00:00Z")).toBe("31/12/2025 22:00");
   });
   it("no inventa fechas faltantes o inválidas", () => {
     for (const fecha of [null, undefined, "no válida"]) expect(fechaEscaneo(fecha)).toBe("Sin fecha registrada");

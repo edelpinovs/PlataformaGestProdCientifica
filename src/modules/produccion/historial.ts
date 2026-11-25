@@ -13,6 +13,15 @@ export const LISTADO_HISTORIAL: DefinicionListado = {
   columnas: COLUMNAS_HISTORIAL.map(c => c.clave), ordenInicial: { columna: "inicio", dir: "desc" },
   filtros: { estado: Object.keys(ESTADOS_HISTORIAL), tipo: Object.keys(TIPOS_HISTORIAL) },
 };
+/** Color de la etiqueta de estado; los trabajos sin terminar quedan neutros. */
+export const TIPO_ESTADO_HISTORIAL: Record<keyof typeof ESTADOS_HISTORIAL, "exito" | "aviso" | null> = {
+  PENDIENTE: null, EN_PROCESO: null, COMPLETADO: "exito", FALLIDO: "aviso",
+};
+
+/** «1 de 1 profesor revisado», «3 de 30 profesores revisados». */
+export function textoAvance(avance: number, total: number) {
+  return `${avance} de ${total} ${total === 1 ? "profesor revisado" : "profesores revisados"}`;
+}
 export const idRegistroHistorial = z.string({ error: "Selecciona una sola búsqueda." }).regex(/^[1-9]\d*$/, "Selecciona una búsqueda válida.").transform(Number).pipe(z.number({ error: "Selecciona una búsqueda válida." }).int().max(2147483647, "Selecciona una búsqueda válida."));
 export const FUENTES_CONTINUIDAD = FUENTES_ESCANEO;
 export const COLUMNAS_CONTINUIDAD = [{ clave: "profesor", texto: "Profesor" }, { clave: "fuente", texto: "Fuente" }, { clave: "corte", texto: "Último corte válido" }, { clave: "periodo", texto: "Próxima consulta" }];
@@ -37,8 +46,8 @@ export type FilaContinuidad = { profesorId: number; profesor: string; fuente: st
 /** Todo identificador SQL proviene de este mapa; el texto y los filtros son parámetros. */
 export function sqlHistorial(consulta: ConsultaListado) {
   const base = Prisma.sql`SELECT j.id, j."creadoEn", j."actualizadoEn", j.estado, j.avance, j.total,
-    to_char(j."creadoEn" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Mexico_City', 'YYYY-MM-DD HH24:MI') inicio,
-    to_char(j."actualizadoEn" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Mexico_City', 'YYYY-MM-DD HH24:MI') actualizacion,
+    to_char(j."creadoEn" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Mexico_City', 'DD/MM/YYYY HH24:MI') inicio,
+    to_char(j."actualizadoEn" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Mexico_City', 'DD/MM/YYYY HH24:MI') actualizacion,
     ${etiquetaSql(Prisma.sql`j.estado::text`, ESTADOS_HISTORIAL, literalSql("Estado no reconocido"))} AS "estadoTexto",
     ${etiquetaSql(Prisma.sql`j.tipo`, TIPOS_HISTORIAL, literalSql("Tipo no reconocido"))} AS "tipoTexto",
     CASE WHEN jsonb_typeof(j.datos->'profesoresIds') = 'array' THEN
@@ -70,7 +79,7 @@ export function sqlContinuidad(consulta: ConsultaListado) {
   const fuentes = Prisma.join(FUENTES_CONTINUIDAD.map(f => Prisma.sql`(${f}::text)`));
   const base = Prisma.sql`SELECT p.id "profesorId", ${nombreProfesorSql("p")} profesor, f.fuente,
     c."ultimaFecha" corte, ${etiquetaSql(Prisma.sql`f.fuente`, NOMBRES_FUENTE, Prisma.sql`f.fuente`)} "fuenteTexto",
-    COALESCE(to_char(c."ultimaFecha" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Mexico_City', 'YYYY-MM-DD HH24:MI'), 'Sin búsqueda previa completada') "corteTexto",
+    COALESCE(to_char(c."ultimaFecha" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Mexico_City', 'DD/MM/YYYY HH24:MI'), 'Sin búsqueda previa completada') "corteTexto",
     ${periodoProximaConsultaSql(Prisma.sql`f.fuente`, Prisma.sql`c."ultimaFecha"`)} periodo
     FROM "Profesor" p CROSS JOIN (VALUES ${fuentes}) f(fuente)
     LEFT JOIN "CorteEscaneo" c ON c."profesorId" = p.id AND c.fuente::text = f.fuente WHERE p."estatusLaboral" = 'ACTIVO'`;
