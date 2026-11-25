@@ -5,6 +5,7 @@ import { ETIQUETA_ROL, ROLES } from "@/lib/auth/roles";
 import { requireModulo } from "@/lib/auth/session";
 import { analizarListado, hayFiltrosActivos, paginar } from "@/lib/listados/consulta";
 import { prisma } from "@/lib/prisma";
+import { formatoFechaAlta } from "@/modules/administracion/fechas";
 import { matrizPermisos } from "@/modules/administracion/usuarios";
 import {
   COLUMNAS_USUARIOS,
@@ -43,7 +44,7 @@ export default async function UsuariosPage({ searchParams }: PageProps<"/adminis
     skip: paginacion.salto,
     take: paginacion.tamanio,
     select: {
-      id: true, correo: true, rol: true, activo: true,
+      id: true, correo: true, rol: true, activo: true, creadoEn: true,
       profesor: { select: { id: true, nombres: true, apellidos: true, codigo: true } },
     },
   });
@@ -71,7 +72,7 @@ export default async function UsuariosPage({ searchParams }: PageProps<"/adminis
         {resultado && <div className="mb-4"><Aviso tipo="exito">{resultado}</Aviso></div>}
         <div className="flex flex-col gap-4">
           <BarraListado {...contexto} columnas={COLUMNAS_USUARIOS} errores={errores}
-            etiquetaBusqueda="Buscar usuarios" placeholder="Correo, rol, profesor o estado"
+            etiquetaBusqueda="Buscar usuarios" placeholder="Correo, rol, profesor, estado o alta (2026-11-24)"
             filtros={[
               { clave: "rol", etiqueta: "Rol", opciones: ROLES.map((r) => ({ valor: r, texto: ETIQUETA_ROL[r] })) },
               { clave: "estado", etiqueta: "Estado", opciones: ESTADOS_USUARIO.map((e) => ({ valor: e.valor, texto: e.texto })) },
@@ -88,6 +89,7 @@ export default async function UsuariosPage({ searchParams }: PageProps<"/adminis
                   <EncabezadoOrdenable {...contexto} columna="rol" className={claseTabla.celdaEncabezado}>Rol</EncabezadoOrdenable>
                   <EncabezadoOrdenable {...contexto} columna="profesor" className={claseTabla.celdaEncabezado}>Profesor vinculado</EncabezadoOrdenable>
                   <EncabezadoOrdenable {...contexto} columna="estado" className={claseTabla.celdaEncabezado}>Estado</EncabezadoOrdenable>
+                  <EncabezadoOrdenable {...contexto} columna="alta" className={claseTabla.celdaEncabezado}>Alta</EncabezadoOrdenable>
                   <th className={`${claseTabla.celdaEncabezado} pr-0 text-right`}><span className="sr-only">Acciones</span></th>
                 </tr>
               </thead>
@@ -95,7 +97,7 @@ export default async function UsuariosPage({ searchParams }: PageProps<"/adminis
                 {usuarios.map((u) => (
                   // La key incluye los datos: tras guardar, la fila vuelve a mostrarse cerrada.
                   <FilaUsuario key={`${u.id}-${u.rol}-${u.activo}-${u.profesor?.id ?? 0}`} id={u.id} correo={u.correo}
-                    rol={u.rol} activo={u.activo} profesor={u.profesor} esPropio={u.id === perfil.id}
+                    rol={u.rol} activo={u.activo} profesor={u.profesor} alta={formatoFechaAlta.format(u.creadoEn)} esPropio={u.id === perfil.id}
                     opcionesProfesor={u.profesor ? [u.profesor, ...libres] : libres}
                     editar={editarUsuario} cambiarEstado={cambiarEstadoUsuario} />
                 ))}

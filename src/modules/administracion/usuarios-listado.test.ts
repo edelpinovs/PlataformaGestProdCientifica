@@ -51,6 +51,25 @@ describe("listado de usuarios", () => {
     expect(ordenUsuarios(consulta({ orden: "profesor" }))).toEqual([{ profesor: { apellidos: "asc" } }, { id: "asc" }]);
   });
 
+  it("busca por fecha de alta en hora de México (#276)", () => {
+    expect(filtroUsuarios(consulta({ q: "2026-11-24" })).OR).toContainEqual({
+      creadoEn: { gte: new Date("2026-11-24T06:00:00Z"), lt: new Date("2026-11-25T06:00:00Z") },
+    });
+    expect(filtroUsuarios(consulta({ q: "2026-11" })).OR).toContainEqual({
+      creadoEn: { gte: new Date("2026-11-01T06:00:00Z"), lt: new Date("2026-12-01T06:00:00Z") },
+    });
+  });
+
+  it("un texto que no es fecha no agrega condición de alta", () => {
+    const where = filtroUsuarios(consulta({ q: "ana" }));
+    expect(where.OR?.some((c) => "creadoEn" in c)).toBe(false);
+    expect(filtroUsuarios(consulta({ q: "2026-02-30" })).OR?.some((c) => "creadoEn" in c)).toBe(false);
+  });
+
+  it("ordena por fecha de alta, con desempate por id", () => {
+    expect(ordenUsuarios(consulta({ orden: "alta", dir: "desc" }))).toEqual([{ creadoEn: "desc" }, { id: "desc" }]);
+  });
+
   it("una columna que no está en la lista no llega al orderBy", () => {
     expect(ordenUsuarios(consulta({ orden: "password" }))).toEqual([{ correo: "asc" }, { id: "asc" }]);
   });

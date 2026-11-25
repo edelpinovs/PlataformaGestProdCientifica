@@ -28,6 +28,33 @@ describe("orquestación de las cinco fuentes (#167)",()=>{
     const repo=repositorio();const resultado=await ejecutarEscaneo({fuentes:[]},repo);
     expect(repo.obtenerProfesores).not.toHaveBeenCalled();expect(resultado.errores).toEqual(["Selecciona al menos una fuente para iniciar la búsqueda."]);
   });
+  it("informa la fuente correspondiente antes de consultar y limpia el indicador", async () => {
+    const informarFuente = vi.fn().mockResolvedValue(undefined);
+    await ejecutarEscaneo({ fuentes: ["ORCID", "SCOPUS"], anio: 2026, informarFuente }, repositorio());
+    expect(informarFuente.mock.calls).toEqual([["ORCID"], ["SCOPUS"], [null]]);
+    expect(informarFuente.mock.invocationCallOrder[0]).toBeLessThan(conectores.ORCID.mock.invocationCallOrder[0]);
+    expect(informarFuente.mock.invocationCallOrder[1]).toBeLessThan(conectores.SCOPUS.mock.invocationCallOrder[0]);
+  });
+  it("si falla el aviso de la fuente en curso, el escaneo guarda todo sin registrar incidencias (#290)", async () => {
+    const informarFuente = vi.fn().mockRejectedValue(new Error("escritura fallida"));
+    const repo = repositorio();
+    const resultado = await ejecutarEscaneo({ fuentes: ["ORCID", "SCOPUS", "CROSSREF"], informarFuente }, repo);
+    expect(informarFuente.mock.calls).toEqual([["ORCID"], ["SCOPUS"], ["CROSSREF"], ["CROSSREF"], [null]]);
+    expect(resultado.errores).toEqual([]);
+    expect(resultado.profesoresProcesados).toBe(1);
+    expect(conectores.enriquecer).toHaveBeenCalledOnce();
+    expect(repo.persistirOActualizar).toHaveBeenCalledOnce();
+    expect(repo.registrarCorte).toHaveBeenCalledTimes(3);
+    expect(resultado.consultasFuentes?.filter(c => c.estado === "INCIDENCIA")).toEqual([]);
+  });
+  it("completa autores por DOI sin consultar Crossref como fuente de obras (#188)",async()=>{
+    const repo=repositorio();await ejecutarEscaneo({fuentes:["SCOPUS"],anio:2026,enriquecerAutores:true},repo);
+    expect(conectores.enriquecer).toHaveBeenCalledOnce();expect(conectores.CROSSREF).not.toHaveBeenCalled();expect(conectores.SCOPUS).toHaveBeenCalledOnce();
+  });
+  it("Crossref como fuente de obras no obliga a completar autores si se desmarcó (#188)",async()=>{
+    const repo=repositorio();await ejecutarEscaneo({fuentes:["CROSSREF"],anio:2026,enriquecerAutores:false},repo);
+    expect(conectores.CROSSREF).toHaveBeenCalledOnce();expect(conectores.enriquecer).not.toHaveBeenCalled();
+  });
   it("un fallo de Google Scholar conserva su corte y deja avanzar ORCID",async()=>{
     conectores.GOOGLE_SCHOLAR.mockResolvedValue({publicaciones:[],error:"NO_API_KEY"});
     const repo=repositorio();const resultado=await ejecutarEscaneo({fuentes:["ORCID","GOOGLE_SCHOLAR"]},repo);

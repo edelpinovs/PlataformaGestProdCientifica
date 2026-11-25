@@ -20,7 +20,7 @@ export type ProfesorParaCa = {
   nombres: string;
   apellidos: string;
   codigo: string;
-  tipoContratacion: "TIEMPO_COMPLETO" | "ASIGNATURA";
+  tipoContratacion: "TIEMPO_COMPLETO" | "ASIGNATURA" | "PENDIENTE";
   estatusLaboral: string;
   prodepActivo: boolean;
 };
@@ -71,6 +71,13 @@ function pierdeProdepVigente(antes: IntegranteResumen[], despues: IntegranteResu
 const MENSAJE_PRODEP =
   "Al menos un integrante debe tener Perfil Deseable PRODEP activo.";
 
+// D-261: quien tiene la contratación pendiente no es candidato, pero el motivo no es que sea de asignatura.
+function mensajeNoTiempoCompleto(profesor: ProfesorParaCa) {
+  return profesor.tipoContratacion === "PENDIENTE"
+    ? `${nombreProfesor(profesor)} tiene pendiente el tipo de contratación. Regístralo en Profesores o elige a otra persona.`
+    : `${nombreProfesor(profesor)} no es de tiempo completo. Elige a otra persona.`;
+}
+
 function comoIntegrante(profesor: ProfesorParaCa): IntegranteResumen {
   return { profesorId: profesor.id, nombre: nombreProfesor(profesor), prodepActivo: profesor.prodepActivo };
 }
@@ -87,7 +94,7 @@ export function revisarAltaIntegrante(
   if (profesor.tipoContratacion !== "TIEMPO_COMPLETO") {
     return {
       campo: "profesorId",
-      mensaje: `${nombreProfesor(profesor)} no es de tiempo completo. Elige a otra persona.`,
+      mensaje: mensajeNoTiempoCompleto(profesor),
     };
   }
   if (profesor.estatusLaboral !== "ACTIVO") {
@@ -136,7 +143,7 @@ export function revisarCambioIntegrante(
   if (profesorNuevo.tipoContratacion !== "TIEMPO_COMPLETO") {
     return {
       campo: "profesorId",
-      mensaje: `${nombreProfesor(profesorNuevo)} no es de tiempo completo. Elige a otra persona.`,
+      mensaje: mensajeNoTiempoCompleto(profesorNuevo),
     };
   }
   if (profesorNuevo.estatusLaboral !== "ACTIVO") {

@@ -50,10 +50,12 @@ import {FiltrosPublicaciones} from ${importar("src/app/produccion/filtros-public
 import {Panel} from ${importar("src/components/ui.tsx")};
 ${herramientas}
 const consulta={pagina:3,q:"agua",orden:"revista",dir:"desc",filtros:{profesor:"1",anio:"2025",tipo:"ARTICULO",fuente:"ORCID",estado:"VALIDADA",desde:"2025-03-15",hasta:"2025-06-30"}};
-createRoot(document.getElementById("raiz")).render(<main className="min-h-screen bg-fondo p-5 text-texto"><Panel titulo="Buscar publicaciones"><FiltrosPublicaciones consulta={consulta} profesores={opciones} errores={{}}/></Panel><output id="resultado">EN CURSO</output></main>);
+createRoot(document.getElementById("raiz")).render(<main className="min-h-screen bg-fondo p-5 text-texto"><Panel titulo="Buscar publicaciones"><FiltrosPublicaciones consulta={consulta} profesores={opciones} errores={{}} anioActual={2026}/></Panel><output id="resultado">EN CURSO</output></main>);
 document.addEventListener("submit",e=>{e.preventDefault();window.filtrosEnviados=Object.fromEntries(new FormData(e.target))});
 (async()=>{try{
  await esperar(()=>document.querySelector("details"));document.querySelector("details").open=true;
+ const anios=[...document.querySelector('select[name="anio"]').options].map(opcion=>opcion.value).filter(Boolean);
+ comprobar(anios[0]==="2026" && anios[1]==="2025" && anios.at(-1)==="1900","El año actual debe encabezar el filtro descendente");
  comprobar(document.querySelector('input[name="profesor"]').value==="1","No restaura el profesor de la URL");
  await escribir("DEMO-003");await esperar(()=>document.querySelectorAll('[role="option"]').length===1);await teclear("Enter");
  document.querySelector("form").requestSubmit();await esperar(()=>window.filtrosEnviados);
@@ -65,6 +67,6 @@ document.addEventListener("submit",e=>{e.preventDefault();window.filtrosEnviados
  await escribir("bruno");await esperar(()=>document.querySelectorAll('[role="option"]').length===1);await teclear("Enter");
  comprobar(document.querySelector('a[href="/produccion/publicaciones"]'),"Falta limpiar filtros");
  comprobar(document.documentElement.scrollWidth<=innerWidth,"Desbordamiento horizontal");
- document.getElementById("resultado").textContent="CORRECTO: profesor opcional, no activos, filtros y orden conservados, página reiniciada";
+ document.getElementById("resultado").textContent="CORRECTO: años en orden descendente, profesor opcional, filtros y orden conservados, página reiniciada";
 }catch(e){document.getElementById("resultado").textContent="FALLO: "+e.message}})();
 `, "selector-publicaciones");

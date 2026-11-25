@@ -16,6 +16,7 @@ import {
   tablaCalidad,
   tablaUsuarios,
 } from "./exportar";
+import { formatoFechaAlta } from "./fechas";
 import { LISTADO_USUARIOS } from "./usuarios-listado";
 
 const consulta = (def: typeof LISTADO_USUARIOS, p: Record<string, string>) => analizarListado(def, p).consulta;
@@ -84,20 +85,22 @@ describe("tope de filas", () => {
 });
 
 describe("tablas", () => {
-  it("usuarios: traduce el rol y el estado y deja vacío al profesor sin vincular", () => {
+  it("usuarios: traduce el rol y el estado, deja vacío al profesor sin vincular y da la fecha de alta en hora de México", () => {
     const t = tablaUsuarios([
-      { correo: "a@ejemplo.mx", rol: "COORDINADOR", activo: true, profesor: { codigo: "100", nombres: "Ana", apellidos: "Pérez" } },
-      { correo: "b@ejemplo.mx", rol: "DOCENTE", activo: false, profesor: null },
+      { correo: "a@ejemplo.mx", rol: "COORDINADOR", activo: true, profesor: { codigo: "100", nombres: "Ana", apellidos: "Pérez" }, creadoEn: new Date("2026-11-20T18:00:00Z") },
+      // 23:30 del 24 de noviembre en México: en UTC ya es el 25.
+      { correo: "b@ejemplo.mx", rol: "DOCENTE", activo: false, profesor: null, creadoEn: new Date("2026-11-25T05:30:00Z") },
     ]);
-    expect(t.columnas).toEqual(["Correo", "Rol", "Profesor vinculado", "Código del profesor", "Estado"]);
+    expect(t.columnas).toEqual(["Correo", "Rol", "Profesor vinculado", "Código del profesor", "Estado", "Alta"]);
     expect(t.filas).toEqual([
-      ["a@ejemplo.mx", "Coordinación de Investigación", "Pérez Ana", "100", "Activo"],
-      ["b@ejemplo.mx", "Docente", "", "", "Desactivado"],
+      ["a@ejemplo.mx", "Coordinación de Investigación", "Pérez Ana", "100", "Activo", formatoFechaAlta.format(new Date("2026-11-20T18:00:00Z"))],
+      ["b@ejemplo.mx", "Docente", "", "", "Desactivado", formatoFechaAlta.format(new Date("2026-11-24T18:00:00Z"))],
     ]);
+    expect(t.filas[1][5]).toContain("24");
   });
 
   it("toda fila tiene tantas celdas como columnas", () => {
-    const u = tablaUsuarios([{ correo: "a@b.mx", rol: "DOCENTE", activo: true, profesor: null }]);
+    const u = tablaUsuarios([{ correo: "a@b.mx", rol: "DOCENTE", activo: true, profesor: null, creadoEn: new Date("2026-11-20T18:00:00Z") }]);
     expect(u.filas.every((f) => f.length === u.columnas.length)).toBe(true);
     const a = tablaAuditoria([{ creadoEn: new Date("2026-11-23T18:00:00Z"), actorCorreo: "a@b.mx", modulo: "administracion", accion: "usuario.editado", resumen: "x" }]);
     expect(a.filas.every((f) => f.length === a.columnas.length)).toBe(true);
@@ -149,6 +152,10 @@ describe("descripción de los filtros", () => {
     expect(descripcionFiltros("usuarios", consulta(LISTADO_USUARIOS, { rol: "COORDINADOR", estado: "DESACTIVADO" }))).toBe(
       "rol Coordinación de Investigación, estado Desactivado",
     );
+  });
+
+  it("auditoría: el periodo se anota con su texto (#277)", () => {
+    expect(descripcionFiltros("auditoria", consulta(LISTADO_AUDITORIA, { periodo: "30_DIAS" }))).toBe("periodo «Últimos 30 días»");
   });
 
   it("auditoría: módulo y acción con su texto", () => {

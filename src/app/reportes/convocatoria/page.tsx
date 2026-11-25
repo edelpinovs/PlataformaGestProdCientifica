@@ -132,6 +132,7 @@ function Constructor({ estado, anios }: { estado: EstadoConvocatoria; anios: num
             <option value="">Todos</option>
             <option value="F">{ETIQUETA_GENERO.F}</option>
             <option value="M">{ETIQUETA_GENERO.M}</option>
+            <option value="PENDIENTE">{ETIQUETA_GENERO.PENDIENTE}</option>
           </select>
         </label>
         <label className={claseEtiqueta}>

@@ -139,6 +139,13 @@ describe("revisarAltaIntegrante (RF-013)", () => {
     });
   });
 
+  it("explica que falta registrar la contratación cuando está pendiente (D-261)", () => {
+    const pendiente = { ...asignatura, tipoContratacion: "PENDIENTE" as const };
+    const mensaje = "Ruiz Marta (AS01) tiene pendiente el tipo de contratación. Regístralo en Profesores o elige a otra persona.";
+    expect(revisarAltaIntegrante(pendiente, [])).toEqual({ campo: "profesorId", mensaje });
+    expect(revisarCambioIntegrante(7, pendiente, [])).toEqual({ campo: "profesorId", mensaje });
+  });
+
   it("rechaza a un profesor de tiempo completo que no está activo", () => {
     expect(revisarAltaIntegrante(dadoDeBaja, [])).toEqual({
       campo: "profesorId",

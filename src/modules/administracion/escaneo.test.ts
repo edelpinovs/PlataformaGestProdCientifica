@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   resumirFuentes,
+  estaSinAvance,
   resumirTrabajos,
+  sinAvanceDesde,
   textoAvance,
+  TIEMPO_SIN_AVANCE_MS,
   VENTANA_DIAS,
   ventanaDesde,
   type ConteoPorEstado,
@@ -29,11 +32,40 @@ describe("ventana de recientes", () => {
   });
 });
 
+describe("escaneos sin avance", () => {
+  const enProceso = (minutos: number) => ({
+    estado: "EN_PROCESO" as const,
+    actualizadoEn: new Date(AHORA.getTime() - minutos * 60 * 1000),
+  });
+
+  it("el límite es de 10 minutos, igual que la reserva de Producción", () => {
+    expect(TIEMPO_SIN_AVANCE_MS).toBe(10 * 60 * 1000);
+    expect(sinAvanceDesde(AHORA).getTime()).toBe(AHORA.getTime() - 10 * 60 * 1000);
+  });
+
+  it("un trabajo en proceso sin actualizarse más de 10 minutos está sin avance", () => {
+    expect(estaSinAvance(enProceso(11), AHORA)).toBe(true);
+    expect(estaSinAvance(enProceso(60 * 24), AHORA)).toBe(true);
+  });
+
+  it("a los 10 minutos justos o antes todavía avanza", () => {
+    expect(estaSinAvance(enProceso(10), AHORA)).toBe(false);
+    expect(estaSinAvance(enProceso(1), AHORA)).toBe(false);
+  });
+
+  it("solo aplica a los que están en proceso: pendiente, completado o fallido nunca están «sin avance»", () => {
+    for (const estado of ["PENDIENTE", "COMPLETADO", "FALLIDO"] as const) {
+      expect(estaSinAvance({ estado, actualizadoEn: haceDias(30) }, AHORA)).toBe(false);
+    }
+  });
+});
+
 describe("resumen de trabajos de escaneo", () => {
   it("sin trabajos no hay último ni conteos", () => {
-    expect(resumirTrabajos({ ultimo: null, enCurso: 0, ventana: [] })).toEqual({
+    expect(resumirTrabajos({ ultimo: null, enCurso: 0, sinAvance: 0, ventana: [] })).toEqual({
       ultimo: null,
       enCurso: 0,
+      sinAvance: 0,
       completados: 0,
       conIncidencias: 0,
     });
@@ -44,13 +76,14 @@ describe("resumen de trabajos de escaneo", () => {
     const r = resumirTrabajos({
       ultimo,
       enCurso: 2,
+      sinAvance: 1,
       ventana: [conteo("COMPLETADO", 41), conteo("FALLIDO", 3)],
     });
-    expect(r).toEqual({ ultimo, enCurso: 2, completados: 41, conIncidencias: 3 });
+    expect(r).toEqual({ ultimo, enCurso: 2, sinAvance: 1, completados: 41, conIncidencias: 3 });
   });
 
   it("los conteos no se limitan a un máximo de trabajos cargados", () => {
-    const r = resumirTrabajos({ ultimo: null, enCurso: 0, ventana: [conteo("COMPLETADO", 5000)] });
+    const r = resumirTrabajos({ ultimo: null, enCurso: 0, sinAvance: 0, ventana: [conteo("COMPLETADO", 5000)] });
     expect(r.completados).toBe(5000);
   });
 
@@ -58,6 +91,7 @@ describe("resumen de trabajos de escaneo", () => {
     const r = resumirTrabajos({
       ultimo: null,
       enCurso: 1,
+      sinAvance: 0,
       ventana: [conteo("PENDIENTE", 1), conteo("EN_PROCESO", 2)],
     });
     expect(r.completados).toBe(0);
@@ -65,7 +99,7 @@ describe("resumen de trabajos de escaneo", () => {
   });
 
   it("si llegaran dos grupos del mismo estado, se suman", () => {
-    const r = resumirTrabajos({ ultimo: null, enCurso: 0, ventana: [conteo("FALLIDO", 3), conteo("FALLIDO", 4)] });
+    const r = resumirTrabajos({ ultimo: null, enCurso: 0, sinAvance: 0, ventana: [conteo("FALLIDO", 3), conteo("FALLIDO", 4)] });
     expect(r.conIncidencias).toBe(7);
   });
 });

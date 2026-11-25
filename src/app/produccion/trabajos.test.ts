@@ -44,7 +44,24 @@ describe("RF-020: cola persistida de escaneo", () => {
     expect(Number.isFinite(new Date(trabajo.datos.finalizadoEn!).getTime())).toBe(true);
     expect(trabajo.datos.resumen.publicacionesGuardadas).toBe(54);
     expect(dobles.ejecutarEscaneo.mock.calls.map(([opciones]) => opciones.profesorId)).toEqual(trabajo.datos.profesoresIds);
-    expect(dobles.ejecutarEscaneo).toHaveBeenLastCalledWith({ profesorId: 27, anio: undefined, fuentes: ["SCOPUS","OPENALEX","ORCID"], limiteProfesores: 1 }, {});
+    expect(dobles.ejecutarEscaneo).toHaveBeenLastCalledWith({
+      profesorId: 27, anio: undefined, fuentes: ["SCOPUS","OPENALEX","ORCID"], limiteProfesores: 1, enriquecerAutores: false,
+      informarFuente: expect.any(Function),
+    }, {});
+  });
+
+  it("persiste la fuente consultada sin renovar la reserva ni adelantar el avance", async () => {
+    dobles.ejecutarEscaneo.mockImplementationOnce(async ({ informarFuente }) => {
+      const reserva = trabajo.actualizadoEn;
+      await informarFuente("OPENALEX");
+      expect(trabajo.datos.fuenteEnCurso).toBe("OPENALEX");
+      expect(trabajo.actualizadoEn).toEqual(reserva);
+      expect(trabajo.avance).toBe(0);
+      return resumenVacio();
+    });
+    await procesarSiguienteProfesor(7);
+    expect(trabajo.datos.fuenteEnCurso).toBeNull();
+    expect(trabajo.avance).toBe(1);
   });
 
   it("dos peticiones simultáneas no procesan el mismo profesor dos veces", async () => {

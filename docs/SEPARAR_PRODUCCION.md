@@ -13,7 +13,7 @@ Al terminar: producción usa un proyecto propio y limpio; la vista previa y el t
 - [ ] **Plan de Supabase.** Confirma en *Organization › Billing* las condiciones vigentes del plan gratuito: sus proyectos se pausan tras un periodo de inactividad y no incluyen las copias de seguridad ni la restauración de los planes de pago. Para una plataforma en uso real, decide si producción merece un plan de pago o un respaldo propio. El plan gratuito permite 2 proyectos activos y hoy hay 1.
 - [ ] **Datos iniciales.** Producción empieza **sin datos semilla**: nada de `db:seed` ni `db:demo`. Grados, divisiones y departamentos se registran desde la interfaz.
 - [ ] **Usuarios.** Las cuentas del proyecto de desarrollo **no se migran**: en el proyecto nuevo se crean de cero (pasos 6 y 9).
-- [ ] **Política de datos reales.** `AGENTS.md` prohíbe datos reales de profesores en la base compartida de desarrollo. En producción sí los habrá: define quién accede, cómo se respalda y quién responde por ellos.
+- [ ] **Política de datos reales.** Por D-259, la base compartida de desarrollo admite datos reales de profesores solo por el flujo de [`IMPORTACION_DATOS_REALES.md`](IMPORTACION_DATOS_REALES.md), como medida provisional. Al separar producción, esos datos deben salir de desarrollo y entrar en producción por el mismo flujo. En producción los habrá de forma permanente: define quién accede, cómo se respalda y quién responde por ellos.
 - [ ] **SMTP propio** (opcional): sin él, los correos de Supabase solo llegan a miembros de la organización y con un límite bajo. Los accesos por enlace o contraseña temporal no lo necesitan.
 
 ## 1. Prepara la reversa

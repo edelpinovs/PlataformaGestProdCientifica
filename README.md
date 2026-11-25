@@ -203,7 +203,7 @@ Todo el equipo usa **la misma base de desarrollo**, así que un cambio en ella a
 
 > **No uses** `npx prisma migrate dev` ni `npx prisma migrate reset`: con una base compartida pueden proponer **borrarla completa**.
 
-Para ver y editar datos: `npx prisma studio`. Usa solo datos ficticios; nunca datos reales de profesores.
+Para ver y editar datos: `npx prisma studio`. Los datos reales de profesores entran solo por el flujo de [`docs/IMPORTACION_DATOS_REALES.md`](docs/IMPORTACION_DATOS_REALES.md); no edites ni agregues datos de profesores a mano, y nunca pegues datos reales en el repositorio.
 
 ## Pruebas
 

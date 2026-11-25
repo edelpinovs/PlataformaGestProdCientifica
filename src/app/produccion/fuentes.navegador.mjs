@@ -9,8 +9,15 @@ const esperar=async c=>{for(let i=0;i<500;i++){if(c())return;await new Promise(r
 const comprobar=(c,m)=>{if(!c)throw Error(m)};
 (async()=>{try{
  await esperar(()=>document.querySelectorAll('input[name="fuentes"]').length===5);
- comprobar(document.querySelectorAll('input[name="fuentes"]:checked').length===5,"No ofrece las cinco fuentes");
- document.querySelectorAll('input[name="fuentes"]').forEach(c=>c.click());await esperar(()=>document.querySelectorAll('input[name="fuentes"]:checked').length===0);
+ comprobar([...document.querySelectorAll('input[name="fuentes"]:checked')].map(c=>c.value).join()==="ORCID,OPENALEX,SCOPUS","Por omisión deben marcarse solo ORCID, OpenAlex y Scopus (#188)");
+ comprobar(document.querySelector('input[name="enriquecerAutores"]').checked,"Completar autores por DOI debe venir marcado");
+ document.querySelector("form").requestSubmit();await esperar(()=>window.ultimaSeleccion);
+ comprobar(window.ultimaSeleccion.join()==="ORCID,OPENALEX,SCOPUS","Buscar novedades consulta fuentes no marcadas");
+ comprobar(window.ultimoEnriquecer==="si","No envía la opción de completar autores");
+ document.querySelector('input[name="enriquecerAutores"]').click();await esperar(()=>!document.querySelector('input[name="enriquecerAutores"]').checked);
+ window.ultimaSeleccion=undefined;document.querySelector("form").requestSubmit();await esperar(()=>window.ultimaSeleccion);
+ comprobar(window.ultimoEnriquecer===null,"Envía completar autores aunque se desmarcó");
+ document.querySelectorAll('input[name="fuentes"]:checked').forEach(c=>c.click());await esperar(()=>document.querySelectorAll('input[name="fuentes"]:checked').length===0);
  document.querySelector("form").requestSubmit();await esperar(()=>document.querySelector('[role="alert"]'));
  comprobar(document.body.textContent.includes("Selecciona al menos una fuente"),"No explica una selección vacía");
  document.querySelector('input[value="ORCID"]').click();await esperar(()=>document.querySelectorAll('input[name="fuentes"]:checked').length===1);
@@ -18,6 +25,6 @@ const comprobar=(c,m)=>{if(!c)throw Error(m)};
  comprobar(window.ultimaSeleccion[0]==="ORCID","No envía la fuente elegida");
  [...document.querySelectorAll("button")].find(b=>b.textContent==="Seleccionar todas").click();await esperar(()=>document.querySelectorAll('input[name="fuentes"]:checked').length===5);
  comprobar(document.documentElement.scrollWidth<=innerWidth,"Desbordamiento horizontal");
- document.getElementById("resultado").textContent="CORRECTO: cinco fuentes, selección vacía, una fuente y seleccionar todas";
+ document.getElementById("resultado").textContent="CORRECTO: tres fuentes por omisión, completar autores aparte, selección vacía, una fuente y seleccionar todas";
 }catch(e){document.getElementById("resultado").textContent="FALLO: "+e.message}})();
-`,"fuentes",[{name:"accion-ficticia",setup(b){b.onResolve({filter:/^\.\/actions$/},args=>args.importer.endsWith("formulario-escaneo.tsx")?{path:"accion",namespace:"seleccion"}:undefined);b.onLoad({filter:/.*/,namespace:"seleccion"},()=>({contents:'export async function iniciarEscaneoAction(_,datos){window.ultimaSeleccion=datos.getAll("fuentes");return window.ultimaSeleccion.length?{exito:true}:{error:"Selecciona al menos una fuente para iniciar la búsqueda.",erroresCampos:{fuentes:"Selecciona al menos una fuente"}}}'}));}}]);
+`,"fuentes",[{name:"accion-ficticia",setup(b){b.onResolve({filter:/^\.\/actions$/},args=>args.importer.endsWith("formulario-escaneo.tsx")?{path:"accion",namespace:"seleccion"}:undefined);b.onLoad({filter:/.*/,namespace:"seleccion"},()=>({contents:'export async function iniciarEscaneoAction(_,datos){window.ultimaSeleccion=datos.getAll("fuentes");window.ultimoEnriquecer=datos.get("enriquecerAutores");return window.ultimaSeleccion.length?{exito:true}:{error:"Selecciona al menos una fuente para iniciar la búsqueda.",erroresCampos:{fuentes:"Selecciona al menos una fuente"}}}'}));}}]);

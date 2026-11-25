@@ -1,5 +1,5 @@
 import { Aviso, claseCampo, claseEtiqueta } from "@/components/ui";
-import { ETIQUETA_CONTRATACION, ETIQUETA_ESTATUS } from "@/modules/profesores/profesores";
+import { ETIQUETA_CONTRATACION, ETIQUETA_ESTATUS, TIPOS_CONTRATACION } from "@/modules/profesores/profesores";
 
 type Props = {
   grados: { id: number; nombre: string; nomenclatura: string }[];
@@ -132,8 +132,8 @@ export function CamposProfesor({ grados, departamentos, valor, campo, errorGener
               <option value="" disabled>
                 — Selecciona —
               </option>
-              {Object.entries(ETIQUETA_CONTRATACION).map(([clave, texto]) => (
-                <option key={clave} value={clave}>{texto}</option>
+              {TIPOS_CONTRATACION.map((clave) => (
+                <option key={clave} value={clave}>{ETIQUETA_CONTRATACION[clave]}</option>
               ))}
             </select>
           </label>

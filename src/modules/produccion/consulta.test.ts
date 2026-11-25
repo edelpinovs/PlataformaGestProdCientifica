@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { analizarConsulta, CONSULTA_INICIAL, enlaceConsulta, filtroPublicaciones, paginarPublicaciones, paginasVisibles, redireccionConsultaAnterior, ordenPublicaciones, tramosPorEtiqueta, ETIQUETAS_TIPO } from "./consulta";
+import { analizarConsulta, CONSULTA_INICIAL, enlaceConsulta, filtroPublicaciones, opcionesAnioPublicacion, paginarPublicaciones, paginasVisibles, redireccionConsultaAnterior, ordenPublicaciones, tramosPorEtiqueta, ETIQUETAS_TIPO } from "./consulta";
 
 describe("RF-PC-01, RF-PC-09 y RF-PC-10: consulta de publicaciones", () => {
   it("combina un intervalo inclusivo con el año y conserva las fechas al paginar", () => {
@@ -37,6 +37,21 @@ describe("RF-PC-01, RF-PC-09 y RF-PC-10: consulta de publicaciones", () => {
     expect(analizarConsulta({ desde: "2025-01-02", hasta: "2025-01-01" })).toMatchObject({
       success: false,
       error: { issues: [{ path: ["hasta"], message: "La fecha final debe ser igual o posterior a la fecha inicial." }] },
+    });
+  });
+
+  it("ofrece años consecutivos desde el año actual hasta 1900", () => {
+    const opciones = opcionesAnioPublicacion(2026);
+    expect(opciones.map(({ valor }) => Number(valor))).toEqual(Array.from({ length: 127 }, (_, indice) => 2026 - indice));
+    expect(opciones[0]).toEqual({ valor: "2026", texto: "2026" });
+  });
+
+  it("valida el mismo intervalo de años que ofrece en el filtro", () => {
+    expect(analizarConsulta({ anio: "2026" }, 2026).success).toBe(true);
+    expect(analizarConsulta({ anio: "1900" }, 2026).success).toBe(true);
+    expect(analizarConsulta({ anio: "2027" }, 2026)).toMatchObject({
+      success: false,
+      error: { issues: [{ path: ["anio"], message: "Indica un año entre 1900 y 2026." }] },
     });
   });
   it("sin parámetros empieza en la primera página con límite de 10", () => {

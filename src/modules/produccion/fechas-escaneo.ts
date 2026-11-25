@@ -1,5 +1,10 @@
 export const ZONA_FECHAS_ESCANEO = "America/Mexico_City";
 
+/** Año en curso en Ciudad de México (no en UTC): el 31 de diciembre a las 18:00 sigue siendo el mismo año. */
+export function anioActualMexico(ahora: Date = new Date()): number {
+  return Number(new Intl.DateTimeFormat("en-US", { year: "numeric", timeZone: ZONA_FECHAS_ESCANEO }).format(ahora));
+}
+
 export function fechaEscaneo(fecha: Date | string | null | undefined) {
   if (!fecha) return "Sin fecha registrada";
   const valor = new Date(fecha);

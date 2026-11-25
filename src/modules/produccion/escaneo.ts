@@ -62,8 +62,9 @@ export type OpcionesEscaneo = {
   profesorId?: number;
   anio?: number;
   fuentes?: FuenteEscaneo[];
+  informarFuente?: (fuente: FuenteEscaneo | null) => Promise<void>;
   jobId?: number;
-  /** Enriquece autores solo si Crossref está seleccionado. Se puede desactivar para pruebas o consultas concretas. */
+  /** Completa autores por DOI con Crossref (#188). Si no se indica, lo hace solo cuando Crossref es fuente (trabajos anteriores). */
   enriquecerAutores?: boolean;
   /** Límite de profesores a procesar en una sola ejecución para cumplir con el timeout de Vercel (Hallazgo 2a) */
   limiteProfesores?: number;
@@ -105,6 +106,14 @@ async function consultarPeriodo(
     publicaciones.push(...resultado.publicaciones);
   }
   return { publicaciones };
+}
+
+/**
+ * Avisa la fuente en curso (#251). Es un dato solo informativo: si la escritura
+ * falla, el escaneo sigue sin registrar incidencia ni perder publicaciones.
+ */
+async function informarFuenteSinBloquear(opciones: OpcionesEscaneo | undefined, fuente: FuenteEscaneo | null) {
+  try { await opciones?.informarFuente?.(fuente); } catch { /* indicador de mejor esfuerzo */ }
 }
 
 /**
@@ -177,6 +186,7 @@ export async function ejecutarEscaneo(
         let res: { publicaciones: PublicacionCandidata[]; error?: string };
         if (sinIdentificador) res = { publicaciones: [], error: "FALTA_IDENTIFICADOR" };
         else {
+          await informarFuenteSinBloquear(opciones, fuente);
           const corte = !opciones?.anio ? await repo.obtenerUltimoCorte?.(prof.id,fuente) : null;
           const desde = opciones?.anio ?? (corte ? Math.max(1900,corte.getUTCFullYear()-1) : fuente === "SCOPUS" ? inicioEscaneo.getUTCFullYear() : undefined);
           if (fuente === "CROSSREF") res = await (conectores.consultarCrossref ?? consultarCrossref)(prof,desde,opciones?.anio ?? inicioEscaneo.getUTCFullYear());
@@ -213,14 +223,17 @@ export async function ejecutarEscaneo(
 
   // 3. Enriquecer autores con Crossref para publicaciones con DOI y autores incompletos (RF-020)
   //    Esto replica la lógica de autores_por_doi() en scripts/reporte_unificado.py
-  if (fuentesPermitidas.includes("CROSSREF") && opciones?.enriquecerAutores !== false) {
+  if (opciones?.enriquecerAutores ?? fuentesPermitidas.includes("CROSSREF")) {
     try {
+      await informarFuenteSinBloquear(opciones, "CROSSREF");
       await enriquecerLoteConCrossref(todasCandidatas);
     } catch {
       // Si Crossref falla no bloqueamos el escaneo: continuamos con los autores disponibles
       resumen.errores.push("Crossref: ENRIQUECIMIENTO_FALLIDO");
     }
   }
+
+  await informarFuenteSinBloquear(opciones, null);
 
   // 4. Deduplicar en memoria las publicaciones extraídas (RF-021, RF-022)
   const consolidadas = deduplicarLote(todasCandidatas);

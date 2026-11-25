@@ -6,8 +6,10 @@ import { Aviso, claseBotonSecundario, claseTabla, EstadoVacio, EtiquetaEstado, P
 import { requireModulo } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import {
+  estaSinAvance,
   resumirFuentes,
   resumirTrabajos,
+  sinAvanceDesde,
   textoAvance,
   VENTANA_DIAS,
   ventanaDesde,
@@ -32,7 +34,8 @@ export default async function EscaneoPage() {
   const perfil = await requireModulo("administracion");
 
   // Las cifras de las tarjetas las calcula la base (count y groupBy); solo se cargan los cinco más recientes.
-  const [recientes, enCurso, ventana, cortes, activos, scopus] = await Promise.all([
+  const ahora = new Date();
+  const [recientes, enCurso, sinAvance, ventana, cortes, activos, scopus] = await Promise.all([
     prisma.job.findMany({
       where: { tipo: { in: TIPOS_ESCANEO } },
       orderBy: [{ creadoEn: "desc" }, { id: "desc" }],
@@ -40,9 +43,12 @@ export default async function EscaneoPage() {
       select: { id: true, estado: true, avance: true, total: true, creadoEn: true, actualizadoEn: true },
     }),
     prisma.job.count({ where: { tipo: { in: TIPOS_ESCANEO }, estado: { in: ["PENDIENTE", "EN_PROCESO"] } } }),
+    prisma.job.count({
+      where: { tipo: { in: TIPOS_ESCANEO }, estado: "EN_PROCESO", actualizadoEn: { lt: sinAvanceDesde(ahora) } },
+    }),
     prisma.job.groupBy({
       by: ["estado"],
-      where: { tipo: { in: TIPOS_ESCANEO }, creadoEn: { gte: ventanaDesde(new Date()) } },
+      where: { tipo: { in: TIPOS_ESCANEO }, creadoEn: { gte: ventanaDesde(ahora) } },
       _count: { _all: true },
     }),
     prisma.corteEscaneo.groupBy({
@@ -52,10 +58,11 @@ export default async function EscaneoPage() {
       _max: { ultimaFecha: true },
     }),
     prisma.profesor.count({ where: { estatusLaboral: "ACTIVO" } }),
-    estadoConfiguracionScopus(),
+    // Si la lectura de la clave falla, la página sigue y dice que no se pudo comprobar (como Estado del sistema).
+    estadoConfiguracionScopus().catch(() => null),
   ]);
 
-  const resumen = resumirTrabajos({ ultimo: recientes[0] ?? null, enCurso, ventana });
+  const resumen = resumirTrabajos({ ultimo: recientes[0] ?? null, enCurso, sinAvance, ventana });
   const fuentes = resumirFuentes(
     cortes.map((c) => ({ fuente: c.fuente, profesores: c._count._all, ultimaFecha: c._max.ultimaFecha })),
     activos,
@@ -63,7 +70,14 @@ export default async function EscaneoPage() {
 
   const tarjetas = [
     { texto: "Último escaneo", cifra: resumen.ultimo ? ESTADOS_HISTORIAL[resumen.ultimo.estado] : "Ninguno", nota: resumen.ultimo ? fechaHora.format(resumen.ultimo.creadoEn) : "Aún no se ha ejecutado" },
-    { texto: "En curso", cifra: numero.format(resumen.enCurso), nota: "Pendientes o en proceso" },
+    {
+      texto: "En curso",
+      cifra: numero.format(resumen.enCurso),
+      nota:
+        resumen.sinAvance > 0
+          ? `Pendientes o en proceso; ${numero.format(resumen.sinAvance)} sin avance`
+          : "Pendientes o en proceso",
+    },
     { texto: "Completados", cifra: numero.format(resumen.completados), nota: `Últimos ${VENTANA_DIAS} días` },
     { texto: "Con incidencias", cifra: numero.format(resumen.conIncidencias), nota: `Últimos ${VENTANA_DIAS} días` },
   ];
@@ -122,6 +136,7 @@ export default async function EscaneoPage() {
                 </div>
                 <div className="flex items-center gap-3">
                   <EtiquetaEstado tipo={TIPO_ESTADO[t.estado]}>{ESTADOS_HISTORIAL[t.estado]}</EtiquetaEstado>
+                  {estaSinAvance(t, ahora) && <EtiquetaEstado tipo="error">Sin avance</EtiquetaEstado>}
                   <Link href={`/produccion/historial?registro=${t.id}`} className="font-medium text-marca hover:underline"
                     aria-label={`Ver el escaneo del ${fechaHora.format(t.creadoEn)}`}>
                     Ver
@@ -136,10 +151,17 @@ export default async function EscaneoPage() {
       <Panel titulo="Fuentes y acciones">
         <div className="flex flex-col gap-4">
           <p className="text-sm text-texto-2">
-            Clave de Scopus: <strong className="text-texto">{scopus.configurada ? "configurada" : "sin configurar"}</strong>
-            {scopus.configurada && ` (origen: ${scopus.origen.toLowerCase()})`}.
+            Clave de Scopus:{" "}
+            {scopus ? (
+              <>
+                <strong className="text-texto">{scopus.configurada ? "configurada" : "sin configurar"}</strong>
+                {scopus.configurada && ` (origen: ${scopus.origen.toLowerCase()})`}.
+              </>
+            ) : (
+              <strong className="text-texto">no se pudo comprobar ahora.</strong>
+            )}
           </p>
-          <Aviso tipo="aviso">Por ahora solo Coordinación puede iniciar, reintentar o continuar un escaneo. Desde aquí puedes consultarlo y administrar la clave de Scopus.</Aviso>
+          <Aviso tipo="aviso">Administración y Coordinación pueden iniciar, reintentar o continuar un escaneo desde «Escaneo». Desde aquí puedes consultarlo y administrar la clave de Scopus.</Aviso>
           <div className="flex flex-wrap gap-3">
             <Link href="/produccion/escaneo" className={claseBotonSecundario}>Escaneo</Link>
             <Link href="/produccion/historial" className={claseBotonSecundario}>Historial de búsquedas</Link>

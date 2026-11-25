@@ -10,6 +10,7 @@ import { datosLoteEsquema } from "@/modules/produccion/lotes";
 import { presentarResultadoEscaneo } from "@/modules/produccion/resultado-escaneo";
 import { ResultadoEscaneo } from "../resultado-escaneo";
 import { NavegacionProduccion } from "../navegacion-produccion";
+import { puedeEscanear } from "@/modules/produccion/permisos";
 
 export default async function HistorialPage({ searchParams }: { searchParams: Promise<ParametrosListado> }) {
   const perfil = await requireModulo("produccion");
@@ -34,7 +35,7 @@ export default async function HistorialPage({ searchParams }: { searchParams: Pr
       <ResultadoEscaneo resultado={presentarResultadoEscaneo(registro.estado, registro.datos)} />
       {datos.success && <p className="text-sm text-texto-3">{datos.data.anio ? `Año solicitado: ${datos.data.anio}. Esta consulta histórica no adelanta los cortes incrementales.` : "Consulta incremental: conserva el solapamiento para recuperar indexaciones tardías."}</p>}
       <p className="text-sm text-texto-3">Fecha de finalización: {datos.success && datos.data.finalizadoEn ? new Intl.DateTimeFormat("es-MX", { dateStyle: "medium", timeStyle: "short", hourCycle: "h23", timeZone: "America/Mexico_City" }).format(new Date(datos.data.finalizadoEn)) : "No registrada"}. La actualización del avance no equivale a una finalización.</p>
-      {perfil.rol === "COORDINADOR" && ["PENDIENTE", "EN_PROCESO"].includes(registro.estado) && <Link href="/produccion/escaneo" className={claseBotonSecundario}>Ir al escaneo para continuar la búsqueda pendiente</Link>}
+      {puedeEscanear(perfil.rol) && ["PENDIENTE", "EN_PROCESO"].includes(registro.estado) && <Link href="/produccion/escaneo" className={claseBotonSecundario}>Ir al escaneo para continuar la búsqueda pendiente</Link>}
     </Panel>}
     <Panel titulo="Búsquedas registradas">
       <BarraListado base={contexto.base} consulta={consulta} columnas={COLUMNAS_HISTORIAL} errores={errores} filtros={[
