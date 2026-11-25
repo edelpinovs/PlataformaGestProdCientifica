@@ -14,7 +14,7 @@ export interface DivisionReal {
 export interface DepartamentoReal {
   /** Debe coincidir con el nombre que trae el CSV de profesores (el cargador cruza por nombre). */
   nombre: string;
-  /** PROPUESTA: el cliente no la dio. Se puede cambiar después desde la pantalla de Departamentos. */
+  /** Confirmada por el equipo el 2026-11-24 (D-265); el cliente no dio una oficial. Se corrige desde la pantalla de Departamentos. */
   nomenclatura: string;
   divisionClave: string;
 }

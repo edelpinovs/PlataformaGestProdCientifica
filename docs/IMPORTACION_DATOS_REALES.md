@@ -111,13 +111,13 @@ La carga **no se ha hecho**. Va en entregas aparte, cada una con su issue y su r
    - **Se ve como «Pendiente»** en el listado, la exportación y los reportes. En el reporte de convocatoria se cuenta aparte (no se suma a Masculino ni Femenino) y se puede filtrar.
    - **Al editar a una persona con `PENDIENTE`**, el select muestra «Pendiente» (para no guardar otro valor en silencio) y el guardado exige elegir uno real. Por eso, **editar a alguien importado obliga a completar género y contratación**, aunque solo se quiera cambiar otro campo. El código `PEND0001` y el correo `pend-0001@pendiente.invalid` sí pasan la validación del formulario (el código sin guion es válido), así que se pueden reemplazar cuando el cliente entregue los reales, sin que bloqueen otras correcciones (D-262).
    - **No entra a PRODEP ni a Cuerpos Académicos** (requieren tiempo completo) y el mensaje dice que falta registrar la contratación.
-2. **Departamentos y divisiones reales** dados de alta, con la división de cada uno (tabla de abajo). Sin esto, `aplicar` se niega a correr.
+2. **Departamentos y divisiones reales** dados de alta, con la división de cada uno (tabla de abajo). **Hechos tres de seis** (2026-11-24); faltan los otros tres, a la espera de su división (D-266). Sin ellos, `aplicar` se niega a correr.
 3. **Cargador** (hecho): ver la sección siguiente.
 4. **Revisión con el cliente** de las incidencias de este documento; cada una resuelta se corrige desde la pantalla de Profesores (Editar), no con SQL.
 
 ### Departamentos y divisiones
 
-El listado trae **seis** departamentos y ninguno existe todavía en la base, que solo tiene los de ejemplo (`DEP-A1`…, y las divisiones `DIV-A`, `DIV-B` y `DIV-C`). Los nombres deben coincidir con los del CSV, sin importar acentos ni mayúsculas.
+El listado trae **seis** departamentos. **Desde el 2026-11-24 existen tres en la base** (los de división confirmada, dados de alta con `importar:catalogos:aplicar`); faltan los otros tres. La base conserva además los de ejemplo (`DEP-A1`…, y las divisiones `DIV-A`, `DIV-B` y `DIV-C`). Los nombres deben coincidir con los del CSV, sin importar acentos ni mayúsculas.
 
 **Divisiones confirmadas** (2026-11-24, D-263). La «clave» es la clave interna de la UdeG y es la que se guarda en la base:
 
@@ -133,19 +133,19 @@ La clave de centro de trabajo de la SEP (CCT) no tiene campo en el sistema y no 
 
 | Departamento (como viene en el CSV) | Personas a crear | División | Nomenclatura | Estado |
 |---|---|---|---|---|
-| Departamento de Ciencias Computacionales e Ingenierías | 21 | CUCEI (`EI`) | `DCCI` *(propuesta)* | División confirmada |
-| Departamento de Ciencias de la Salud | 19 | CUCS (`SA`) | `DCS` *(propuesta)* | División confirmada |
-| Departamento de Ciencias del Comportamiento | 5 | CUCSH (`SH`) | `DCCOM` *(propuesta)* | División confirmada |
+| Departamento de Ciencias Computacionales e Ingenierías | 21 | CUCEI (`EI`) | `DCCI` *(confirmada)* | **Dado de alta (2026-11-24)** |
+| Departamento de Ciencias de la Salud | 19 | CUCS (`SA`) | `DCS` *(confirmada)* | **Dado de alta (2026-11-24)** |
+| Departamento de Ciencias del Comportamiento | 5 | CUCSH (`SH`) | `DCCOM` *(confirmada)* | **Dado de alta (2026-11-24)** |
 | Departamento de Ciencias Naturales y Exactas | 26 | — | — | **División por confirmar con el cliente** |
 | Departamento de Ciencias Económicas y Administrativas | 13 | — | — | **División por confirmar con el cliente** |
 | Departamento de Ciencias Sociales y Humanidades | 20 | — | — | **División por confirmar con el cliente** |
 
-- **Las nomenclaturas son una propuesta nuestra (D-264):** el cliente no las dio y la base exige una, única, por departamento. Si tienen una oficial, se cambian en `scripts/lib/catalogos-reales.ts` antes de aplicar, o después desde la pantalla de Departamentos (Editar).
+- **Las nomenclaturas fueron confirmadas por el equipo (D-265):** el cliente no dio ninguna y la base exige una, única, por departamento. Si el cliente da una oficial, se corrige desde la pantalla de Departamentos (Editar).
 - Las personas son las que arrojó `npm run importar:simular` el 2026-11-24: 104 de las 122 a crear traen departamento (las otras 18 no aparecen en el archivo de Scopus). Las tres divisiones por confirmar cubren **59 de las 104**.
 - No se asume ninguna división sin confirmar. Cuando se confirmen, se agregan a `DIVISIONES_REALES` y `DEPARTAMENTOS_REALES` en `scripts/lib/catalogos-reales.ts`.
 - `importar:aplicar` seguirá negándose a cargar mientras falte cualquiera de los seis departamentos (o hay que usar `--sin-departamento`, que no se recomienda: dejaría a esas personas sin departamento y asignarlas después sería una por una).
 
-#### Alta de lo confirmado
+#### Alta de lo confirmado (aplicada el 2026-11-24)
 
 ```bash
 npm run importar:catalogos:simular                 # qué se crearía y qué choca; no escribe
