@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "EstadoJob" ADD VALUE 'CANCELADO';

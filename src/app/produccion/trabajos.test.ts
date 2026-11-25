@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { crearTrabajoEscaneo, procesarSiguienteProfesor } from "./trabajos";
+import { cancelarTrabajoEscaneo, crearTrabajoEscaneo, procesarSiguienteProfesor } from "./trabajos";
 import { resumenVacio, type DatosLote } from "@/modules/produccion/lotes";
 
 const dobles = vi.hoisted(() => ({
@@ -24,7 +24,8 @@ describe("RF-020: cola persistida de escaneo", () => {
     dobles.prisma.job.findUniqueOrThrow.mockImplementation(async () => ({ ...trabajo }));
     dobles.prisma.job.updateMany.mockImplementation(async ({ where, data }) => {
       const fecha = where.actualizadoEn;
-      if (where.estado && where.estado !== trabajo.estado) return { count: 0 };
+      if (typeof where.estado === "string" && where.estado !== trabajo.estado) return { count: 0 };
+      if (where.estado?.in && !where.estado.in.includes(trabajo.estado)) return { count: 0 };
       if (fecha instanceof Date && fecha.getTime() !== trabajo.actualizadoEn.getTime()) return { count: 0 };
       if (where.OR && trabajo.estado !== "PENDIENTE" && !(trabajo.estado === "EN_PROCESO" &&
         trabajo.actualizadoEn < where.OR[1].actualizadoEn.lt)) return { count: 0 };
@@ -157,5 +158,36 @@ describe("RF-020: cola persistida de escaneo", () => {
   it("las actualizaciones de avance no sobrescriben la fecha original de inicio", async () => {
     await procesarSiguienteProfesor(7);
     for (const [llamada] of dobles.prisma.job.updateMany.mock.calls) expect(llamada.data).not.toHaveProperty("creadoEn");
+  });
+
+  it("#279: crea un reintento solo con los profesores de la lista que siguen activos", async () => {
+    dobles.prisma.profesor.findMany.mockResolvedValue([{ id: 3 }]);
+    await crearTrabajoEscaneo("escaneo-manual", [3, 8], undefined, ["OPENALEX"]);
+    expect(dobles.prisma.profesor.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { estatusLaboral: "ACTIVO", id: { in: [3, 8] } } }));
+    expect(dobles.prisma.job.create).toHaveBeenCalledWith({ data: expect.objectContaining({ total: 1, datos: expect.objectContaining({ profesoresIds: [3], fuentes: ["OPENALEX"] }) }) });
+  });
+
+  it("#279: no crea un reintento si ningún profesor sigue activo", async () => {
+    dobles.prisma.profesor.findMany.mockResolvedValue([]);
+    await expect(crearTrabajoEscaneo("escaneo-manual", [3, 8])).rejects.toThrow("Ninguno de los profesores sigue activo para reintentar.");
+    expect(dobles.prisma.job.create).not.toHaveBeenCalled();
+  });
+
+  it("#279: cancela una búsqueda pendiente y no toca una ya terminada", async () => {
+    expect(await cancelarTrabajoEscaneo(7)).toBe(true);
+    expect(trabajo.estado).toBe("CANCELADO");
+    expect(await cancelarTrabajoEscaneo(7)).toBe(false);
+  });
+
+  it("#279: el profesor en curso no sobrescribe la cancelación ni sigue con el siguiente", async () => {
+    dobles.ejecutarEscaneo.mockImplementation(async () => {
+      await cancelarTrabajoEscaneo(7);
+      return { ...resumenVacio(), profesoresProcesados: 1 };
+    });
+    await procesarSiguienteProfesor(7);
+    expect(trabajo.estado).toBe("CANCELADO");
+    dobles.ejecutarEscaneo.mockClear();
+    await procesarSiguienteProfesor(7);
+    expect(dobles.ejecutarEscaneo).not.toHaveBeenCalled();
   });
 });

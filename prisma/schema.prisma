@@ -442,6 +442,7 @@ enum EstadoJob {
   EN_PROCESO
   COMPLETADO
   FALLIDO
+  CANCELADO // #279: detenido a petición; conserva lo guardado hasta ese momento
 }
 
 // Secreto institucional cifrado; sin acceso desde la Data API de Supabase.
