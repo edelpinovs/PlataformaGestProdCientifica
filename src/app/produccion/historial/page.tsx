@@ -7,6 +7,7 @@ import { BarraListado, EncabezadoOrdenable, PaginacionListado } from "@/componen
 import { Aviso, claseBotonSecundario, claseCampo, claseEtiqueta, claseTabla, EstadoVacio, Panel } from "@/components/ui";
 import { COLUMNAS_HISTORIAL, ESTADOS_HISTORIAL, FilaHistorial, idRegistroHistorial, LISTADO_HISTORIAL, nombreProfesor, sqlHistorial } from "@/modules/produccion/historial";
 import { datosLoteEsquema } from "@/modules/produccion/lotes";
+import { rangoEfectivo, textoRango } from "@/modules/produccion/rango-escaneo";
 import { presentarResultadoEscaneo } from "@/modules/produccion/resultado-escaneo";
 import { ResultadoEscaneo } from "../resultado-escaneo";
 import { NavegacionProduccion } from "../navegacion-produccion";
@@ -35,7 +36,7 @@ export default async function HistorialPage({ searchParams }: { searchParams: Pr
     {registro && <Panel titulo={`Búsqueda #${registro.id}`} descripcion="Se muestra el avance confirmado; una fuente fallida conserva su último corte válido.">
       <p className="text-sm text-texto-2">{registro.avance} de {registro.total} profesores revisados. {siguienteId !== undefined ? `Siguiente profesor pendiente: ${siguiente ? nombreProfesor(siguiente) : `#${siguienteId}`}.` : ""}</p>
       <ResultadoEscaneo resultado={presentarResultadoEscaneo(registro.estado, registro.datos)} />
-      {datos.success && <p className="text-sm text-texto-3">{datos.data.anio ? `Año solicitado: ${datos.data.anio}. Esta consulta histórica no adelanta los cortes incrementales.` : "Consulta incremental: conserva el solapamiento para recuperar indexaciones tardías."}</p>}
+      {datos.success && <p className="text-sm text-texto-3">{rangoEfectivo(datos.data) ? `Periodo solicitado: ${textoRango(rangoEfectivo(datos.data)!)}. Esta consulta histórica no adelanta los cortes incrementales.` : "Consulta incremental: conserva el solapamiento para recuperar indexaciones tardías."}</p>}
       <p className="text-sm text-texto-3">Fecha de finalización: {datos.success && datos.data.finalizadoEn ? new Intl.DateTimeFormat("es-MX", { dateStyle: "medium", timeStyle: "short", hourCycle: "h23", timeZone: "America/Mexico_City" }).format(new Date(datos.data.finalizadoEn)) : "No registrada"}. La actualización del avance no equivale a una finalización.</p>
       {puedeEscanear(perfil.rol) && ["PENDIENTE", "EN_PROCESO"].includes(registro.estado) && <Link href="/produccion/escaneo" className={claseBotonSecundario}>Ir al escaneo para continuar la búsqueda pendiente</Link>}
     </Panel>}
