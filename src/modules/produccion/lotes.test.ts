@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { avanzarLote, datosLoteEsquema, resumenVacio, solicitudEscaneoEsquema, type DatosLote } from "./lotes";
+import { avanzarLote, datosLoteEsquema, resumenVacio, seleccionReintento, solicitudEscaneoEsquema, TIEMPO_RESERVA_MS, type DatosLote } from "./lotes";
 
 describe("RF-020: reglas de lotes", () => {
   it.each(["abc", "0", "-1", "1.5", "2147483648", "9007199254740992"])("rechaza el profesor manipulado %s", (profesorId) => {
@@ -60,5 +60,41 @@ describe("RF-020: reglas de lotes", () => {
     delete resumenAntiguo.autoriasRechazadasOmitidas;
     const antiguo = { ...datos, resumen: resumenAntiguo };
     expect(datosLoteEsquema.parse(antiguo).resumen.autoriasRechazadasOmitidas).toBe(0);
+  });
+});
+
+describe("#279: reintentar un escaneo terminado", () => {
+  type Consulta = NonNullable<DatosLote["resumen"]["consultasFuentes"]>[number];
+  const trabajo = (consultas: Consulta[], errores: string[] = [], extra: Partial<DatosLote> = {}): DatosLote => ({
+    version: 1, profesoresIds: [3, 5, 8], indice: 3, fuentes: ["ORCID", "OPENALEX", "SCOPUS"],
+    resumen: { ...resumenVacio(), errores, consultasFuentes: consultas }, ...extra,
+  });
+  const consulta = (profesorId: number, fuente: Consulta["fuente"], estado: Consulta["estado"]): Consulta => ({ profesorId, fuente, estado, cantidad: 0 });
+
+  it("reintenta solo los profesores y las fuentes que fallaron, en el orden del trabajo", () => {
+    expect(seleccionReintento(trabajo([
+      consulta(8, "OPENALEX", "INCIDENCIA"), consulta(3, "ORCID", "COMPLETADA"), consulta(3, "OPENALEX", "INCIDENCIA"), consulta(5, "ORCID", "SIN_RESULTADOS"),
+    ], ["OpenAlex (Prof. 8): HTTP_429", "OpenAlex (Prof. 3): CONSULTA_FALLIDA"])))
+      .toEqual({ ok: true, profesoresIds: [3, 8], fuentes: ["OPENALEX"] });
+  });
+
+  it("omite lo que falló solo por falta de clave y lo explica si no queda nada", () => {
+    const soloClave = trabajo([consulta(3, "SCOPUS", "INCIDENCIA")], ["Scopus (Prof. 3): NO_API_KEY"]);
+    expect(seleccionReintento(soloClave)).toEqual({ ok: false, error: "Las consultas fallaron porque falta la clave de acceso de una fuente. Configúrala antes de reintentar." });
+    const mezcla = trabajo([consulta(3, "SCOPUS", "INCIDENCIA"), consulta(5, "ORCID", "INCIDENCIA")], ["Scopus (Prof. 3): NO_API_KEY", "ORCID (Prof. 5): HTTP_429"]);
+    expect(seleccionReintento(mezcla)).toEqual({ ok: true, profesoresIds: [5], fuentes: ["ORCID"] });
+  });
+
+  it("incluye con todas sus fuentes a los profesores que quedaron sin revisar", () => {
+    expect(seleccionReintento(trabajo([consulta(3, "ORCID", "INCIDENCIA")], ["ORCID (Prof. 3): HTTP_429"], { indice: 1 })))
+      .toEqual({ ok: true, profesoresIds: [3, 5, 8], fuentes: ["ORCID", "OPENALEX", "SCOPUS"] });
+  });
+
+  it("no propone un reintento vacío", () => {
+    expect(seleccionReintento(trabajo([consulta(3, "ORCID", "COMPLETADA")]))).toEqual({ ok: false, error: "Esta búsqueda no tiene consultas fallidas ni profesores pendientes que reintentar." });
+  });
+
+  it("comparte el tiempo de reserva de diez minutos", () => {
+    expect(TIEMPO_RESERVA_MS).toBe(10 * 60 * 1000);
   });
 });

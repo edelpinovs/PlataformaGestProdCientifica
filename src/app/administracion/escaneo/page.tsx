@@ -26,6 +26,7 @@ const TIPO_ESTADO: Record<EstadoTrabajo, "exito" | "aviso" | "error"> = {
   PENDIENTE: "aviso",
   EN_PROCESO: "aviso",
   FALLIDO: "error",
+  CANCELADO: "aviso", // issue 279: detenido a petición
 };
 
 // Resumen de solo lectura de lo que guarda el motor de escaneo. Iniciar, reintentar y continuar
