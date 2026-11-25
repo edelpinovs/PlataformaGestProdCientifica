@@ -199,7 +199,10 @@ Todo el equipo usa **la misma base de desarrollo**, así que un cambio en ella a
    npm run db:nueva-migracion -- agrega_cvu_a_profesor
    ```
    Genera el SQL en `prisma/migrations/` y activa la protección RLS en cada tabla nueva. Revisa el archivo antes de seguir.
-5. Aplícala a la base con `npm run db:migrar` y súbela en tu PR junto con el cambio a `schema.prisma`.
+5. Súbela en tu PR junto con el cambio a `schema.prisma`. **No la apliques todavía** (D-275): producción y las copias de los demás usan esta misma base con el código de `main`.
+6. Cuando el PR se integre, actualiza `main` (`git pull`), aplícala con `npm run db:migrar` y avisa en el chat que hagan `git pull` y `npx prisma generate`.
+
+> Solo se puede aplicar antes de integrar una migración que **únicamente agrega cosas** (tabla, columna opcional o con valor por omisión, índice, o un valor de enum que aún no se usa). Quitar o renombrar algo, cambiar un tipo o convertir datos se aplica siempre después de integrar. El detalle está en `AGENTS.md`.
 
 > **No uses** `npx prisma migrate dev` ni `npx prisma migrate reset`: con una base compartida pueden proponer **borrarla completa**.
 
