@@ -106,7 +106,7 @@ El código está en `scripts/validar-profesores.ts` y `scripts/lib/importar-prof
 
 La carga **no se ha hecho**. Va en entregas aparte, cada una con su issue y su revisión:
 
-1. **Migración `PENDIENTE`** (aplicada a la base compartida el 2026-11-25; pantallas en el PR #309): agrega `PENDIENTE` a `Genero` y `TipoContratacion` y lo trata así:
+1. **Migración `PENDIENTE`** (aplicada a la base compartida el 2026-11-24; pantallas en el PR #309): agrega `PENDIENTE` a `Genero` y `TipoContratacion` y lo trata así:
    - **No se puede elegir** en ningún formulario: el alta solo ofrece los valores reales y el servidor rechaza `PENDIENTE` con «Selecciona un género.» o «Selecciona el tipo de contratación.».
    - **Se ve como «Pendiente»** en el listado, la exportación y los reportes. En el reporte de convocatoria se cuenta aparte (no se suma a Masculino ni Femenino) y se puede filtrar.
    - **Al editar a una persona con `PENDIENTE`**, el select muestra «Pendiente» (para no guardar otro valor en silencio) y el guardado exige elegir uno real. Por eso, **editar a alguien importado obliga a completar género y contratación**, aunque solo se quiera cambiar otro campo. El código `PEND0001` y el correo `pend-0001@pendiente.invalid` sí pasan la validación del formulario (el código sin guion es válido), así que se pueden reemplazar cuando el cliente entregue los reales, sin que bloqueen otras correcciones (D-262).
