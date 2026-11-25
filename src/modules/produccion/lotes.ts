@@ -2,6 +2,8 @@ import { z } from "zod";
 import type { ResumenEscaneo } from "./escaneo";
 import { consultaFuenteEsquema, FUENTES_ESCANEO, opcionEnriquecerEsquema, seleccionFuentesEsquema } from "./fuentes";
 import { fuentePublicacionEnum } from "./tipos";
+import { hoyMexico } from "./fechas-escaneo";
+import { fechaCampo, fechaValida, rangoDeSolicitud, validarRango } from "./rango-escaneo";
 
 export function resumenVacio(): ResumenEscaneo & { autoriasRechazadasOmitidas: number } {
   return { profesoresProcesados: 0, publicacionesEncontradas: 0, publicacionesGuardadas: 0,
@@ -12,6 +14,8 @@ const entero = z.number({ error: "El avance del escaneo no es válido." }).int()
 export const datosLoteEsquema = z.object({
   version: z.literal(1), profesoresIds: z.array(z.number().int().positive()), indice: entero,
   anio: z.number().int().min(1990).max(2100).optional(),
+  desde: z.iso.date({ error: "La fecha inicial del escaneo no es válida." }).optional(),
+  hasta: z.iso.date({ error: "La fecha final del escaneo no es válida." }).optional(),
   finalizadoEn: z.iso.datetime({ error: "La fecha de finalización no es válida." }).optional(),
   fuentes: seleccionFuentesEsquema.optional(),
   enriquecerAutores: z.boolean({ error: "La opción para completar autores no es válida." }).optional(),
@@ -35,13 +39,14 @@ export const solicitudEscaneoEsquema = z.object({
       (valor) => Number.isSafeInteger(Number(valor)) && Number(valor) <= 2147483647, "Selecciona un profesor válido.",
     ),
   ], { error: "Selecciona un profesor válido." }),
-  anio: z.string({ error: "Indica un año válido." }).trim().refine(
-    (valor) => !valor || (/^\d{4}$/.test(valor) && Number(valor) >= 1990 && Number(valor) <= new Date().getUTCFullYear() + 1),
-    "Indica un año entre 1990 y el próximo año, o deja el campo vacío.",
-  ),
+  // Rango con fechas completas (#266): ambas vacías = buscar novedades.
+  desde: fechaCampo,
+  hasta: fechaCampo,
   fuentes: seleccionFuentesEsquema,
   enriquecerAutores: opcionEnriquecerEsquema,
-});
+}).superRefine(({ desde, hasta }, contexto) => {
+  if (fechaValida(desde) && fechaValida(hasta)) validarRango(desde, hasta, hoyMexico(), contexto);
+}).transform(({ desde, hasta, ...resto }) => ({ ...resto, rango: rangoDeSolicitud(desde, hasta, hoyMexico()) }));
 
 export function avanzarLote(datos: DatosLote, resultado: ResumenEscaneo): DatosLote {
   if (datos.indice >= datos.profesoresIds.length) return datos;

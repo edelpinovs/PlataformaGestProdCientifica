@@ -116,10 +116,10 @@ describe("RF-020: cola persistida de escaneo", () => {
 
   it("crea una instantánea ordenada de profesores activos para evitar saltos por altas o bajas", async () => {
     dobles.prisma.profesor.findMany.mockResolvedValue([{ id: 5 }, { id: 8 }]);
-    await crearTrabajoEscaneo("escaneo-manual", undefined, 2025);
+    await crearTrabajoEscaneo("escaneo-manual", undefined, { desde: "2025-03-01", hasta: "2025-06-30" });
     expect(dobles.prisma.profesor.findMany).toHaveBeenCalledWith({ where: { estatusLaboral: "ACTIVO" }, select: { id: true }, orderBy: { id: "asc" } });
     expect(dobles.prisma.job.create).toHaveBeenCalledWith({ data: expect.objectContaining({
-      estado: "PENDIENTE", total: 2, datos: expect.objectContaining({ profesoresIds: [5, 8], indice: 0, anio: 2025 }),
+      estado: "PENDIENTE", total: 2, datos: expect.objectContaining({ profesoresIds: [5, 8], indice: 0, desde: "2025-03-01", hasta: "2025-06-30" }),
     }) });
   });
 

@@ -56,11 +56,12 @@ Las publicaciones extraídas de fuentes indizadas (Scopus, OpenAlex, ORCID) repr
 - Pruebas: `lotes.test.ts`, `trabajos.test.ts`, `cron.test.ts` y las pruebas de la Server Action en `revision-pr63.test.ts`. Usan datos ficticios, repositorios simulados y ninguna API real.
 
 ### Escaneo incremental (Hallazgo 3c)
-- Si no se especifica un año forzado, el motor consulta `CorteEscaneo` para cada par `(profesorId, fuente)`.
-- Sin corte previo y sin un año solicitado, ORCID y OpenAlex consultan todo el historial (incluidas obras sin fecha), mediante la paginación del proveedor. Scopus conserva el inicio desde el año en curso.
+- **Rango de búsqueda (#266, D-271):** el formulario pide *Desde* y *Hasta* con fechas completas (ambas inclusive) en lugar de un solo año. Ambas vacías = buscar novedades; solo *Desde* = hasta hoy (Ciudad de México); máximo `MAXIMO_ANIOS_RANGO` = 10 años calendario y desde 1990. Las fuentes consultan cada año que abarca el rango y después solo se guardan las obras con fecha dentro (`dentroDelRango`); una obra con solo año, o con 1 de enero (precisión anual de Google Scholar y Crossref), cuenta si su año está dentro. El trabajo guarda `desde` y `hasta` en `Job.datos`; continuar y reintentar los respetan, y un trabajo anterior con `anio` equivale a ese año completo (`rangoEfectivo`). El historial muestra «del DD/MM/AAAA al DD/MM/AAAA».
+- Si no se especifica un rango, el motor consulta `CorteEscaneo` para cada par `(profesorId, fuente)`.
+- Sin corte previo y sin un rango solicitado, ORCID y OpenAlex consultan todo el historial (incluidas obras sin fecha), mediante la paginación del proveedor. Scopus conserva el inicio desde el año en curso.
 - Con un corte previo se reconsulta desde el año anterior hasta el año actual para recuperar indexaciones tardías y cubrir los años transcurridos. La deduplicación evita repetir las obras guardadas.
 - Cada fuente exitosa actualiza su `ultimaFecha` solo después de guardar las publicaciones y sus autorías, usando la fecha de inicio del escaneo.
-- Si falla la consulta, falta la clave de Scopus o falla la persistencia de un profesor, se conserva su corte para reintentar. Un año histórico solicitado explícitamente no cambia el corte incremental.
+- Si falla la consulta, falta la clave de Scopus o falla la persistencia de un profesor, se conserva su corte para reintentar. Un rango histórico solicitado explícitamente no cambia el corte incremental.
 - `escaneo.test.ts` prueba el cambio de año, los errores por fuente, la persistencia previa al corte y los reintentos con un repositorio simulado.
 
 ### Integración con autorías y validación (RF-021 y RF-022)

@@ -5,6 +5,11 @@ export function anioActualMexico(ahora: Date = new Date()): number {
   return Number(new Intl.DateTimeFormat("en-US", { year: "numeric", timeZone: ZONA_FECHAS_ESCANEO }).format(ahora));
 }
 
+/** Fecha de hoy (AAAA-MM-DD) en Ciudad de México. */
+export function hoyMexico(ahora: Date = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", { year: "numeric", month: "2-digit", day: "2-digit", timeZone: ZONA_FECHAS_ESCANEO }).format(ahora);
+}
+
 export function fechaEscaneo(fecha: Date | string | null | undefined) {
   if (!fecha) return "Sin fecha registrada";
   const valor = new Date(fecha);
