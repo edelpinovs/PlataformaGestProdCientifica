@@ -56,4 +56,13 @@ describe("Presentación segura del resultado del escaneo", () => {
     ]);
     expect(resultado?.incidencias).toEqual([]);
   });
+
+  it("#279: explica una búsqueda cancelada y conserva lo guardado", () => {
+    const resultado = presentarResultadoEscaneo("CANCELADO", datos(2));
+    expect(resultado?.tipo).toBe("aviso");
+    expect(resultado?.mensaje).toContain("La búsqueda se canceló antes de terminar; se conserva lo guardado hasta ese momento.");
+    expect(resultado?.mensaje).toContain("Guardadas o actualizadas: 2");
+    expect(resultado?.mensaje).not.toContain("No se encontraron publicaciones");
+    expect(presentarResultadoEscaneo("CANCELADO", null)?.mensaje).toBe("La búsqueda se canceló antes de terminar.");
+  });
 });

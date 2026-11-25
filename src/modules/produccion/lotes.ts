@@ -1,9 +1,15 @@
 import { z } from "zod";
 import type { ResumenEscaneo } from "./escaneo";
-import { consultaFuenteEsquema, FUENTES_ESCANEO, opcionEnriquecerEsquema, seleccionFuentesEsquema } from "./fuentes";
+import { consultaFuenteEsquema, FUENTES_ANTERIORES, FUENTES_ESCANEO, NOMBRES_FUENTE, opcionEnriquecerEsquema, seleccionFuentesEsquema, type FuenteEscaneo } from "./fuentes";
 import { fuentePublicacionEnum } from "./tipos";
 import { hoyMexico } from "./fechas-escaneo";
 import { fechaCampo, fechaValida, rangoDeSolicitud, validarRango } from "./rango-escaneo";
+
+/**
+ * Tiempo sin actualizarse tras el cual un trabajo «En proceso» se considera interrumpido:
+ * Producción vuelve a reservarlo y Administración lo muestra «sin avance» (#279).
+ */
+export const TIEMPO_RESERVA_MS = 10 * 60 * 1000;
 
 export function resumenVacio(): ResumenEscaneo & { autoriasRechazadasOmitidas: number } {
   return { profesoresProcesados: 0, publicacionesEncontradas: 0, publicacionesGuardadas: 0,
@@ -68,4 +74,40 @@ export function avanzarLote(datos: DatosLote, resultado: ResumenEscaneo): DatosL
   // Limita el JSON guardado cuando las fuentes fallan repetidamente.
   resumen.errores = [...resumen.errores, ...resultado.errores].slice(0, 50);
   return { ...datos, indice: datos.indice + 1, resumen };
+}
+
+export type SeleccionReintento =
+  | { ok: true; profesoresIds: number[]; fuentes: FuenteEscaneo[] }
+  | { ok: false; error: string };
+
+/**
+ * A quién y con qué fuentes reintentar un escaneo terminado (#279): los profesores con alguna
+ * fuente en INCIDENCIA, solo con esas fuentes, y los que quedaron sin revisar, con todas las
+ * fuentes del trabajo. Se omite lo que falló solo por falta de clave: reintentarlo fallaría igual.
+ */
+export function seleccionReintento(datos: DatosLote): SeleccionReintento {
+  const fuentesTrabajo = datos.fuentes ?? [...FUENTES_ANTERIORES];
+  const sinClave = new Set(datos.resumen.errores.filter((error) => error.endsWith(": NO_API_KEY")).map((error) => error.replace(/: NO_API_KEY$/, "")));
+  const profesores = new Set<number>();
+  const fuentes = new Set<FuenteEscaneo>();
+  let faltaClave = false;
+  for (const consulta of datos.resumen.consultasFuentes ?? []) {
+    if (consulta.estado !== "INCIDENCIA") continue;
+    if (sinClave.has(`${NOMBRES_FUENTE[consulta.fuente]} (Prof. ${consulta.profesorId})`)) { faltaClave = true; continue; }
+    profesores.add(consulta.profesorId);
+    fuentes.add(consulta.fuente);
+  }
+  const sinRevisar = datos.profesoresIds.slice(datos.indice);
+  if (sinRevisar.length) {
+    sinRevisar.forEach((id) => profesores.add(id));
+    fuentesTrabajo.forEach((fuente) => fuentes.add(fuente));
+  }
+  if (!profesores.size) return { ok: false, error: faltaClave
+    ? "Las consultas fallaron porque falta la clave de acceso de una fuente. Configúrala antes de reintentar."
+    : "Esta búsqueda no tiene consultas fallidas ni profesores pendientes que reintentar." };
+  return {
+    ok: true,
+    profesoresIds: datos.profesoresIds.filter((id) => profesores.has(id)),
+    fuentes: FUENTES_ESCANEO.filter((fuente) => fuentes.has(fuente)),
+  };
 }

@@ -12,6 +12,7 @@ import { presentarResultadoEscaneo } from "@/modules/produccion/resultado-escane
 import { fechaEscaneo } from "@/modules/produccion/fechas-escaneo";
 import { NOMBRES_FUENTE } from "@/modules/produccion/fuentes";
 import { ResultadoEscaneo } from "../resultado-escaneo";
+import { ControlBusqueda } from "../control-busqueda";
 import { NavegacionProduccion } from "../navegacion-produccion";
 import { puedeEscanear } from "@/modules/produccion/permisos";
 
@@ -48,7 +49,8 @@ export default async function HistorialPage({ searchParams }: { searchParams: Pr
     ["Profesores", !datos.success ? "No registrado" : profesoresIds.length === 1 ? (unico ? nombreProfesor(unico) : `Profesor #${profesoresIds[0]}`) : `${profesoresIds.length} profesores activos`],
     ["Fuentes", datos.success && datos.data.fuentes?.length ? datos.data.fuentes.map((fuente) => NOMBRES_FUENTE[fuente]).join(", ") : "No registradas"],
     ["Periodo", !datos.success ? "No registrado" : rango ? textoRango(rango) : "Novedades desde la búsqueda anterior"],
-    ["Terminó", datos.success && datos.data.finalizadoEn ? fechaEscaneo(datos.data.finalizadoEn) : "Sin terminar"],
+    registro.estado === "CANCELADO" ? ["Cancelada", fechaEscaneo(registro.actualizadoEn)]
+      : ["Terminó", datos.success && datos.data.finalizadoEn ? fechaEscaneo(datos.data.finalizadoEn) : "Sin terminar"],
   ] : [];
   return <Marco correo={perfil.correo} rol={perfil.rol} activo="produccion" titulo="Historial de búsquedas" subtitulo="Horas del centro de México. Cada búsqueda queda registrada y no se edita ni elimina." volver={{ href: "/produccion/escaneo", texto: "Escaneo de producción" }}>
     <NavegacionProduccion actual="historial" />
@@ -75,6 +77,9 @@ export default async function HistorialPage({ searchParams }: { searchParams: Pr
           ? "Buscar un periodo no cambia desde dónde sigue la próxima búsqueda de novedades."
           : "Las novedades repasan también el año anterior para recuperar publicaciones que se indexan tarde."}</p>}
         {puedeEscanear(perfil.rol) && ["PENDIENTE", "EN_PROCESO"].includes(registro.estado) && <Link href="/produccion/escaneo" className={`${claseBotonContorno} w-fit`}>Ir al escaneo para continuar la búsqueda pendiente</Link>}
+        {puedeEscanear(perfil.rol) && <ControlBusqueda key={`${registro.id}-${registro.estado}`} jobId={registro.id}
+          cancelar={registro.estado === "PENDIENTE" || registro.estado === "EN_PROCESO"}
+          reintentar={registro.estado === "FALLIDO" || registro.estado === "CANCELADO"} />}
       </div>
     </Panel>}
     <Panel titulo="Búsquedas registradas">

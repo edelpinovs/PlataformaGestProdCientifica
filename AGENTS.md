@@ -23,7 +23,13 @@ Política obligatoria para todo agente de código (Claude Code, Codex, Copilot, 
 Todo el equipo usa **una sola base de desarrollo** en Supabase. Un error ahí lo sufren los ocho.
 
 - **Prohibido:** `prisma migrate dev`, `prisma migrate reset`, `prisma db push`, SQL `DROP`/`TRUNCATE`/`DELETE` sin `WHERE`, o cualquier comando que proponga borrar o reiniciar la base.
-- Para cambiar el modelo: editar `prisma/schema.prisma`, `npm run db:nueva-migracion -- <nombre>`, revisar el SQL generado y aplicarlo con `npm run db:migrar`. La migración va en el mismo PR que el cambio al esquema.
+- Para cambiar el modelo: editar `prisma/schema.prisma`, `npm run db:nueva-migracion -- <nombre>` y revisar el SQL generado. La migración va en el mismo PR que el cambio al esquema.
+- **La base nunca va por delante de `main` (D-275).** Producción, las vistas previas y la copia de cada integrante usan esta misma base con el código de `main`: si la base ya cambió y `main` no, sus páginas fallan.
+  - **Por omisión, una migración se aplica solo después de integrar su PR.** Quien la escribió actualiza `main` (`git pull`), ejecuta `npm run db:migrar` y avisa en el chat del equipo que hagan `git pull` y `npx prisma generate`.
+  - **Antes de integrar solo se aplica una migración compatible con `main`**, que únicamente agrega cosas: una tabla, una columna opcional o con valor por omisión, un índice, o un valor de enum que ninguna fila usa todavía. Hasta integrar no guardes filas con ese valor nuevo.
+  - **Nunca antes de integrar:** quitar o renombrar una tabla, una columna o un valor de enum, cambiar un tipo, volver obligatoria una columna o convertir datos existentes. Si hace falta, divídelo en dos PR: el primero agrega lo nuevo; el segundo quita lo viejo cuando `main` ya no lo usa.
+  - **La descripción del PR dice si la migración ya está aplicada** y por qué es compatible. Quien revisa lo comprueba con `npx prisma migrate status`.
+  - Si la base ya quedó por delante de `main`, avisa en el chat de inmediato. La salida es integrar el PR o revertir con otra migración, nunca reiniciar la base.
 - **Datos reales de profesores (D-259):** por acuerdo del equipo, la base compartida admite datos reales **solo por el flujo de `docs/IMPORTACION_DATOS_REALES.md`** (validar con `npm run importar:validar`, excluir lo ambiguo, marcar lo pendiente). No los cargues a mano ni de otra forma. Siguen prohibidos en pruebas, semillas, capturas, issues, PR, commits y en cualquier archivo del repositorio (que es público): las pruebas y las semillas usan solo datos ficticios. Los CSV reales viven únicamente en `datos-reales/`, que git ignora.
 - Para ver pantallas con contenido hay datos de demostración marcados: `npm run db:demo` (cargar), `npm run db:demo:contar` y `npm run db:demo:limpiar`. Detalle en `docs/DATOS_DEMO.md`. No agregues datos de prueba a mano en la base compartida.
 - No edites `src/generated/`: se regenera con `prisma generate`.

@@ -7,7 +7,7 @@ import { anioDesdeContinuidadSql, etiquetaSql, literalSql, periodoProximaConsult
 export { periodoProximaConsulta } from "./continuidad";
 
 export const TIPOS_HISTORIAL = { "escaneo-manual": "Manual", "escaneo-diario": "Programado (histórico)" };
-export const ESTADOS_HISTORIAL = { PENDIENTE: "Pendiente", EN_PROCESO: "En proceso", COMPLETADO: "Completado", FALLIDO: "Con incidencias" };
+export const ESTADOS_HISTORIAL = { PENDIENTE: "Pendiente", EN_PROCESO: "En proceso", COMPLETADO: "Completado", FALLIDO: "Con incidencias", CANCELADO: "Cancelado" };
 export const COLUMNAS_HISTORIAL = [{ clave: "inicio", texto: "Inicio" }, { clave: "estado", texto: "Estado" }, { clave: "tipo", texto: "Tipo" }, { clave: "alcance", texto: "Alcance" }, { clave: "fuentes", texto: "Fuentes" }, { clave: "avance", texto: "Avance" }, { clave: "actualizacion", texto: "Última actualización" }];
 export const LISTADO_HISTORIAL: DefinicionListado = {
   columnas: COLUMNAS_HISTORIAL.map(c => c.clave), ordenInicial: { columna: "inicio", dir: "desc" },
@@ -15,7 +15,7 @@ export const LISTADO_HISTORIAL: DefinicionListado = {
 };
 /** Color de la etiqueta de estado; los trabajos sin terminar quedan neutros. */
 export const TIPO_ESTADO_HISTORIAL: Record<keyof typeof ESTADOS_HISTORIAL, "exito" | "aviso" | null> = {
-  PENDIENTE: null, EN_PROCESO: null, COMPLETADO: "exito", FALLIDO: "aviso",
+  PENDIENTE: null, EN_PROCESO: null, COMPLETADO: "exito", FALLIDO: "aviso", CANCELADO: null,
 };
 
 /** «1 de 1 profesor revisado», «3 de 30 profesores revisados». */
