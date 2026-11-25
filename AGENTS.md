@@ -24,7 +24,7 @@ Todo el equipo usa **una sola base de desarrollo** en Supabase. Un error ahí lo
 
 - **Prohibido:** `prisma migrate dev`, `prisma migrate reset`, `prisma db push`, SQL `DROP`/`TRUNCATE`/`DELETE` sin `WHERE`, o cualquier comando que proponga borrar o reiniciar la base.
 - Para cambiar el modelo: editar `prisma/schema.prisma`, `npm run db:nueva-migracion -- <nombre>`, revisar el SQL generado y aplicarlo con `npm run db:migrar`. La migración va en el mismo PR que el cambio al esquema.
-- Solo datos ficticios. Nunca datos reales de profesores, ni en la base, ni en pruebas, ni en semillas.
+- **Datos reales de profesores (D-259):** por acuerdo del equipo, la base compartida admite datos reales **solo por el flujo de `docs/IMPORTACION_DATOS_REALES.md`** (validar con `npm run importar:validar`, excluir lo ambiguo, marcar lo pendiente). No los cargues a mano ni de otra forma. Siguen prohibidos en pruebas, semillas, capturas, issues, PR, commits y en cualquier archivo del repositorio (que es público): las pruebas y las semillas usan solo datos ficticios. Los CSV reales viven únicamente en `datos-reales/`, que git ignora.
 - Para ver pantallas con contenido hay datos de demostración marcados: `npm run db:demo` (cargar), `npm run db:demo:contar` y `npm run db:demo:limpiar`. Detalle en `docs/DATOS_DEMO.md`. No agregues datos de prueba a mano en la base compartida.
 - No edites `src/generated/`: se regenera con `prisma generate`.
 
@@ -33,7 +33,7 @@ Todo el equipo usa **una sola base de desarrollo** en Supabase. Un error ahí lo
 El repositorio es **público**.
 
 - Nunca muestres, copies, imprimas ni subas los valores de `.env`. `SUPABASE_SECRET_KEY` no se usa en código de la aplicación (solo en `scripts/`) ni se envía a Vercel.
-- No hagas commit de `.env*` (salvo `.env.example`), ni de `scripts/equipo.txt` o `scripts/invitaciones-*.txt`.
+- No hagas commit de `.env*` (salvo `.env.example`), ni de `scripts/equipo.txt`, `scripts/invitaciones-*.txt` ni de nada dentro de `datos-reales/` (CSV reales e informes con nombres). No pegues nombres de profesores reales en docs, issues, PR ni mensajes de commit.
 
 ## Código
 

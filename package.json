@@ -15,6 +15,7 @@
     "db:demo": "tsx scripts/demo.ts cargar",
     "db:demo:contar": "tsx scripts/demo.ts contar",
     "db:demo:limpiar": "tsx scripts/demo.ts limpiar",
+    "importar:validar": "tsx scripts/validar-profesores.ts",
     "crear-admin": "tsx scripts/crear-admin.ts",
     "invitar": "tsx scripts/invitar.ts",
     "invitar:lote": "tsx scripts/invitar-lote.ts",
