@@ -21,7 +21,7 @@ setTimeout(()=>{try{
     b.onLoad({ filter: /.*/, namespace: "ficticio" }, args => ({ resolveDir: process.cwd(), contents:
       args.path.endsWith("/session") ? 'export const requireModulo=async()=>({rol:"COORDINADOR",correo:"coordinacion@demo.invalid"})' :
       args.path.endsWith("/marco") ? 'import React from "react";export function Marco({titulo,subtitulo,children}){return React.createElement("main",{className:"min-h-screen bg-fondo p-5 text-texto flex flex-col gap-5"},React.createElement("h1",{className:"text-xl font-semibold"},titulo),React.createElement("p",null,subtitulo),children)}' :
-      args.path.endsWith("/client") ? 'export const Prisma={sql:(s,...v)=>({text:s.join("?"),values:v}),join:v=>v,empty:{}}' :
+      args.path.endsWith("/client") ? 'export const Prisma={sql:(s,...v)=>({text:s.join("?"),values:v}),join:v=>v,raw:t=>({text:t,values:[]}),empty:{}}' :
       `export const prisma={job:{findFirst:async()=>null},$queryRaw:async q=>q.text.startsWith("SELECT count")?[{total:23}]:Array.from({length:10},(_,i)=>window.vista==="historial"?{id:i+11,inicio:"2026-11-09 10:00",actualizacion:"2026-11-09 10:12",estadoTexto:"Pendiente",tipoTexto:"Manual",alcance:"Profesores: 30; novedades",fuentes:"No registradas",avance:12,total:30}:{profesorId:i+11,profesor:"Profesor ficticio "+(i+11)+" · DEMO-"+(i+11),fuente:"ORCID",fuenteTexto:"ORCID",corte:null,corteTexto:"Sin búsqueda previa completada"})}`,
     }));
   } }]);
