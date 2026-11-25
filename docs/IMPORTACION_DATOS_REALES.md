@@ -27,18 +27,18 @@ Ningún archivo trae código de CUValles, correo, género, tipo de contratación
 
 ## Hallazgos
 
-Observados en la revisión del 2026-11-24. Los conteos exactos los da `npm run importar:validar` (tabla de la sección siguiente).
+Conteos confirmados con `npm run importar:validar` el 2026-11-24 (tabla de la sección siguiente).
 
 | Hallazgo | Efecto en la importación | Para revisar con el cliente |
 |---|---|---|
 | **Scopus ID repetido entre dos personas distintas** (2 casos) | Ese Scopus ID no se asigna a ninguna de las dos personas | Cuál de las dos personas es la dueña del ID |
 | **Scholar ID repetido entre dos personas distintas** (2 casos) | Ese Scholar ID no se asigna a ninguna de las dos | Cuál es el perfil correcto de cada una |
-| **Personas con varios Scopus ID** (al menos 5: filas repetidas o dos IDs en una celda) | Se importa sin Scopus ID | Cuál es el ID vigente; el sistema guarda uno solo |
-| **Scopus ID distinto entre los dos archivos** (al menos 1 caso) | Se importa sin Scopus ID | Cuál es el correcto |
-| **Scholar ID con error de Excel `#VALUE!`** (unas dos docenas, con la URL vacía) | Scholar ID vacío; la persona se importa | Perfil de Scholar de cada una |
+| **Personas con varios Scopus ID** (6: 4 con filas repetidas, 1 con dos IDs en una celda y 1 con IDs distintos entre los dos archivos) | Se importa sin Scopus ID | Cuál es el ID vigente; el sistema guarda uno solo |
+| **Scopus ID distinto entre los dos archivos** (1 caso; se cuenta dentro de «varios Scopus ID») | Se importa sin Scopus ID | Cuál es el correcto |
+| **Scholar ID con error de Excel `#VALUE!`** (19, con la URL vacía) | Scholar ID vacío; la persona se importa | Perfil de Scholar de cada una |
 | **Scholar ID con sufijo de idioma** (`&hl=es`, `&hl=en`) | Se limpia el sufijo y se conserva el ID (no es ambigüedad) | — |
-| **Scholar ID de forma inusual** (no termina en `AAAAJ`; al menos 1) | Se importa, queda anotado | Que la persona confirme su perfil |
-| **Personas en el archivo de Scopus que no están en el listado completo** (unas 15) | **No se importan**: el nombre viene en un solo campo y no se puede separar en nombres y apellidos sin adivinar (por ejemplo, con cuatro o cinco palabras) | Nombres y apellidos por separado, ORCID y Scholar |
+| **Scholar ID de forma inusual** (no termina en `AAAAJ`; 1 caso) | Se importa, queda anotado | Que la persona confirme su perfil |
+| **Personas en el archivo de Scopus que no están en el listado completo** (14) | **No se importan**: el nombre viene en un solo campo y no se puede separar en nombres y apellidos sin adivinar (por ejemplo, con cuatro o cinco palabras) | Nombres y apellidos por separado, ORCID y Scholar |
 | **Misma persona dos veces en el archivo de Scopus** (nombre en otro orden) | Se fusionan si el ID coincide | — |
 | **Filas repetidas en el listado completo** | Se fusionan; si traen valores distintos, ver «varios Scopus ID» | — |
 | **Espacios sobrantes, tabuladores, mayúsculas y acentos inconsistentes** en nombres y departamentos | Se limpian (no es ambigüedad) | — |
@@ -55,9 +55,31 @@ Observados en la revisión del 2026-11-24. Los conteos exactos los da `npm run i
 
 ## Resultado de la validación
 
-> Se llena con la salida de `npm run importar:validar` sobre los archivos reales. El detalle con nombres queda en `datos-reales/informe-validacion.md` (ignorado por git).
+> Salida de `npm run importar:validar` sobre los archivos reales.
 
-Pendiente de correr: los CSV todavía no están en `datos-reales/`.
+Corrida del 2026-11-24 sobre los archivos entregados por el cliente (el detalle con nombres queda en `datos-reales/informe-validacion.md`, ignorado por git).
+
+| Concepto | Cantidad |
+|---|---|
+| Filas con datos en el listado completo | 129 |
+| Filas con datos en el archivo de Scopus | 121 |
+| Personas distintas en el listado completo | 125 |
+| Importables (con los campos ambiguos vacíos) | 125 |
+| Excluidas por completo | 14 |
+| Importables con al menos un campo excluido | 13 |
+
+| Incidencia | Efecto | Casos |
+|---|---|---|
+| `solo_en_scopus` | excluye a la persona | 14 |
+| `identificador_multiple` (todos de Scopus ID) | excluye el campo | 6 |
+| `identificador_repetido` (2 de Scopus ID y 2 de Scholar ID) | excluye el campo en las 2 personas implicadas | 4 |
+| `scholar_error_excel` | informativa (Scholar vacío) | 19 |
+| `scholar_inusual` | informativa | 1 |
+| `persona_repetida` | informativa (se fusionan) | 4 |
+| `sin_departamento` | informativa | 19 |
+| `nombre_invalido`, `scholar_formato`, `scholar_url_distinta`, `orcid_formato`, `scopus_formato`, `departamento_contradictorio` | — | 0 |
+
+Las 13 personas importables con un campo excluido son 6 con varios Scopus ID y 7 que comparten un Scopus ID o un Scholar ID con otra persona (una de ellas aparece en dos casos). Las 14 excluidas por completo son las que solo aparecen en el archivo de Scopus.
 
 ## Cómo se valida
 
