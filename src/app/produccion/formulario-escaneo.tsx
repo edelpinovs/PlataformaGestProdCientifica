@@ -8,14 +8,23 @@ import { iniciarEscaneoAction, type EstadoEscaneo } from "./actions";
 import { ResultadoEscaneo } from "./resultado-escaneo";
 import { SelectorProfesor } from "@/components/selector-profesor";
 import { ANIO_MINIMO_ESCANEO, MAXIMO_ANIOS_RANGO, type RangoEscaneo } from "@/modules/produccion/rango-escaneo";
+import { resumenBusqueda } from "@/modules/produccion/resumen-busqueda";
 
-function BotonEscanear({ enCurso, continuar }: { enCurso: boolean; continuar: boolean }) {
+function BotonEscanear({ enCurso, continuar, periodo }: { enCurso: boolean; continuar: boolean; periodo: boolean }) {
   const { pending } = useFormStatus();
   return (
-    <button type="submit" disabled={pending || enCurso} className={claseBoton}>
-      {pending || enCurso ? "Escaneo en curso…" : continuar ? "Continuar búsqueda pendiente" : "Buscar novedades"}
+    <button type="submit" disabled={pending || enCurso} className={`${claseBoton} shrink-0`}>
+      {pending || enCurso ? "Escaneo en curso…" : continuar ? "Continuar búsqueda pendiente" : periodo ? "Buscar en el periodo" : "Buscar novedades"}
     </button>
   );
+}
+
+/** Título de cada paso del formulario, con su número para leerlo en orden. */
+function TituloPaso({ numero, children }: { numero: number; children: React.ReactNode }) {
+  return <legend className="mb-3 flex items-center gap-2 text-sm font-semibold text-texto">
+    <span aria-hidden="true" className="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-marca-suave text-xs text-marca">{numero}</span>
+    {children}
+  </legend>;
 }
 
 function ProgresoEscaneo({ estado, enviando }: { estado: EstadoEscaneo; enviando: boolean }) {
@@ -66,6 +75,12 @@ export function FormularioEscaneo({
   // Al continuar se muestra el rango guardado en el trabajo, no el que se haya escrito.
   const rangoGuardado = estado.pendiente || estado.continuar ? estado.rango ?? rangoTrabajo : undefined;
   const bloqueado = Boolean(estado.pendiente || estado.continuar);
+  const desdeMostrado = bloqueado ? rangoGuardado?.desde ?? "" : desdeElegido;
+  const hastaMostrado = bloqueado ? rangoGuardado?.hasta ?? "" : hastaElegido;
+  const profesorDeLista = profesores.find(profesor => String(profesor.id) === profesorElegido);
+  const nombreElegido = profesorElegido === "todos" ? "todos"
+    : profesorDeLista ? `${profesorDeLista.nombres} ${profesorDeLista.apellidos}`
+      : profesorElegido ? `el profesor del trabajo #${profesorElegido}` : "";
 
   useEffect(() => {
     if (!estado.pendiente || !estado.jobId) return;
@@ -81,20 +96,27 @@ export function FormularioEscaneo({
     <div className="flex flex-col gap-4">
       <form key={estado.intento ?? 0} action={formAction} className="flex flex-col gap-4">
         {(estado.pendiente || estado.continuar) && estado.jobId && <input type="hidden" name="jobId" value={estado.jobId} />}
-        <fieldset disabled={estado.pendiente || estado.continuar} className="flex flex-col gap-4">
-          <legend className="mb-2 text-sm font-semibold">Fuentes de búsqueda</legend>
-          <div className="flex flex-wrap gap-4">{FUENTES_ESCANEO.map(fuente => <label key={fuente} className="flex items-center gap-2 text-sm text-texto-2"><input type="checkbox" name="fuentes" value={fuente} checked={fuentesMostradas.includes(fuente)} onChange={evento => { const marcada=evento.target.checked; elegirFuentes(actual => marcada ? [...actual,fuente] : actual.filter(f => f !== fuente)); }} aria-invalid={Boolean(estado.erroresCampos?.fuentes)} />{NOMBRES_FUENTE[fuente]}</label>)}</div>
-          <div><button type="button" className="rounded-xl px-3 py-2 text-sm text-marca hover:bg-hover" onClick={() => elegirFuentes([...FUENTES_ESCANEO])}>Seleccionar todas</button></div>
-          <p className="text-sm text-texto-3">Se consultarán únicamente las fuentes elegidas. Crossref y Google Scholar son opcionales; Google Scholar está sujeto a la cuota del proveedor. Al continuar un trabajo se respetan sus fuentes guardadas.</p>
-          <label className="flex items-center gap-2 text-sm text-texto-2">
-            <input type="checkbox" name="enriquecerAutores" value="si" checked={enriquecerMostrado} onChange={evento => elegirEnriquecer(evento.target.checked)} aria-invalid={Boolean(estado.erroresCampos?.enriquecerAutores)} />
-            Completar autores por DOI con Crossref
-          </label>
-          <p className="text-sm text-texto-3">Scopus solo entrega el primer autor: esta opción completa los coautores con Crossref aunque no lo elijas como fuente de obras.</p>
+        <fieldset disabled={estado.pendiente || estado.continuar} className="flex flex-col gap-3">
+          <TituloPaso numero={1}>¿Dónde buscar?</TituloPaso>
+          <div className="flex flex-wrap items-center gap-2">
+            {FUENTES_ESCANEO.map(fuente => <label key={fuente} className="flex cursor-pointer items-center gap-2 rounded-xl border border-linea px-3 py-2 text-sm text-texto-2 hover:bg-hover has-[:checked]:border-marca has-[:checked]:bg-marca-suave has-[:checked]:text-texto">
+              <input type="checkbox" name="fuentes" value={fuente} checked={fuentesMostradas.includes(fuente)} onChange={evento => { const marcada=evento.target.checked; elegirFuentes(actual => marcada ? [...actual,fuente] : actual.filter(f => f !== fuente)); }} aria-invalid={Boolean(estado.erroresCampos?.fuentes)} />
+              {NOMBRES_FUENTE[fuente]}
+            </label>)}
+            {!bloqueado && <button type="button" className="rounded-xl px-1 py-2 text-sm font-medium text-marca underline-offset-4 hover:underline" onClick={() => elegirFuentes([...FUENTES_ESCANEO])}>Seleccionar todas</button>}
+          </div>
+          <p className="text-xs text-texto-3">{bloqueado ? "Se conservan las fuentes del trabajo pendiente." : "Crossref y Google Scholar son opcionales; Google Scholar tiene una cuota limitada de consultas."}</p>
+          <div className="flex flex-col gap-1 rounded-xl bg-superficie-alt p-3">
+            <label className="flex items-center gap-2 text-sm text-texto-2">
+              <input type="checkbox" name="enriquecerAutores" value="si" checked={enriquecerMostrado} onChange={evento => elegirEnriquecer(evento.target.checked)} aria-invalid={Boolean(estado.erroresCampos?.enriquecerAutores)} />
+              Completar coautores con Crossref
+            </label>
+            <p className="pl-6 text-xs text-texto-3">Scopus solo entrega el primer autor. Esta opción busca los demás por DOI, aunque Crossref no esté marcado arriba.</p>
+          </div>
         </fieldset>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <fieldset disabled={estado.pendiente || estado.continuar} className="flex min-w-0 flex-col gap-4">
-            <legend className="mb-2 text-sm font-semibold">Profesores de la búsqueda</legend>
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+          <fieldset disabled={estado.pendiente || estado.continuar} className="flex min-w-0 flex-col gap-3">
+            <TituloPaso numero={2}>¿De quién?</TituloPaso>
             <label className="flex items-center gap-2 text-sm text-texto-2">
               <input type="checkbox" checked={profesorElegido === "todos"}
                 onChange={evento => elegirProfesor(evento.target.checked ? "todos" : "")} />
@@ -109,15 +131,15 @@ export function FormularioEscaneo({
             {estado.erroresCampos?.profesorId && profesorElegido === "todos" && <Aviso tipo="error">{estado.erroresCampos.profesorId}</Aviso>}
           </fieldset>
 
-          <fieldset disabled={bloqueado} className="flex min-w-0 flex-col gap-4">
-            <legend className="mb-2 text-sm font-semibold">Rango de búsqueda (opcional)</legend>
+          <fieldset disabled={bloqueado} className="flex min-w-0 flex-col gap-3">
+            <TituloPaso numero={3}>¿Qué periodo? <span className="font-normal text-texto-3">(opcional)</span></TituloPaso>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <label className={claseEtiqueta}>
                 Desde
                 <input
                   type="date"
                   name="desde"
-                  value={bloqueado ? rangoGuardado?.desde ?? "" : desdeElegido}
+                  value={desdeMostrado}
                   onChange={evento => elegirDesde(evento.target.value)}
                   min={`${ANIO_MINIMO_ESCANEO}-01-01`}
                   disabled={bloqueado}
@@ -130,7 +152,7 @@ export function FormularioEscaneo({
                 <input
                   type="date"
                   name="hasta"
-                  value={bloqueado ? rangoGuardado?.hasta ?? "" : hastaElegido}
+                  value={hastaMostrado}
                   onChange={evento => elegirHasta(evento.target.value)}
                   min={`${ANIO_MINIMO_ESCANEO}-01-01`}
                   disabled={bloqueado}
@@ -139,14 +161,14 @@ export function FormularioEscaneo({
                 />
               </label>
             </div>
+            <p className="text-xs text-texto-3">{`Sin fechas se buscan novedades (la primera vez, todo el historial). Máximo ${MAXIMO_ANIOS_RANGO} años; sin Hasta, se busca hasta hoy. Revisar un periodo no mueve el punto de continuación.`}</p>
             {[estado.erroresCampos?.desde, estado.erroresCampos?.hasta].filter(Boolean).map(mensaje => <Aviso key={mensaje} tipo="error">{mensaje}</Aviso>)}
           </fieldset>
         </div>
 
-        <p className="text-sm text-texto-3">{`Sin fechas, ORCID y OpenAlex recuperan el historial si no existe un escaneo previo; después consultan novedades. Para revisar un periodo, indica Desde y Hasta (máximo ${MAXIMO_ANIOS_RANGO} años); sin Hasta se busca hasta hoy. Un periodo no adelanta los puntos de continuación.`}</p>
-
-        <div className="flex justify-end pt-2">
-          <BotonEscanear enCurso={Boolean(estado.pendiente)} continuar={Boolean(estado.continuar)} />
+        <div className="flex flex-col gap-4 border-t border-linea pt-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-texto-2">{resumenBusqueda({ fuentes: fuentesMostradas, profesor: nombreElegido, desde: desdeMostrado, hasta: hastaMostrado })}</p>
+          <BotonEscanear enCurso={Boolean(estado.pendiente)} continuar={Boolean(estado.continuar)} periodo={Boolean(desdeMostrado)} />
         </div>
       </form>
       <ProgresoEscaneo estado={estado} enviando={enviando} />
