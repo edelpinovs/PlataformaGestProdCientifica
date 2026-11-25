@@ -69,3 +69,35 @@ describe("iniciarSesion y el tema guardado (issue 283)", () => {
     expect(dobles.poner).not.toHaveBeenCalled();
   });
 });
+
+// El formulario ya no usa la validación del navegador (sale en el idioma de Chrome, no en español):
+// el servidor responde en español a lo que antes el navegador frenaba.
+describe("iniciarSesion con datos que el navegador ya no frena", () => {
+  beforeEach(() => vi.resetAllMocks());
+
+  function con(campos: Record<string, string>) {
+    const datos = new FormData();
+    for (const [clave, valor] of Object.entries(campos)) datos.set(clave, valor);
+    return datos;
+  }
+
+  it("un correo sin arroba devuelve un mensaje en español, conserva el correo y no consulta a Supabase", async () => {
+    const estado = await iniciarSesion({}, con({ correo: "docente.prueba282", contrasena: "ClaveDemo1" }));
+    expect(estado).toEqual({ error: "Escribe un correo válido y tu contraseña.", correo: "docente.prueba282" });
+    expect(dobles.signInWithPassword).not.toHaveBeenCalled();
+  });
+
+  it("un correo vacío o una contraseña vacía también", async () => {
+    expect((await iniciarSesion({}, con({ correo: "", contrasena: "x" }))).error).toBe("Escribe un correo válido y tu contraseña.");
+    expect((await iniciarSesion({}, con({ correo: "ana.demo@demo.invalid", contrasena: "" }))).error).toBe(
+      "Escribe un correo válido y tu contraseña.",
+    );
+    expect(dobles.signInWithPassword).not.toHaveBeenCalled();
+  });
+
+  it("sin los campos en el envío no falla: responde en español", async () => {
+    const estado = await iniciarSesion({}, new FormData());
+    expect(estado.error).toBe("Escribe un correo válido y tu contraseña.");
+    expect(dobles.signInWithPassword).not.toHaveBeenCalled();
+  });
+});
