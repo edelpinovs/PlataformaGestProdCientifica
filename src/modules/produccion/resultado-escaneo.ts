@@ -3,7 +3,7 @@ import { FUENTES_ESCANEO, NOMBRES_FUENTE } from "./fuentes";
 
 export type EstadoFuenteResultado = "consultada" | "sin resultados" | "falló" | "no seleccionada";
 /** Una línea por fuente; `detalle` une los motivos distintos de su fallo, si lo hubo. */
-export type FuenteResultado = { fuente: string; estado: EstadoFuenteResultado; detalle?: string };
+export type FuenteResultado = { fuente: string; estado: EstadoFuenteResultado; obras?: number; detalle?: string };
 
 /** Motivo legible de un error guardado de una fuente; nunca repite el texto técnico. */
 function motivo(error: string): string {
@@ -28,7 +28,8 @@ export function presentarResultadoEscaneo(estado: string, datos: unknown) {
   const fuentes: FuenteResultado[] = (resumen.consultasFuentes?.length ? FUENTES_ESCANEO : []).map(fuente => {
     const consultas = resumen.consultasFuentes!.filter(c => c.fuente === fuente);
     const estado: EstadoFuenteResultado = consultas.every(c => c.estado === "NO_SELECCIONADA") ? "no seleccionada" : consultas.some(c => c.estado === "INCIDENCIA") ? "falló" : consultas.every(c => c.estado === "SIN_RESULTADOS" || c.estado === "NO_SELECCIONADA") ? "sin resultados" : "consultada";
-    return { fuente: NOMBRES_FUENTE[fuente], estado };
+    const obras = consultas.reduce((suma, c) => suma + c.cantidad, 0);
+    return { fuente: NOMBRES_FUENTE[fuente], estado, ...(obras ? { obras } : {}) };
   });
   const conIncidencias = estado === "FALLIDO" || resumen.errores.length > 0;
   const parcial = conIncidencias && resumen.publicacionesGuardadas > 0;

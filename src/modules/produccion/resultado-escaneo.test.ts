@@ -51,7 +51,7 @@ describe("Presentación segura del resultado del escaneo", () => {
       { fuente: "ORCID", estado: "sin resultados" },
       { fuente: "OpenAlex", estado: "no seleccionada" },
       { fuente: "Scopus", estado: "falló", detalle: "falta configurar la clave de acceso en el servidor." },
-      { fuente: "Crossref", estado: "consultada" },
+      { fuente: "Crossref", estado: "consultada", obras: 3 },
       { fuente: "Google Scholar", estado: "no seleccionada" },
     ]);
     expect(resultado?.incidencias).toEqual([]);
