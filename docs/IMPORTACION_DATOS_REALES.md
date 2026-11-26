@@ -208,3 +208,45 @@ Código en `scripts/importar-profesores.ts` y `scripts/lib/cargar-profesores.ts`
 - Quitar los datos demo cuando ya no hagan falta: `npm run db:demo:limpiar` (no toca los reales). Ver [`DATOS_DEMO.md`](DATOS_DEMO.md).
 - Los cortes del escaneo y las autorías generadas sobre profesores reales **no** se borran con la limpieza de demo: viven en los profesores reales.
 - Una carga más grande o periódica desde el panel de administración sería una función nueva (issue propio). Para esta carga única se prefirió el script porque los datos requieren decisiones caso por caso.
+
+## Completar los pendientes con los listados 2027 (F3)
+
+Plan en [`PLAN_IMPORTACION_DATOS_REALES_2027.md`](PLAN_IMPORTACION_DATOS_REALES_2027.md) y decisiones D-278 a D-282 en [`DECISIONES.md`](DECISIONES.md). Completa a los profesores `PEND` ya cargados con el paquete de datos 2027 (`datos-reales/pgpc-2027/`, ignorado por git).
+
+```bash
+npm run importar:completar:simular                              # calcula el plan; no escribe en la base
+npm run importar:completar:aplicar -- --confirmo                # una persona; en una sola transacción, con bitácora
+npm run importar:completar:revertir -- <bitácora> --confirmo    # deshace lo que conserva el valor que puso
+```
+
+- **Solo llena campos con marcador:** código `PEND…`, correo `@pendiente.invalid`, género o contratación `PENDIENTE`, y grado, departamento o CVU vacíos. Lo que alguien ya editó no se toca.
+- **Cruce por nombre:** nombre normalizado exacto y, si no hay, las mismas palabras sin importar el orden. Con 0 o más de 1 coincidencia, o si dos personas cruzan con el mismo registro, no se toca a nadie.
+- **Género:** `H→M` y `M→F` (en el Excel `M` es mujer; en el repo `M` es Masculino). Contratación: investigador y docente → tiempo completo; asignatura → asignatura; Técnico Académico, Convenio SECIHTI y otros quedan `PENDIENTE`.
+- **Departamento** por nomenclatura (`CCI→DCCI`, `CNE→DCNE`, `CSH→DCSH`, `CEA→DCEA`, `CS→DCS`, `CC→DCCOM`) y **grado** (`DR.`/`DRA.` → `DR`; `MTRO.`/`MTRA.`/`M.C.` → `MTRO`).
+- **No toca** el estatus laboral, el goce de sueldo, ORCID, Scopus ni Scholar. Solo usa el correo institucional (no los alternos).
+- **Si un código, correo o CVU ya es de otra persona** (o viene repetido en el paquete), ese campo no se escribe, se anota como conflicto y el resto de la persona sí se completa. Cada campo pasa por las mismas reglas del formulario de Profesores.
+- Cada actualización solo corre si la persona sigue con los valores leídos; si alguien la editó mientras tanto, se deshace toda la transacción.
+- Imprime en la terminal solo conteos y la base a la que se conecta (`127.0.0.1:54322` es el ensayo local). El detalle con nombres queda en `datos-reales/plan-completar.md` y la bitácora en `datos-reales/bitacoras/completar-<fecha>.json`.
+
+Código en `scripts/completar-profesores.ts` y `scripts/lib/completar-profesores.ts`; la parte pura está probada en `scripts/lib/completar-profesores.test.ts` con datos ficticios. **`aplicar` y `revertir` no tienen prueba automática** (escriben en la base compartida): se comprueban con `simular` antes y después.
+
+### Simulación del 2026-11-26 (base compartida, solo lectura)
+
+| Concepto | Cantidad |
+|---|---|
+| Profesores con código `PEND` | 122 |
+| A actualizar | 121 |
+| Sin nada que completar | 1 |
+| Conflictos | 0 |
+
+| Campo que se completaría | Cantidad |
+|---|---|
+| código | 112 |
+| correo | 121 |
+| género | 114 |
+| tipo de contratación | 111 |
+| grado | 114 |
+| departamento | 17 |
+| CVU | 111 |
+
+Aún **no se ha aplicado** en la base compartida ni se ha hecho el ensayo local (aplazado). Antes de aplicar: respaldo fresco, aviso en el chat del equipo y una persona que ejecute `aplicar`.
