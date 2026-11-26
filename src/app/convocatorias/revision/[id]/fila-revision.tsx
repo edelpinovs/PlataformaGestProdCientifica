@@ -79,7 +79,7 @@ function Quitar({ cargaId, f }: { cargaId: number; f: FilaVista }) {
         aria-label={`Quitar la asignación del renglón ${f.numero}`}>
         {quitando ? "Quitando…" : "Quitar"}
       </button>
-      {estado.error && <span className="mt-2 block text-left whitespace-normal"><Aviso tipo="error">{estado.error}</Aviso></span>}
+      {estado.error && <div className="mt-2 text-left whitespace-normal"><Aviso tipo="error">{estado.error}</Aviso></div>}
     </form>
   );
 }

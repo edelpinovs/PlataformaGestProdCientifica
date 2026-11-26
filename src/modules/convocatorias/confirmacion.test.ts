@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { MENSAJE_PRODEP_CONTRATACION_PENDIENTE, MENSAJE_PRODEP_REQUIERE_TIEMPO_COMPLETO } from "@/modules/reconocimientos/prodep";
-import { planearConfirmacion, vigenciaSnii, type EntradaConfirmacion, type RenglonConfirmacion } from "./confirmacion";
+import { planearConfirmacion, VIGENCIA_SNII_CONFIRMADA, vigenciaSnii, type EntradaConfirmacion, type RenglonConfirmacion } from "./confirmacion";
 
 // RF-019: qué crea en M3 la confirmación de una carga. Personas y fechas inventadas.
 const renglon = (id: number, datos: Partial<RenglonConfirmacion> = {}): RenglonConfirmacion => ({
@@ -12,6 +12,8 @@ const snii = (datos: Partial<EntradaConfirmacion> = {}): EntradaConfirmacion => 
 });
 const prodep = (datos: Partial<EntradaConfirmacion> = {}) => snii({ programa: "PRODEP", ...datos });
 const motivos = (plan: ReturnType<typeof planearConfirmacion>) => plan.omitidos.map((o) => o.motivo);
+// Las reglas de SNII se prueban como quedarán cuando la Coordinación confirme D-292.
+const planearConVigencia = (e: EntradaConfirmacion) => planearConfirmacion(e, { vigenciaSniiConfirmada: true });
 
 describe("vigenciaSnii (D-224, opción a)", () => {
   it("empieza el 1 de enero del año siguiente y termina el 31 de diciembre: 4 años Candidato, 5 los niveles", () => {
@@ -26,8 +28,17 @@ describe("vigenciaSnii (D-224, opción a)", () => {
 });
 
 describe("planearConfirmacion: SNII (RF-019)", () => {
-  it("sin periodo anterior es nuevo ingreso; con uno, renovación", () => {
+  it("mientras D-292 no esté confirmada, no inventa la vigencia: omite el SNII que el listado trae sin ella", () => {
+    expect(VIGENCIA_SNII_CONFIRMADA).toBe(false);
     const plan = planearConfirmacion(snii({
+      renglones: [renglon(1), renglon(2, { vigenciaInicio: "2027-01-01", vigenciaFin: "2031-12-31" })],
+    }));
+    expect(plan.snii.map((s) => s.renglonId)).toEqual([2]);
+    expect(motivos(plan)).toEqual(["El listado no trae la vigencia y falta confirmar la regla de la Coordinación (D-292)."]);
+  });
+
+  it("sin periodo anterior es nuevo ingreso; con uno, renovación", () => {
+    const plan = planearConVigencia(snii({
       renglones: [renglon(1, { nivel: "CANDIDATO" }), renglon(2, { nivel: "NIVEL_2" })],
       historialSnii: [{ id: 1, profesorId: 20, resultado: "APROBADO", inicio: "2022-01-01", fin: "2026-12-31" }],
     }));
@@ -40,12 +51,12 @@ describe("planearConfirmacion: SNII (RF-019)", () => {
   });
 
   it("usa la vigencia del archivo cuando la trae", () => {
-    const plan = planearConfirmacion(snii({ renglones: [renglon(1, { vigenciaInicio: "2027-01-01", vigenciaFin: "2029-12-31" })] }));
+    const plan = planearConVigencia(snii({ renglones: [renglon(1, { vigenciaInicio: "2027-01-01", vigenciaFin: "2029-12-31" })] }));
     expect(plan.snii[0]).toMatchObject({ inicio: "2027-01-01", fin: "2029-12-31" });
   });
 
   it("un periodo anterior no aprobado no cuenta para la renovación", () => {
-    const plan = planearConfirmacion(snii({
+    const plan = planearConVigencia(snii({
       renglones: [renglon(1)],
       historialSnii: [{ id: 1, profesorId: 10, resultado: "NO_APROBADO", inicio: "2022-01-01", fin: "2025-12-31" }],
     }));
@@ -53,7 +64,7 @@ describe("planearConfirmacion: SNII (RF-019)", () => {
   });
 
   it("omite al Candidato que renovaría en el mismo nivel (D-225)", () => {
-    const plan = planearConfirmacion(snii({
+    const plan = planearConVigencia(snii({
       renglones: [renglon(1, { nivel: "CANDIDATO" })],
       historialSnii: [{ id: 1, profesorId: 10, resultado: "APROBADO", inicio: "2023-01-01", fin: "2026-12-31" }],
     }));
@@ -62,7 +73,7 @@ describe("planearConfirmacion: SNII (RF-019)", () => {
   });
 
   it("omite el periodo que se traslapa con uno registrado (D-103)", () => {
-    const plan = planearConfirmacion(snii({
+    const plan = planearConVigencia(snii({
       renglones: [renglon(1)],
       historialSnii: [{ id: 1, profesorId: 10, resultado: "APROBADO", inicio: "2025-01-01", fin: "2028-12-31" }],
     }));
@@ -71,7 +82,7 @@ describe("planearConfirmacion: SNII (RF-019)", () => {
   });
 
   it("omite el renglón sin nivel, el Emérito y el profesor repetido", () => {
-    const plan = planearConfirmacion(snii({
+    const plan = planearConVigencia(snii({
       renglones: [renglon(1, { nivel: null }), renglon(2, { nivel: "EMERITO" }), renglon(3), renglon(4, { profesorId: 30 })],
     }));
     expect(plan.snii.map((s) => s.renglonId)).toEqual([3]);
@@ -83,16 +94,16 @@ describe("planearConfirmacion: SNII (RF-019)", () => {
   });
 
   it("no puede confirmarse con renglones dudosos sin resolver; los sin coincidencia no cuentan", () => {
-    const plan = planearConfirmacion(snii({
+    const plan = planearConVigencia(snii({
       renglones: [renglon(1), renglon(2, { profesorId: null, criterio: "AMBIGUO" }), renglon(3, { profesorId: null, criterio: "SIN_COINCIDENCIA" })],
     }));
     expect(plan.bloqueo).toBe("Resuelve el renglón dudoso antes de confirmar: asígnale su profesor.");
-    expect(planearConfirmacion(snii({ renglones: [renglon(3, { profesorId: null, criterio: "SIN_COINCIDENCIA" })] })))
+    expect(planearConVigencia(snii({ renglones: [renglon(3, { profesorId: null, criterio: "SIN_COINCIDENCIA" })] })))
       .toEqual({ bloqueo: null, snii: [], prodep: [], omitidos: [] });
   });
 
   it("el aviso de dudosos dice cuántos son", () => {
-    const plan = planearConfirmacion(snii({
+    const plan = planearConVigencia(snii({
       renglones: [renglon(1, { profesorId: null, criterio: "AMBIGUO" }), renglon(2, { profesorId: null, criterio: "AMBIGUO" })],
     }));
     expect(plan.bloqueo).toBe("Resuelve los 2 renglones dudosos antes de confirmar: asígnales su profesor.");

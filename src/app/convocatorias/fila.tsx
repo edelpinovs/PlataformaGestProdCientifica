@@ -126,9 +126,9 @@ function VolverALeer({ carga }: { carga: Carga }) {
         {leyendo ? "Leyendo…" : "Volver a leer"}
       </button>
       {estado.error && (
-        <span className="mt-2 block text-left whitespace-normal">
+        <div className="mt-2 text-left whitespace-normal">
           <Aviso tipo="error">{estado.error}</Aviso>
-        </span>
+        </div>
       )}
     </form>
   );
