@@ -249,7 +249,30 @@ Código en `scripts/completar-profesores.ts` y `scripts/lib/completar-profesores
 | departamento | 17 |
 | CVU | 111 |
 
-Aún **no se ha aplicado** en la base compartida ni se ha hecho el ensayo local (aplazado). Antes de aplicar: respaldo fresco, aviso en el chat del equipo y una persona que ejecute `aplicar`.
+**Aplicada el 2026-11-26** en la base compartida, con respaldo previo, por una persona (ver el resultado abajo). El ensayo local no se hizo (aplazado).
+
+### Resultado de la aplicación de F3 (2026-11-26)
+
+La bitácora registra **121 personas y 700 cambios**; cada campo coincide con la simulación:
+
+| Campo completado | Cantidad |
+|---|---|
+| código | 112 |
+| correo | 121 |
+| género | 114 |
+| tipo de contratación | 111 |
+| grado | 114 |
+| departamento | 17 |
+| CVU | 111 |
+
+**Cómo se verificó:** una `simular` posterior da 0 a actualizar y 0 conflictos; `importar:contar` baja de 122 a **1** persona con marca de pendiente (la que el paquete no trae con correo); `prisma migrate status` sigue «up to date». **No se vieron las pantallas en el navegador.**
+
+**Lo que sigue pendiente** (se corrige con Editar en Profesores, no con SQL):
+- 10 personas conservan su código `PEND` (el paquete no les trae código UdeG real).
+- Género sin completar: 8 · tipo de contratación sin completar: 11 · sin departamento: 1.
+- Quien conserva la contratación pendiente no cuenta como tiempo completo en PRODEP, Cuerpos Académicos ni en las cifras de tiempo completo de los reportes.
+
+Para deshacer lo que nadie ha editado: `npm run importar:completar:revertir -- <bitácora> --confirmo` (la bitácora está en `datos-reales/bitacoras/`, ignorada por git).
 
 ## Alta de los profesores que faltan (F4)
 
@@ -286,4 +309,19 @@ Código en `scripts/altas-profesores.ts` y `scripts/lib/altas-profesores.ts`; la
 | Campos opcionales ajustados | 0 |
 | Profesores `PEND` que siguen en la base | 122 |
 
-Aún **no se ha aplicado** en la base compartida ni se ha hecho el ensayo local (aplazado).
+**Aplicada el 2026-11-26** en la base compartida, con respaldo previo y después de F3, por una persona. El ensayo local no se hizo (aplazado).
+
+### Resultado de la aplicación de F4 (2026-11-26)
+
+| Concepto | Cantidad |
+|---|---|
+| Profesores creados | **10** (6 de tiempo completo y 4 de asignatura) |
+| Con código UdeG real y sin marcas de pendiente | 10 |
+| Ya existen en la base (antes 125) | 135 |
+| Omitidos (al informe del cliente) | 46: 38 sin código UdeG real y 8 sin correo |
+
+**Cómo se verificó:** una `simular` posterior da 0 a dar de alta; los existentes pasan de 125 a 135; la bitácora trae 10 personas con 10 ids distintos y código real; `prisma migrate status` sigue «up to date». **No se vieron las pantallas en el navegador.**
+
+**Para el informe al cliente** (se entrega por otro medio, nunca por el repositorio): las 38 personas sin código UdeG, las 8 sin correo institucional y las 10 que conservan un código `PEND`. Las 8 que solo carecen de correo se podrían dar de alta si lo entrega.
+
+Para deshacer lo que nadie ha tocado ni usado: `npm run importar:altas:revertir -- <bitácora> --confirmo`.
