@@ -56,16 +56,24 @@ export interface Paquete2027 {
   profesores: unknown[];
 }
 
-export function leerPaquete2027(carpetaArgumento?: string): Paquete2027 {
+/** Lee `data/json/<nombre>.json` del paquete 2027 (una lista de registros), con la misma comprobación de carpeta ignorada. */
+export function leerTablaPaquete2027(nombre: string, carpetaArgumento?: string): { carpeta: string; registros: unknown[] } {
+  // El nombre se concatena a una ruta: solo letras minúsculas y guiones bajos.
+  if (!/^[a-z_]+$/.test(nombre)) throw new Error(`Nombre de tabla no válido: «${nombre}».`);
   const carpeta = path.resolve(carpetaArgumento ?? path.join("datos-reales", "pgpc-2027"));
   if (!existsSync(carpeta)) {
     throw new Error(`No existe la carpeta ${carpeta}. Descomprime el paquete en «datos-reales/pgpc-2027/».`);
   }
   exigirCarpetaIgnorada(carpeta);
 
-  const archivo = path.join(carpeta, "data", "json", "profesores.json");
+  const archivo = path.join(carpeta, "data", "json", `${nombre}.json`);
   if (!existsSync(archivo)) throw new Error(`Falta ${archivo} en el paquete.`);
   const datos: unknown = JSON.parse(readFileSync(archivo, "utf8"));
-  if (!Array.isArray(datos)) throw new Error("profesores.json debe ser una lista de registros.");
-  return { carpeta, profesores: datos };
+  if (!Array.isArray(datos)) throw new Error(`${nombre}.json debe ser una lista de registros.`);
+  return { carpeta, registros: datos };
+}
+
+export function leerPaquete2027(carpetaArgumento?: string): Paquete2027 {
+  const { carpeta, registros } = leerTablaPaquete2027("profesores", carpetaArgumento);
+  return { carpeta, profesores: registros };
 }

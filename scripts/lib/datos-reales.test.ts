@@ -2,7 +2,23 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { leerPaquete2027 } from "./datos-reales";
+import { leerPaquete2027, leerTablaPaquete2027 } from "./datos-reales";
+
+describe("leerTablaPaquete2027", () => {
+  it("rechaza un nombre de tabla que no sea solo letras minúsculas y guiones bajos", () => {
+    expect(() => leerTablaPaquete2027("../.env")).toThrow(/Nombre de tabla no válido/);
+    expect(() => leerTablaPaquete2027("a/b")).toThrow(/Nombre de tabla no válido/);
+  });
+
+  it("se niega a leer de una carpeta que git no ignora", () => {
+    const carpeta = mkdtempSync(path.join(tmpdir(), "pgpc-tabla-"));
+    try {
+      expect(() => leerTablaPaquete2027("reconocimientos_snii", carpeta)).toThrow(/NO está ignorada por git/);
+    } finally {
+      rmSync(carpeta, { recursive: true, force: true });
+    }
+  });
+});
 
 describe("leerPaquete2027", () => {
   it("avisa en español cuando la carpeta no existe", () => {
