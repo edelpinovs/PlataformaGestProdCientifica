@@ -47,7 +47,7 @@ const dadoDeBaja = {
   nombres: "Nora",
   apellidos: "Gil",
   codigo: "TC05",
-  estatusLaboral: "BAJA_TEMPORAL",
+  estatusLaboral: "LICENCIA",
 };
 
 const sinProdep3 = {
@@ -137,6 +137,13 @@ describe("revisarAltaIntegrante (RF-013)", () => {
       campo: "profesorId",
       mensaje: "Ruiz Marta (AS01) no es de tiempo completo. Elige a otra persona.",
     });
+  });
+
+  it("explica que falta registrar la contratación cuando está pendiente (D-261)", () => {
+    const pendiente = { ...asignatura, tipoContratacion: "PENDIENTE" as const };
+    const mensaje = "Ruiz Marta (AS01) tiene pendiente el tipo de contratación. Regístralo en Profesores o elige a otra persona.";
+    expect(revisarAltaIntegrante(pendiente, [])).toEqual({ campo: "profesorId", mensaje });
+    expect(revisarCambioIntegrante(7, pendiente, [])).toEqual({ campo: "profesorId", mensaje });
   });
 
   it("rechaza a un profesor de tiempo completo que no está activo", () => {

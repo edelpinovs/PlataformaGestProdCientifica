@@ -1,6 +1,8 @@
 // Orquestador del motor de escaneo de producción científica (RF-020, RF-021, RF-022, RNF-001).
 // Diseñado como lógica de dominio pura que delega la persistencia al RepositorioProduccion.
 
+import { aniosDelRango, dentroDelRango, rangoDeAnio, type RangoEscaneo } from "./rango-escaneo";
+import { anioDesdeContinuidad } from "./continuidad";
 import { consultarOpenAlex } from "./conectores/openalex";
 import { consultarOrcid } from "./conectores/orcid";
 import { consultarCrossref } from "./conectores/crossref-busqueda";
@@ -60,10 +62,14 @@ export type RepositorioProduccion = {
 
 export type OpcionesEscaneo = {
   profesorId?: number;
+  /** Año único de los trabajos anteriores al #266; equivale al año completo. */
   anio?: number;
+  /** Rango con fechas completas (#266). Consulta los años que abarca y guarda solo las obras dentro. */
+  rango?: RangoEscaneo;
   fuentes?: FuenteEscaneo[];
+  informarFuente?: (fuente: FuenteEscaneo | null) => Promise<void>;
   jobId?: number;
-  /** Enriquece autores solo si Crossref está seleccionado. Se puede desactivar para pruebas o consultas concretas. */
+  /** Completa autores por DOI con Crossref (#188). Si no se indica, lo hace solo cuando Crossref es fuente (trabajos anteriores). */
   enriquecerAutores?: boolean;
   /** Límite de profesores a procesar en una sola ejecución para cumplir con el timeout de Vercel (Hallazgo 2a) */
   limiteProfesores?: number;
@@ -105,6 +111,14 @@ async function consultarPeriodo(
     publicaciones.push(...resultado.publicaciones);
   }
   return { publicaciones };
+}
+
+/**
+ * Avisa la fuente en curso (#251). Es un dato solo informativo: si la escritura
+ * falla, el escaneo sigue sin registrar incidencia ni perder publicaciones.
+ */
+async function informarFuenteSinBloquear(opciones: OpcionesEscaneo | undefined, fuente: FuenteEscaneo | null) {
+  try { await opciones?.informarFuente?.(fuente); } catch { /* indicador de mejor esfuerzo */ }
 }
 
 /**
@@ -160,6 +174,8 @@ export async function ejecutarEscaneo(
   const todasCandidatas: PublicacionCandidata[] = [];
   const cortesPendientes: { profesorId: number; fuente: FuentePublicacion }[] = [];
   const inicioEscaneo = new Date();
+  const rango = opciones?.rango ?? (opciones?.anio ? rangoDeAnio(opciones.anio) : undefined);
+  const anios = rango ? aniosDelRango(rango) : undefined;
   const profesoresConFalloPersistencia = new Set<number>();
 
   // Se registra también lo no seleccionado, sin consultar el proveedor ni su corte.
@@ -177,18 +193,21 @@ export async function ejecutarEscaneo(
         let res: { publicaciones: PublicacionCandidata[]; error?: string };
         if (sinIdentificador) res = { publicaciones: [], error: "FALTA_IDENTIFICADOR" };
         else {
-          const corte = !opciones?.anio ? await repo.obtenerUltimoCorte?.(prof.id,fuente) : null;
-          const desde = opciones?.anio ?? (corte ? Math.max(1900,corte.getUTCFullYear()-1) : fuente === "SCOPUS" ? inicioEscaneo.getUTCFullYear() : undefined);
-          if (fuente === "CROSSREF") res = await (conectores.consultarCrossref ?? consultarCrossref)(prof,desde,opciones?.anio ?? inicioEscaneo.getUTCFullYear());
-          else if (fuente === "GOOGLE_SCHOLAR") res = await (conectores.consultarGoogleScholar ?? consultarGoogleScholar)(prof,desde,opciones?.anio ?? inicioEscaneo.getUTCFullYear());
+          await informarFuenteSinBloquear(opciones, fuente);
+          const corte = !rango ? await repo.obtenerUltimoCorte?.(prof.id,fuente) : null;
+          const desde = anios?.desde ?? anioDesdeContinuidad(fuente, corte, inicioEscaneo);
+          if (fuente === "CROSSREF") res = await (conectores.consultarCrossref ?? consultarCrossref)(prof,desde,anios?.hasta ?? inicioEscaneo.getUTCFullYear());
+          else if (fuente === "GOOGLE_SCHOLAR") res = await (conectores.consultarGoogleScholar ?? consultarGoogleScholar)(prof,desde,anios?.hasta ?? inicioEscaneo.getUTCFullYear());
           else if (fuente === "SCOPUS") {
             const clave = await repo.obtenerClaveScopus?.();
-            res = await consultarPeriodo((profesor,anio) => conectores.consultarScopus(profesor,anio,clave),prof,desde!,opciones?.anio,inicioEscaneo);
+            res = await consultarPeriodo((profesor,anio) => conectores.consultarScopus(profesor,anio,clave),prof,desde!,anios?.hasta,inicioEscaneo);
           } else {
             const consultar = fuente === "ORCID" ? conectores.consultarOrcid : conectores.consultarOpenAlex;
-            res = desde === undefined ? await consultar(prof) : await consultarPeriodo(consultar,prof,desde,opciones?.anio,inicioEscaneo);
+            res = desde === undefined ? await consultar(prof) : await consultarPeriodo(consultar,prof,desde,anios?.hasta,inicioEscaneo);
           }
         }
+        // Las fuentes responden por año: con un rango solo se guardan las obras con fecha dentro (#266).
+        if (rango && !res.error) res = { ...res, publicaciones: res.publicaciones.filter(publicacion => dentroDelRango(publicacion, rango)) };
         if (res.error) {
           huboErrorEnProfesor = true;
           resumen.errores.push(`${NOMBRES_FUENTE[fuente]} (Prof. ${prof.id}): ${res.error}`);
@@ -213,14 +232,17 @@ export async function ejecutarEscaneo(
 
   // 3. Enriquecer autores con Crossref para publicaciones con DOI y autores incompletos (RF-020)
   //    Esto replica la lógica de autores_por_doi() en scripts/reporte_unificado.py
-  if (fuentesPermitidas.includes("CROSSREF") && opciones?.enriquecerAutores !== false) {
+  if (opciones?.enriquecerAutores ?? fuentesPermitidas.includes("CROSSREF")) {
     try {
+      await informarFuenteSinBloquear(opciones, "CROSSREF");
       await enriquecerLoteConCrossref(todasCandidatas);
     } catch {
       // Si Crossref falla no bloqueamos el escaneo: continuamos con los autores disponibles
       resumen.errores.push("Crossref: ENRIQUECIMIENTO_FALLIDO");
     }
   }
+
+  await informarFuenteSinBloquear(opciones, null);
 
   // 4. Deduplicar en memoria las publicaciones extraídas (RF-021, RF-022)
   const consolidadas = deduplicarLote(todasCandidatas);
@@ -257,7 +279,7 @@ export async function ejecutarEscaneo(
 
   // Un escaneo histórico explícito no adelanta el corte incremental. Se guarda el
   // inicio, no el final, para volver a consultar lo indexado durante la ejecución.
-  if (!opciones?.anio && repo.registrarCorte) {
+  if (!rango && repo.registrarCorte) {
     for (const corte of cortesPendientes) {
       if (profesoresConFalloPersistencia.has(corte.profesorId)) continue;
       try {

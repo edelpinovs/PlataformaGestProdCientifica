@@ -3,9 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { redirect, RedirectType } from "next/navigation";
 import type { EstadoFila } from "@/components/fila-editable";
+import type { EstadoAlta } from "@/components/modal-alta";
 import { Prisma } from "@/generated/prisma/client";
 import { requireModulo } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
+import { revalidarProfesorSeleccionado } from "@/lib/selectores/profesor";
 import { idDeFormulario } from "@/modules/catalogos/comun";
 import { retornoValidacion } from "@/modules/validacion/listados";
 import {
@@ -22,35 +24,61 @@ import {
   revisarPublicacionManual,
 } from "@/modules/validacion/manual";
 
-export type EstadoManual = {
-  error?: string;
-  campo?: string;
-  registrado?: string;
-  estadoAutoria?: "VALIDADA" | "PENDIENTE";
-  valores?: Record<string, string>;
-};
+export type EstadoManual = EstadoAlta;
 
 const NO_EXISTE = "Esa publicación ya no existe en el sistema. Recarga la página.";
 
-// RF-023 · CU-012: Registro manual de publicaciones no detectadas por el escaneo automático.
+// RF-023 · CU-012 (D-214, D-215): Registro manual de publicaciones no detectadas por el escaneo automático.
 export async function registrarPublicacionManual(
-  _: EstadoManual,
+  _: EstadoAlta,
   formData: FormData,
-): Promise<EstadoManual> {
+): Promise<EstadoAlta> {
   const perfil = await requireModulo("validacion");
 
-  let profesorIdFinal: number | undefined;
+  let profesorIdFinal: number;
+  let profesor: { id: number; nombres: string; apellidos: string };
 
   if (perfil.rol === "DOCENTE") {
     if (!puedeGestionarAutoria(perfil, perfil.profesorId ?? 0)) {
       return {
         error: "Tu cuenta de usuario no está asociada a ningún perfil docente en el sistema.",
+        campo: "profesorId",
       };
     }
-    profesorIdFinal = perfil.profesorId!;
+    const profesorIdEnviado = formData.get("profesorId");
+    if (profesorIdEnviado && Number(profesorIdEnviado) !== perfil.profesorId) {
+      return {
+        error: "Como docente solo puedes registrar publicaciones a tu propio nombre.",
+        campo: "profesorId",
+      };
+    }
+    const profesorDocente = await prisma.profesor.findUnique({
+      where: { id: perfil.profesorId! },
+      select: { id: true, nombres: true, apellidos: true },
+    });
+    if (!profesorDocente) {
+      return {
+        error: "Tu perfil docente ya no está disponible en el sistema.",
+        campo: "profesorId",
+      };
+    }
+    profesor = profesorDocente;
+    profesorIdFinal = profesorDocente.id;
   } else {
-    const rawId = formData.get("profesorId");
-    profesorIdFinal = rawId ? Number(rawId) : (perfil.profesorId ?? undefined);
+    const elegido = await revalidarProfesorSeleccionado(formData.get("profesorId"), (id) =>
+      prisma.profesor.findUnique({
+        where: { id },
+        select: { id: true, nombres: true, apellidos: true, codigo: true },
+      }),
+    );
+    if (!elegido.profesor) {
+      return {
+        error: elegido.error,
+        campo: "profesorId",
+      };
+    }
+    profesor = elegido.profesor;
+    profesorIdFinal = elegido.profesor.id;
   }
 
   const valores: Record<string, string> = {
@@ -64,7 +92,7 @@ export async function registrarPublicacionManual(
     volumen: String(formData.get("volumen") ?? ""),
     paginas: String(formData.get("paginas") ?? ""),
     evidenciaUrl: String(formData.get("evidenciaUrl") ?? ""),
-    profesorId: profesorIdFinal ? String(profesorIdFinal) : "",
+    profesorId: String(profesorIdFinal),
   };
 
   const datos = publicacionManualEsquema.safeParse({
@@ -75,20 +103,6 @@ export async function registrarPublicacionManual(
   if (!datos.success) {
     const issue = datos.error.issues[0];
     return { error: issue.message, campo: String(issue.path[0]), valores };
-  }
-
-  // Consulta puntual del profesor seleccionado
-  const profesor = await prisma.profesor.findUnique({
-    where: { id: datos.data.profesorId },
-    select: { id: true, nombres: true, apellidos: true },
-  });
-
-  if (!profesor) {
-    return {
-      error: "El profesor seleccionado no existe en el directorio.",
-      campo: "profesorId",
-      valores,
-    };
   }
 
   // Consulta puntual solo por DOI o por título normalizado del profesor (evita cargar toda la tabla)
@@ -155,13 +169,18 @@ export async function registrarPublicacionManual(
     });
   } catch (e) {
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
-      return { error: "Ya existe una publicación con el mismo identificador DOI.", valores };
+      return { error: "Ya existe una publicación con el mismo identificador DOI.", campo: "doi", valores };
     }
     throw e;
   }
 
   revalidatePath("/validacion");
-  return { registrado: datos.data.titulo, estadoAutoria: estadoInicial };
+  return {
+    exito:
+      estadoInicial === "PENDIENTE"
+        ? `Se registró «${datos.data.titulo}» y se envió a la bandeja del profesor para su confirmación.`
+        : `Se registró «${datos.data.titulo}» y se incorporó al conteo oficial.`,
+  };
 }
 
 // Edición de una publicación manual (regla #59 de AGENTS.md)

@@ -1,5 +1,6 @@
 import type { Rol } from "@/lib/auth/roles";
 import { prisma } from "@/lib/prisma";
+import { FILTRO_CUENTA_EN_PLANILLA } from "@/modules/profesores/profesores";
 import { calcularSemaforo, type Semaforo } from "@/modules/reportes/semaforo";
 
 export type FilaVigencia = {
@@ -98,7 +99,7 @@ export async function cargarInicio(rol: Rol): Promise<DatosInicio> {
     proximosSnii,
     proximosProdep,
   ] = await Promise.all([
-    prisma.profesor.count(),
+    prisma.profesor.count({ where: FILTRO_CUENTA_EN_PLANILLA }),
     prisma.reconocimientoSnii.count({ where: vigente }),
     prisma.reconocimientoProdep.count({ where: vigente }),
     prisma.cuerpoAcademico.count(),

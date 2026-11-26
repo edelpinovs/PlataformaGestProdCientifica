@@ -26,6 +26,11 @@ model Perfil {
   rol        Rol            @default(DOCENTE)
   profesorId Int?           @unique
   profesor   Profesor?      @relation(fields: [profesorId], references: [id])
+  // Panel de administración (#241): un perfil desactivado conserva sus registros pero no entra.
+  activo     Boolean        @default(true)
+  // Tema de la interfaz que eligió la persona («claro» u «oscuro»; #283). Vacío = nunca eligió.
+  // Lo valida src/modules/cuenta/tema.ts antes de guardar.
+  tema       String?
   creadoEn   DateTime       @default(now())
   accesos    AccesoModulo[]
 }
@@ -41,6 +46,26 @@ model AccesoModulo {
   ultimoAcceso DateTime @default(now())
 
   @@unique([perfilId, modulo])
+}
+
+// Bitácora de auditoría del panel de administración (issue 242): quién hizo qué y cuándo.
+// Es un registro histórico: no se edita ni se elimina. Sin relación con Perfil a propósito, para que
+// desactivar o cambiar un perfil no altere lo ya registrado; el correo se copia al momento del hecho.
+// `resumen` es un texto legible en español. Lleva el correo de la persona afectada (igual que `actorCorreo`)
+// y, de un profesor, solo su código; nunca teléfonos, nombres de profesores ni secretos.
+model Auditoria {
+  id          Int      @id @default(autoincrement())
+  creadoEn    DateTime @default(now())
+  actorId     String?  @db.Uuid
+  actorCorreo String
+  modulo      String
+  accion      String
+  entidad     String
+  entidadId   String
+  resumen     String
+
+  @@index([creadoEn])
+  @@index([modulo, accion])
 }
 
 // ─── M1 Catálogos (RF-001 a RF-003) · Integrante 1 ──────────────────────────
@@ -82,22 +107,24 @@ model ProgramaEducativo {
 
 // ─── M2 Profesores (RF-004 a RF-006) · Integrante 2 ─────────────────────────
 
+// PENDIENTE (D-261): dato que el cliente no entregó en la importación de datos reales.
+// Los formularios no permiten elegirlo: solo lo asigna la importación y se corrige al editar.
 enum Genero {
   M
   F
+  PENDIENTE
 }
 
 enum TipoContratacion {
   TIEMPO_COMPLETO
   ASIGNATURA
+  PENDIENTE
 }
 
 enum EstatusLaboral {
   ACTIVO
   LICENCIA
-  BAJA_TEMPORAL
-  BAJA_POSDOCTORAL
-  TRASLADADO
+  ESTANCIA_POSDOCTORAL
 }
 
 model Profesor {
@@ -111,6 +138,8 @@ model Profesor {
   genero                Genero
   tipoContratacion      TipoContratacion
   estatusLaboral        EstatusLaboral              @default(ACTIVO)
+  // Solo aplica en licencia o estancia posdoctoral (D-274). En activo se guarda en falso.
+  goceDeSueldo          Boolean                     @default(false)
   gradoId               Int?
   grado                 GradoCientifico?            @relation(fields: [gradoId], references: [id])
   departamentoId        Int?
@@ -414,6 +443,7 @@ enum EstadoJob {
   EN_PROCESO
   COMPLETADO
   FALLIDO
+  CANCELADO // #279: detenido a petición; conserva lo guardado hasta ese momento
 }
 
 // Secreto institucional cifrado; sin acceso desde la Data API de Supabase.

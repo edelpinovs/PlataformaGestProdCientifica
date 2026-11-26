@@ -15,15 +15,35 @@ const comprobar=(c,m)=>{if(!c)throw Error(m)};
  comprobar(document.querySelector('button[type="submit"]').textContent==="Continuar búsqueda pendiente","Falta continuación explícita");
  comprobar(document.querySelector('input[type="checkbox"]').matches(":disabled"),"Permite alterar el profesor del trabajo pendiente");
  document.querySelector("form").requestSubmit();
+ await esperar(()=>document.querySelector("progress:not([value])"));
+ comprobar(document.querySelector('[role="status"]').textContent==="Iniciando búsqueda…","Falta anunciar el inicio");
  await esperar(()=>window.solicitudes?.length===1);
  comprobar(window.solicitudes[0].jobId==="7","No continúa el trabajo original");
+ await esperar(()=>document.querySelector('[role="status"]').textContent.includes("Consultando ORCID"));
+ comprobar(document.querySelector("progress").value===1 && document.querySelector("progress").max===2,"El avance no coincide con el trabajo");
  await esperar(()=>document.querySelector('button[type="submit"]').textContent==="Buscar novedades");
+ comprobar(window.solicitudes[1].jobId==="7","El avance no se actualizó automáticamente");
+ comprobar(document.querySelector('[role="status"]').textContent.includes("2 de 2"),"No muestra el avance final");
+ comprobar(document.body.textContent.includes("Escaneo con resultados parciales."),"No muestra el resultado parcial");
  comprobar(!document.querySelector('input[type="checkbox"]').matches(":disabled"),"No habilitó una nueva búsqueda al terminar");
  document.querySelector("form").requestSubmit();
- await esperar(()=>window.solicitudes?.length===2);
- comprobar(!window.solicitudes[1].jobId,"La nueva búsqueda usa el trabajo anterior");
- comprobar(window.solicitudes[1].profesorId==="todos","Falta el alcance nuevo");
+ await esperar(()=>window.solicitudes?.length===3);
+ comprobar(!window.solicitudes[2].jobId,"La nueva búsqueda usa el trabajo anterior");
+ comprobar(window.solicitudes[2].profesorId==="todos","Falta el alcance nuevo");
+ await esperar(()=>document.body.textContent.includes("Escaneo finalizado."));
  comprobar(document.documentElement.scrollWidth<=innerWidth,"El formulario desborda el ancho");
- document.getElementById("resultado").textContent="CORRECTO: continuación manual, parámetros conservados y nueva búsqueda independiente";
+ document.getElementById("resultado").textContent="CORRECTO: inicio, fuente actual, progreso automático, resultado parcial y éxito";
 }catch(e){document.getElementById("resultado").textContent="FALLO: "+e.message}})();
-`, "escaneo-manual", [{name:"accion-simulada",setup(b){b.onResolve({filter:/^\.\/actions$/},args=>args.importer.endsWith("formulario-escaneo.tsx")?{path:"accion",namespace:"escaneo"}:undefined);b.onLoad({filter:/.*/,namespace:"escaneo"},()=>({contents:'export async function iniciarEscaneoAction(_,datos){window.solicitudes=(window.solicitudes||[]);window.solicitudes.push(Object.fromEntries(datos));return {jobId:7,pendiente:false,exito:true,mensaje:"Búsqueda ficticia terminada"}}'}));}}]);
+`, "escaneo-manual", [{name:"accion-simulada",setup(b){
+  b.onResolve({filter:/^\.\/actions$/},args=>/(formulario-escaneo|control-busqueda)\.tsx$/.test(args.importer)?{path:"accion",namespace:"escaneo"}:undefined);
+  b.onLoad({filter:/.*/,namespace:"escaneo"},()=>({contents:`
+    export async function cancelarEscaneoAction(){window.cancelada=true;return {mensaje:"Búsqueda cancelada."}}export async function reintentarEscaneoAction(){return {}}export async function iniciarEscaneoAction(_,datos){
+      window.solicitudes=(window.solicitudes||[]);
+      window.solicitudes.push(Object.fromEntries(datos));
+      await new Promise(resolve=>setTimeout(resolve,250));
+      if(window.solicitudes.length===1) return {jobId:7,pendiente:true,avance:1,total:2,fuenteEnCurso:"ORCID"};
+      if(window.solicitudes.length===2) return {jobId:7,avance:2,total:2,resultado:{tipo:"aviso",mensaje:"Escaneo con resultados parciales.",fuentes:[],incidencias:[]}};
+      return {jobId:8,avance:1,total:1,exito:true,resultado:{tipo:"exito",mensaje:"Escaneo finalizado.",fuentes:[],incidencias:[]}};
+    }
+  `}));
+}}]);

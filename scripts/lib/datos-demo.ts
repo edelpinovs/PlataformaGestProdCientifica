@@ -23,7 +23,7 @@ export const GRADOS_BASE = ["Licenciatura", "Maestría", "Doctorado"] as const;
 
 export const CANTIDAD_PROFESORES = 50;
 
-type Estatus = "ACTIVO" | "LICENCIA" | "BAJA_TEMPORAL" | "BAJA_POSDOCTORAL" | "TRASLADADO";
+type Estatus = "ACTIVO" | "LICENCIA" | "ESTANCIA_POSDOCTORAL";
 type Contratacion = "TIEMPO_COMPLETO" | "ASIGNATURA";
 type Nivel = "CANDIDATO" | "NIVEL_1" | "NIVEL_2" | "NIVEL_3" | "EMERITO" | "NO_APROBADO";
 type Resultado = "APROBADO" | "NO_APROBADO" | "EN_RECONSIDERACION";
@@ -43,6 +43,7 @@ export type ProfesorDemo = {
   genero: "M" | "F";
   tipoContratacion: Contratacion;
   estatusLaboral: Estatus;
+  goceDeSueldo: boolean;
   grado: (typeof GRADOS_BASE)[number] | null;
   departamento: (typeof DEPARTAMENTOS_BASE)[number] | null;
   programa: string | null;
@@ -126,9 +127,9 @@ export function dia(hoy: Date, dias: number) {
 const ESTATUS_ESPECIALES: Record<number, Estatus> = {
   12: "LICENCIA",
   37: "LICENCIA",
-  19: "BAJA_TEMPORAL",
-  26: "BAJA_POSDOCTORAL",
-  44: "TRASLADADO",
+  19: "LICENCIA",
+  26: "ESTANCIA_POSDOCTORAL",
+  44: "LICENCIA",
 };
 
 function generarProgramas(): ProgramaDemo[] {
@@ -164,6 +165,7 @@ function generarProfesores(programas: ProgramaDemo[]): ProfesorDemo[] {
       genero: i % 2 === 0 ? "F" : "M",
       tipoContratacion,
       estatusLaboral: ESTATUS_ESPECIALES[i] ?? "ACTIVO",
+      goceDeSueldo: i === 12,
       grado: i === 50 ? null : grados[i % 4],
       departamento,
       programa: departamento && tipoContratacion === "TIEMPO_COMPLETO"

@@ -4,12 +4,17 @@ import { Prisma } from "../../generated/prisma/client";
 import {
   asignacionLaboral,
   buscarDuplicadoProfesor,
+  cuentaEnPlantilla,
   ESTATUS_LABORALES,
   filtroCandidatosDuplicado,
   generarNombreNormalizado,
   mensajeUnicidadPrisma,
   motivoProfesorNoEliminable,
+  opcionesContratacion,
+  opcionesGenero,
   registrarProfesor,
+  TIPOS_CONTRATACION,
+  ETIQUETA_CONTRATACION,
 } from "./profesores";
 
 const prismaFalso = vi.hoisted(() => ({
@@ -228,6 +233,16 @@ describe("asignacionLaboral (RF-006)", () => {
     expect(asignacionLaboral.safeParse({ tipoContratacion: "ASIGNATURA", estatusLaboral: "JUBILADO" }).success).toBe(false);
   });
 
+  it("no permite elegir PENDIENTE: pide un valor real, con mensaje en español (D-261)", () => {
+    const contratacion = asignacionLaboral.safeParse({ tipoContratacion: "PENDIENTE", estatusLaboral: "ACTIVO" });
+    expect(contratacion.success).toBe(false);
+    if (!contratacion.success) expect(contratacion.error.issues[0].message).toBe("Selecciona el tipo de contratación.");
+
+    const genero = registrarProfesor.safeParse({ ...datosValidos, genero: "PENDIENTE" });
+    expect(genero.success).toBe(false);
+    if (!genero.success) expect(genero.error.issues.map((i) => i.message)).toContain("Selecciona un género.");
+  });
+
   it("el alta del profesor conserva la contratación y el estatus elegidos", () => {
     const resultado = registrarProfesor.parse({
       ...datosValidos,
@@ -236,6 +251,46 @@ describe("asignacionLaboral (RF-006)", () => {
     });
     expect(resultado.tipoContratacion).toBe("ASIGNATURA");
     expect(resultado.estatusLaboral).toBe("LICENCIA");
+  });
+});
+
+describe("goce de sueldo (D-274)", () => {
+  it("en licencia o estancia conserva la casilla marcada y en activo la apaga", () => {
+    expect(registrarProfesor.parse({ ...datosValidos, estatusLaboral: "LICENCIA", goceDeSueldo: "si" }).goceDeSueldo).toBe(true);
+    expect(registrarProfesor.parse({ ...datosValidos, estatusLaboral: "ESTANCIA_POSDOCTORAL", goceDeSueldo: "si" }).goceDeSueldo).toBe(true);
+    expect(registrarProfesor.parse({ ...datosValidos, estatusLaboral: "ACTIVO", goceDeSueldo: "si" }).goceDeSueldo).toBe(false);
+    expect(registrarProfesor.parse({ ...datosValidos, estatusLaboral: "LICENCIA" }).goceDeSueldo).toBe(false);
+  });
+
+  it("rechaza los estatus que ya no existen", () => {
+    expect(registrarProfesor.safeParse({ ...datosValidos, estatusLaboral: "BAJA_TEMPORAL" }).success).toBe(false);
+    expect(registrarProfesor.safeParse({ ...datosValidos, estatusLaboral: "TRASLADADO" }).success).toBe(false);
+  });
+
+  it("cuenta en la plantilla al activo y a quien tiene goce en licencia o estancia", () => {
+    expect(cuentaEnPlantilla({ estatusLaboral: "ACTIVO", goceDeSueldo: false })).toBe(true);
+    expect(cuentaEnPlantilla({ estatusLaboral: "LICENCIA", goceDeSueldo: true })).toBe(true);
+    expect(cuentaEnPlantilla({ estatusLaboral: "ESTANCIA_POSDOCTORAL", goceDeSueldo: true })).toBe(true);
+    expect(cuentaEnPlantilla({ estatusLaboral: "LICENCIA", goceDeSueldo: false })).toBe(false);
+    expect(cuentaEnPlantilla({ estatusLaboral: "ESTANCIA_POSDOCTORAL", goceDeSueldo: false })).toBe(false);
+  });
+});
+
+describe("opciones de edición con PENDIENTE (D-261)", () => {
+  it("el menú de alta no ofrece PENDIENTE, pero la etiqueta existe para mostrarlo", () => {
+    expect(TIPOS_CONTRATACION).not.toContain("PENDIENTE");
+    expect(ETIQUETA_CONTRATACION.PENDIENTE).toBe("Pendiente");
+  });
+
+  it("quien tiene un valor real ve solo las opciones reales", () => {
+    expect(opcionesGenero("M").map((o) => o.valor)).toEqual(["M", "F"]);
+    expect(opcionesContratacion("ASIGNATURA").map((o) => o.valor)).toEqual(["TIEMPO_COMPLETO", "ASIGNATURA"]);
+  });
+
+  it("quien tiene PENDIENTE lo ve primero, para que el select refleje lo guardado y no elija otro valor en silencio", () => {
+    expect(opcionesGenero("PENDIENTE")[0]).toEqual({ valor: "PENDIENTE", texto: "Pendiente" });
+    expect(opcionesContratacion("PENDIENTE")[0]).toEqual({ valor: "PENDIENTE", texto: "Pendiente" });
+    expect(opcionesGenero("PENDIENTE")).toHaveLength(3);
   });
 });
 

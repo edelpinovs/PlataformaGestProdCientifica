@@ -1,8 +1,11 @@
 import { BarraListado } from "@/components/listado";
+import { SelectorFiltro } from "@/components/listado-cliente";
 import { SelectorProfesor } from "@/components/selector-profesor";
-import { COLUMNAS_PUBLICACIONES, RUTA_PUBLICACIONES, ETIQUETAS_TIPO, ETIQUETAS_FUENTE, ETIQUETAS_ESTADO, type ConsultaPublicaciones, type ErroresConsulta } from "@/modules/produccion/consulta";
+import { COLUMNAS_PUBLICACIONES, RUTA_PUBLICACIONES, ETIQUETAS_TIPO, ETIQUETAS_FUENTE, ETIQUETAS_ESTADO, opcionesAnioPublicacion, type ConsultaPublicaciones, type ErroresConsulta } from "@/modules/produccion/consulta";
+import { fechaCorta } from "@/modules/produccion/rango-escaneo";
 
-export function FiltrosPublicaciones({ consulta, profesores, errores }: {
+export function FiltrosPublicaciones({ consulta, profesores, errores, anioActual }: {
+  anioActual: number;
   consulta: ConsultaPublicaciones;
   profesores: { id: number; codigo: string; nombres: string; apellidos: string; estatusLaboral: string }[];
   errores: ErroresConsulta;
@@ -14,30 +17,46 @@ export function FiltrosPublicaciones({ consulta, profesores, errores }: {
       const valor = consulta.filtros[["tipo", "fuente", "estado"][indice]];
       return valor && (etiquetas as Record<string, string>)[valor];
     }),
+    consulta.filtros.desde && `Desde: ${fechaCorta(consulta.filtros.desde)}`,
+    consulta.filtros.hasta && `Hasta: ${fechaCorta(consulta.filtros.hasta)}`,
   ].filter(Boolean);
   const opciones = (etiquetas: Record<string, string>) => Object.entries(etiquetas).map(([valor, texto]) => ({ valor, texto }));
-  return <div className="flex flex-col gap-4">
-    <details open={Object.keys(errores).length > 0}>
-      <summary className="w-fit cursor-pointer rounded-xl px-3 py-2 text-sm font-medium text-marca hover:bg-hover">Buscar y filtrar publicaciones</summary>
-      <div className="mt-4">
-        <BarraListado base={RUTA_PUBLICACIONES} consulta={consulta} columnas={COLUMNAS_PUBLICACIONES} errores={errores}
-          etiquetaBusqueda="Buscar publicaciones" placeholder="Título, autores, revista, DOI, tipo, fuente o profesor"
-          filtros={[
-            { clave: "profesor", etiqueta: "Profesor de la publicación", opciones: [], contenido: <div className="flex flex-col gap-4">
-              <SelectorProfesor key={consulta.filtros.profesor || "todos"} opciones={profesores.map(profesor => ({ ...profesor,
-                codigo: `${profesor.codigo}${profesor.estatusLaboral !== "ACTIVO" ? " (no activo)" : ""}`,
-              }))} nombre="profesor" etiqueta="Profesor de la publicación" requerido={false}
-                valorInicial={consulta.filtros.profesor ? Number(consulta.filtros.profesor) : undefined} error={errores.profesor} />
-              <p className="text-xs text-texto-3">Sin selección se muestran publicaciones de todos los profesores, incluidos los no activos.</p>
-            </div> },
-            { clave: "anio", etiqueta: "Año de publicación", opciones: Array.from({ length: 201 }, (_, indice) => ({ valor: String(2100 - indice), texto: String(2100 - indice) })) },
-            { clave: "tipo", etiqueta: "Tipo", opciones: opciones(ETIQUETAS_TIPO) },
-            { clave: "fuente", etiqueta: "Fuente", opciones: opciones(ETIQUETAS_FUENTE) },
-            { clave: "estado", etiqueta: "Estado de autoría", opciones: opciones(ETIQUETAS_ESTADO) },
-          ]} />
-      </div>
-    </details>
-    {filtrosActivos.length > 0 && <ul aria-label="Filtros activos" className="flex flex-wrap gap-4">
+  // Mismo aspecto que las listas de filtro de BarraListado.
+  const clasePastilla = (clave: string) => `flex min-w-0 items-center gap-2 rounded-xl border bg-superficie px-3 text-sm text-texto-3 ${errores[clave] ? "border-peligro" : "border-linea"}`;
+  const claseValor = (clave: string) => `min-w-0 bg-transparent py-2.5 text-sm font-medium focus:outline-2 focus:outline-marca ${errores[clave] ? "text-peligro" : "text-texto"}`;
+  // @container: el campo de profesor mide el ancho del formulario (100cqw) y ocupa su propia línea.
+  return <div className="@container flex flex-col gap-4">
+    <BarraListado base={RUTA_PUBLICACIONES} consulta={consulta} columnas={COLUMNAS_PUBLICACIONES} errores={errores}
+      etiquetaBusqueda="Buscar publicaciones" placeholder="Título, autor, DOI, revista o profesor"
+      filtros={[
+        { clave: "tipo", etiqueta: "Tipo", opciones: opciones(ETIQUETAS_TIPO) },
+        { clave: "fuente", etiqueta: "Fuente", opciones: opciones(ETIQUETAS_FUENTE) },
+        { clave: "estado", etiqueta: "Estado de autoría", opciones: opciones(ETIQUETAS_ESTADO) },
+        // Año, Desde y Hasta forman un solo grupo para que no se separen al acomodarse la fila.
+        { clave: "anio", etiqueta: "Fecha de publicación", opciones: [], contenido: <div role="group" aria-label="Fecha de publicación" className="flex flex-wrap gap-3">
+          <label className={clasePastilla("anio")}>
+            Año<span className="sr-only"> de publicación</span>
+            <SelectorFiltro name="anio" defaultValue={consulta.filtros.anio ?? ""} aria-invalid={Boolean(errores.anio)} className={`${claseValor("anio")} max-w-48 cursor-pointer pr-1`}>
+              <option value="" className="bg-superficie text-texto">Todos</option>
+              {opcionesAnioPublicacion(anioActual).map((opcion) => <option key={opcion.valor} value={opcion.valor} className="bg-superficie text-texto">{opcion.texto}</option>)}
+            </SelectorFiltro>
+          </label>
+          {([{ clave: "desde", etiqueta: "Desde" }, { clave: "hasta", etiqueta: "Hasta" }] as const).map(({ clave, etiqueta }) => <label key={clave} className={clasePastilla(clave)}>
+            {etiqueta}
+            <span className="sr-only"> (fecha de publicación)</span>
+            <input type="date" name={clave} defaultValue={consulta.filtros[clave]} aria-invalid={Boolean(errores[clave])} className={claseValor(clave)} />
+          </label>)}
+        </div> },
+        // Al final y en su propia línea: su ayuda y la selección lo hacen más alto que las listas.
+        { clave: "profesor", etiqueta: "Profesor", opciones: [], contenido: <div className="w-[100cqw]"><div className="flex max-w-md flex-col gap-2">
+          <SelectorProfesor key={consulta.filtros.profesor || "todos"} opciones={profesores.map(profesor => ({ ...profesor,
+            codigo: `${profesor.codigo}${profesor.estatusLaboral !== "ACTIVO" ? " (no activo)" : ""}`,
+          }))} nombre="profesor" etiqueta="Profesor" requerido={false}
+            valorInicial={consulta.filtros.profesor ? Number(consulta.filtros.profesor) : undefined} error={errores.profesor} />
+          <p className="text-xs text-texto-3">Sin profesor elegido se muestran las publicaciones de todos, también de los no activos.</p>
+        </div></div> },
+      ]} />
+    {filtrosActivos.length > 0 && <ul aria-label="Filtros activos" className="flex flex-wrap gap-2">
       {filtrosActivos.map((filtro) => <li key={String(filtro)} className="max-w-full break-words rounded-full bg-marca-suave px-3 py-1 text-xs text-texto">{filtro}</li>)}
     </ul>}
   </div>;

@@ -56,3 +56,6 @@ skills-lock.json
 # Lista del equipo y enlaces de invitación: datos personales
 /scripts/equipo.txt
 /scripts/invitaciones-*.txt
+
+# CSV reales de profesores y sus informes de validación: datos personales (el repositorio es público)
+/datos-reales/

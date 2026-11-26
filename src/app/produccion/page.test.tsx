@@ -5,6 +5,7 @@ import ProduccionPage from "./page";
 import EscaneoPage from "./escaneo/page";
 import { CONSULTA_INICIAL } from "@/modules/produccion/consulta";
 import { FormularioEscaneo } from "./formulario-escaneo";
+import { AVISO_SIN_PERMISO_ESCANEO } from "@/modules/produccion/permisos";
 
 const dobles = vi.hoisted(() => ({
   redirect: vi.fn(),
@@ -85,7 +86,7 @@ describe("RF-PC: permisos y validación de la página", () => {
     expect(dobles.consultarPublicaciones).not.toHaveBeenCalled();
   });
 
-  it.each(["ADMINISTRADOR", "COORDINADOR"])("solo incluye el formulario ejecutable para Coordinación (%s)", async rol => {
+  it.each(["ADMINISTRADOR", "COORDINADOR", "DOCENTE"])("incluye el formulario ejecutable solo para Administración y Coordinación (%s)", async rol => {
     dobles.requireModulo.mockResolvedValue({ rol, correo: "perfil@demo.invalid" });
     const pagina = await EscaneoPage();
     function contieneFormulario(nodo: React.ReactNode): boolean {
@@ -93,6 +94,13 @@ describe("RF-PC: permisos y validación de la página", () => {
       if (!React.isValidElement<{ children?: React.ReactNode }>(nodo)) return false;
       return nodo.type === FormularioEscaneo || contieneFormulario(nodo.props.children);
     }
-    expect(contieneFormulario(pagina)).toBe(rol === "COORDINADOR");
+    expect(contieneFormulario(pagina)).toBe(rol !== "DOCENTE");
+    function contieneAviso(nodo: React.ReactNode): boolean {
+      if (nodo === AVISO_SIN_PERMISO_ESCANEO) return true;
+      if (Array.isArray(nodo)) return nodo.some(contieneAviso);
+      if (!React.isValidElement<{ children?: React.ReactNode }>(nodo)) return false;
+      return contieneAviso(nodo.props.children);
+    }
+    expect(contieneAviso(pagina)).toBe(rol === "DOCENTE");
   });
 });

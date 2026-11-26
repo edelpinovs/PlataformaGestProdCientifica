@@ -4,6 +4,7 @@ import {
   edicionMetadatosBandejaEsquema,
   ETIQUETA_ESTADO_AUTORIA,
   ETIQUETA_FUENTE,
+  mapearConteosEstado,
   puedeGestionarAutoria,
   validarTransicionAutoria,
   type AutoriaParaConteo,
@@ -79,6 +80,32 @@ describe("RF-024 y RF-025: Bandeja de validación y conteo oficial", () => {
       expect(conteo.totalRechazadas).toBe(0);
       expect(Object.keys(conteo.porProfesor)).toHaveLength(0);
       expect(Object.keys(conteo.porDepartamento)).toHaveLength(0);
+    });
+
+    it("mapea conteos agregados por estado desde SQL (mapearConteosEstado)", () => {
+      const grupos = [
+        { estado: "VALIDADA" as const, _count: { _all: 14 } },
+        { estado: "PENDIENTE" as const, _count: { _all: 5 } },
+        { estado: "RECHAZADA" as const, _count: { _all: 2 } },
+      ];
+      const conteo = mapearConteosEstado(grupos);
+      expect(conteo).toEqual({
+        totalValidadas: 14,
+        totalPendientes: 5,
+        totalRechazadas: 2,
+      });
+
+      // Si faltan estados o está vacío, devuelve 0 sin fallar
+      expect(mapearConteosEstado([])).toEqual({
+        totalValidadas: 0,
+        totalPendientes: 0,
+        totalRechazadas: 0,
+      });
+      expect(mapearConteosEstado([{ estado: "VALIDADA" as const, _count: { _all: 7 } }])).toEqual({
+        totalValidadas: 7,
+        totalPendientes: 0,
+        totalRechazadas: 0,
+      });
     });
   });
 

@@ -197,8 +197,12 @@ function diaUtc(fecha: Date) {
   return new Date(Date.UTC(fecha.getUTCFullYear(), fecha.getUTCMonth(), fecha.getUTCDate()));
 }
 
+export const MENSAJE_PRODEP_CONTRATACION_PENDIENTE =
+  "Primero registra el tipo de contratación de la persona (hoy está pendiente). El Perfil Deseable PRODEP requiere Tiempo Completo.";
+
 export function validarContratacionProdep(tipoContratacion: string | null | undefined): string | null {
-  return tipoContratacion === "TIEMPO_COMPLETO" ? null : MENSAJE_PRODEP_REQUIERE_TIEMPO_COMPLETO;
+  if (tipoContratacion === "TIEMPO_COMPLETO") return null;
+  return tipoContratacion === "PENDIENTE" ? MENSAJE_PRODEP_CONTRATACION_PENDIENTE : MENSAJE_PRODEP_REQUIERE_TIEMPO_COMPLETO;
 }
 
 export function tieneProdepActivo(reconocimientos: readonly ResumenVigenciaProdep[], hoy: Date): boolean {

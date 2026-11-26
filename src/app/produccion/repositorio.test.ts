@@ -3,6 +3,7 @@ import { repositorioPrisma } from "./repositorio";
 import { crearConsolidada } from "@/modules/produccion/deduplicacion";
 
 const base = vi.hoisted(() => ({
+  profesor: { findMany: vi.fn() },
   publicacion: { findUnique: vi.fn(), findMany: vi.fn(), create: vi.fn(), update: vi.fn() },
   autoria: { findUnique: vi.fn(), create: vi.fn() },
   $queryRaw: vi.fn(),
@@ -84,5 +85,22 @@ describe("RF-021 y RF-022: persistencia concurrente", () => {
     base.$queryRaw.mockResolvedValue([{ id: 3, titulo: obra.titulo, doi: "10.1000/otra-obra", fechaPublicacion: null }]);
     expect(await repositorioPrisma.persistirOActualizar(obra)).toBe(10);
     expect(base.publicacion.create).toHaveBeenCalledOnce();
+  });
+});
+
+describe("#259: no se buscan publicaciones de un profesor inactivo", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    base.profesor.findMany.mockResolvedValue([]);
+  });
+
+  it("al escanear a todos pide solo profesores activos", async () => {
+    await repositorioPrisma.obtenerProfesores({});
+    expect(base.profesor.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { estatusLaboral: "ACTIVO" } }));
+  });
+
+  it("al pedir un profesor por su id exige también que siga activo", async () => {
+    expect(await repositorioPrisma.obtenerProfesores({ profesorId: 7 })).toEqual([]);
+    expect(base.profesor.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { estatusLaboral: "ACTIVO", id: 7 } }));
   });
 });

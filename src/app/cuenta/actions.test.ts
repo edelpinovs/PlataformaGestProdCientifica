@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { cambiarContrasena, registrarAcceso } from "./actions";
+import { cambiarContrasena, guardarTema, registrarAcceso } from "./actions";
 
 const dobles = vi.hoisted(() => ({
   requireRol: vi.fn(),
   signInWithPassword: vi.fn(),
   updateUser: vi.fn(),
   accesoModulo: { findUnique: vi.fn(), upsert: vi.fn() },
+  perfil: { update: vi.fn() },
 }));
 
 vi.mock("@/lib/auth/session", () => ({ requireRol: dobles.requireRol }));
@@ -160,5 +161,42 @@ describe("registrarAcceso", () => {
     dobles.accesoModulo.findUnique.mockResolvedValue(null);
     dobles.accesoModulo.upsert.mockRejectedValue(new Error("P2002"));
     await expect(registrarAcceso("profesores")).resolves.toBeUndefined();
+  });
+});
+
+describe("guardarTema", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    dobles.requireRol.mockResolvedValue({ id: "perfil-1", correo: "ana.demo@demo.invalid", rol: "DOCENTE" });
+    dobles.perfil.update.mockResolvedValue({});
+  });
+
+  it("permite a los tres roles (RNF-005) y comprueba el permiso antes de tocar la base", async () => {
+    await guardarTema("oscuro");
+    expect(dobles.requireRol).toHaveBeenCalledWith(["ADMINISTRADOR", "COORDINADOR", "DOCENTE"]);
+    expect(dobles.requireRol.mock.invocationCallOrder[0]).toBeLessThan(dobles.perfil.update.mock.invocationCallOrder[0]);
+  });
+
+  it("sin permiso no guarda nada", async () => {
+    dobles.requireRol.mockRejectedValue(new Error("NEXT_REDIRECT"));
+    await expect(guardarTema("oscuro")).rejects.toThrow("NEXT_REDIRECT");
+    expect(dobles.perfil.update).not.toHaveBeenCalled();
+  });
+
+  it("guarda el tema en el perfil de la sesión, nunca en otro", async () => {
+    expect(await guardarTema("oscuro")).toEqual({});
+    expect(dobles.perfil.update).toHaveBeenCalledWith({ where: { id: "perfil-1" }, data: { tema: "oscuro" } });
+  });
+
+  it("un tema inválido responde en español y no toca la base", async () => {
+    expect(await guardarTema("sistema")).toEqual({ error: "Elige el tema claro o el oscuro." });
+    expect(await guardarTema(undefined)).toEqual({ error: "Elige el tema claro o el oscuro." });
+    expect(dobles.perfil.update).not.toHaveBeenCalled();
+  });
+
+  it("si la base falla devuelve un mensaje propio, sin texto de Prisma", async () => {
+    dobles.perfil.update.mockRejectedValue(new Error("Invalid `prisma.perfil.update()` invocation"));
+    const estado = await guardarTema("claro");
+    expect(estado.error).toBe("No pudimos guardar el tema en tu cuenta. Se conserva en este navegador.");
   });
 });

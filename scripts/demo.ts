@@ -113,6 +113,7 @@ async function cargar() {
         genero: p.genero,
         tipoContratacion: p.tipoContratacion,
         estatusLaboral: p.estatusLaboral,
+        goceDeSueldo: p.goceDeSueldo,
         gradoId: p.grado ? grados.get(p.grado) : null,
         departamentoId: p.departamento ? departamentos.get(p.departamento) : null,
         cvu: p.cvu,

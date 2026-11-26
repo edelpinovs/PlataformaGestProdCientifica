@@ -17,6 +17,7 @@ import {
   registrarProfesor,
   type UsoProfesor,
 } from "@/modules/profesores/profesores";
+import type { DatosDetalleProfesor } from "@/modules/profesores/profesores-detalle";
 
 export type CampoProfesor =
   | "codigo"
@@ -26,6 +27,7 @@ export type CampoProfesor =
   | "genero"
   | "tipoContratacion"
   | "estatusLaboral"
+  | "goceDeSueldo"
   | "departamentoId"
   | "gradoId"
   | "cvu"
@@ -48,6 +50,7 @@ const CAMPOS: CampoProfesor[] = [
   "genero",
   "tipoContratacion",
   "estatusLaboral",
+  "goceDeSueldo",
   "departamentoId",
   "gradoId",
   "cvu",
@@ -267,4 +270,60 @@ export async function eliminarProfesor(_: EstadoFila, formData: FormData): Promi
 
   revalidatePath("/profesores");
   redirect(`/profesores?eliminado=${encodeURIComponent(nombre)}`, RedirectType.replace);
+}
+
+const seleccionDetalle = {
+  reconocimientosSnii: true,
+  reconocimientosProdep: true,
+  cuerposAcademicos: true,
+  cuerposLiderados: true,
+  lgacs: true,
+  participaciones: true,
+  autorias: true,
+  programas: true,
+} as const;
+
+// #341: lectura del detalle. La página ya exigió el módulo; esta acción lo exige otra vez
+// para que no se pueda consultar un profesor sin permiso.
+export async function leerDetalleProfesor(id: number): Promise<DatosDetalleProfesor | null> {
+  await requireModulo("profesores");
+  const fila = await prisma.profesor.findUnique({
+    where: { id },
+    include: {
+      grado: { select: { nombre: true, nomenclatura: true } },
+      departamento: { select: { nombre: true, division: { select: { nombre: true } } } },
+      perfil: { select: { id: true } },
+      _count: { select: seleccionDetalle },
+    },
+  });
+  if (!fila) return null;
+  return {
+    codigo: fila.codigo,
+    nombres: fila.nombres,
+    apellidos: fila.apellidos,
+    correo: fila.correo,
+    genero: fila.genero,
+    tipoContratacion: fila.tipoContratacion,
+    estatusLaboral: fila.estatusLaboral,
+    goceDeSueldo: fila.goceDeSueldo,
+    grado: fila.grado,
+    departamento: fila.departamento
+      ? { nombre: fila.departamento.nombre, division: fila.departamento.division?.nombre ?? null }
+      : null,
+    cvu: fila.cvu,
+    orcid: fila.orcid,
+    scopusId: fila.scopusId,
+    scholarId: fila.scholarId,
+    creadoEn: fila.creadoEn,
+    actualizadoEn: fila.actualizadoEn,
+    perfil: fila.perfil !== null,
+    reconocimientosSnii: fila._count.reconocimientosSnii,
+    reconocimientosProdep: fila._count.reconocimientosProdep,
+    cuerpos: fila._count.cuerposAcademicos,
+    liderazgos: fila._count.cuerposLiderados,
+    lgacs: fila._count.lgacs,
+    participaciones: fila._count.participaciones,
+    autorias: fila._count.autorias,
+    programas: fila._count.programas,
+  };
 }

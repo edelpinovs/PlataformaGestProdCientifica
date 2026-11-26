@@ -1,5 +1,8 @@
+"use client";
+
+import { useState } from "react";
 import { Aviso, claseCampo, claseEtiqueta } from "@/components/ui";
-import { ETIQUETA_CONTRATACION, ETIQUETA_ESTATUS } from "@/modules/profesores/profesores";
+import { admiteGoceDeSueldo, ETIQUETA_CONTRATACION, ETIQUETA_ESTATUS, TIPOS_CONTRATACION } from "@/modules/profesores/profesores";
 
 type Props = {
   grados: { id: number; nombre: string; nomenclatura: string }[];
@@ -18,6 +21,9 @@ type Props = {
  */
 export function CamposProfesor({ grados, departamentos, valor, campo, errorGenero }: Props) {
   const err = (nombre: string) => campo === nombre;
+  const [estatus, setEstatus] = useState(valor("estatusLaboral"));
+  const [goce, setGoce] = useState(valor("goceDeSueldo") === "si");
+  const conGoce = admiteGoceDeSueldo(estatus);
 
   return (
     <>
@@ -132,8 +138,8 @@ export function CamposProfesor({ grados, departamentos, valor, campo, errorGener
               <option value="" disabled>
                 — Selecciona —
               </option>
-              {Object.entries(ETIQUETA_CONTRATACION).map(([clave, texto]) => (
-                <option key={clave} value={clave}>{texto}</option>
+              {TIPOS_CONTRATACION.map((clave) => (
+                <option key={clave} value={clave}>{ETIQUETA_CONTRATACION[clave]}</option>
               ))}
             </select>
           </label>
@@ -144,7 +150,8 @@ export function CamposProfesor({ grados, departamentos, valor, campo, errorGener
               id="estatusLaboral"
               name="estatusLaboral"
               required
-              defaultValue={valor("estatusLaboral")}
+              value={estatus}
+              onChange={(e) => setEstatus(e.target.value)}
               aria-invalid={err("estatusLaboral")}
               className={claseCampo(err("estatusLaboral"))}
             >
@@ -157,6 +164,27 @@ export function CamposProfesor({ grados, departamentos, valor, campo, errorGener
             </select>
           </label>
         </div>
+
+        <label className="flex items-center gap-2 text-sm text-texto-2">
+          <input
+            type="checkbox"
+            name="goceDeSueldo"
+            value="si"
+            checked={conGoce && goce}
+            disabled={!conGoce}
+            onChange={(e) => setGoce(e.target.checked)}
+            aria-invalid={err("goceDeSueldo")}
+            className="accent-[var(--marca)]"
+          />
+          <span>
+            Con goce de sueldo
+            {!conGoce && (
+              <span className="mt-0.5 block text-xs font-normal text-texto-3">
+                Se habilita al elegir licencia o estancia posdoctoral.
+              </span>
+            )}
+          </span>
+        </label>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <label className={claseEtiqueta}>

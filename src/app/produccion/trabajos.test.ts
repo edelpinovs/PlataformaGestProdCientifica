@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { crearTrabajoEscaneo, procesarSiguienteProfesor } from "./trabajos";
+import { cancelarTrabajoEscaneo, crearTrabajoEscaneo, procesarSiguienteProfesor } from "./trabajos";
 import { resumenVacio, type DatosLote } from "@/modules/produccion/lotes";
 
 const dobles = vi.hoisted(() => ({
@@ -24,7 +24,8 @@ describe("RF-020: cola persistida de escaneo", () => {
     dobles.prisma.job.findUniqueOrThrow.mockImplementation(async () => ({ ...trabajo }));
     dobles.prisma.job.updateMany.mockImplementation(async ({ where, data }) => {
       const fecha = where.actualizadoEn;
-      if (where.estado && where.estado !== trabajo.estado) return { count: 0 };
+      if (typeof where.estado === "string" && where.estado !== trabajo.estado) return { count: 0 };
+      if (where.estado?.in && !where.estado.in.includes(trabajo.estado)) return { count: 0 };
       if (fecha instanceof Date && fecha.getTime() !== trabajo.actualizadoEn.getTime()) return { count: 0 };
       if (where.OR && trabajo.estado !== "PENDIENTE" && !(trabajo.estado === "EN_PROCESO" &&
         trabajo.actualizadoEn < where.OR[1].actualizadoEn.lt)) return { count: 0 };
@@ -44,7 +45,24 @@ describe("RF-020: cola persistida de escaneo", () => {
     expect(Number.isFinite(new Date(trabajo.datos.finalizadoEn!).getTime())).toBe(true);
     expect(trabajo.datos.resumen.publicacionesGuardadas).toBe(54);
     expect(dobles.ejecutarEscaneo.mock.calls.map(([opciones]) => opciones.profesorId)).toEqual(trabajo.datos.profesoresIds);
-    expect(dobles.ejecutarEscaneo).toHaveBeenLastCalledWith({ profesorId: 27, anio: undefined, fuentes: ["SCOPUS","OPENALEX","ORCID"], limiteProfesores: 1 }, {});
+    expect(dobles.ejecutarEscaneo).toHaveBeenLastCalledWith({
+      profesorId: 27, anio: undefined, fuentes: ["SCOPUS","OPENALEX","ORCID"], limiteProfesores: 1, enriquecerAutores: false,
+      informarFuente: expect.any(Function),
+    }, {});
+  });
+
+  it("persiste la fuente consultada sin renovar la reserva ni adelantar el avance", async () => {
+    dobles.ejecutarEscaneo.mockImplementationOnce(async ({ informarFuente }) => {
+      const reserva = trabajo.actualizadoEn;
+      await informarFuente("OPENALEX");
+      expect(trabajo.datos.fuenteEnCurso).toBe("OPENALEX");
+      expect(trabajo.actualizadoEn).toEqual(reserva);
+      expect(trabajo.avance).toBe(0);
+      return resumenVacio();
+    });
+    await procesarSiguienteProfesor(7);
+    expect(trabajo.datos.fuenteEnCurso).toBeNull();
+    expect(trabajo.avance).toBe(1);
   });
 
   it("dos peticiones simultáneas no procesan el mismo profesor dos veces", async () => {
@@ -99,10 +117,10 @@ describe("RF-020: cola persistida de escaneo", () => {
 
   it("crea una instantánea ordenada de profesores activos para evitar saltos por altas o bajas", async () => {
     dobles.prisma.profesor.findMany.mockResolvedValue([{ id: 5 }, { id: 8 }]);
-    await crearTrabajoEscaneo("escaneo-manual", undefined, 2025);
+    await crearTrabajoEscaneo("escaneo-manual", undefined, { desde: "2025-03-01", hasta: "2025-06-30" });
     expect(dobles.prisma.profesor.findMany).toHaveBeenCalledWith({ where: { estatusLaboral: "ACTIVO" }, select: { id: true }, orderBy: { id: "asc" } });
     expect(dobles.prisma.job.create).toHaveBeenCalledWith({ data: expect.objectContaining({
-      estado: "PENDIENTE", total: 2, datos: expect.objectContaining({ profesoresIds: [5, 8], indice: 0, anio: 2025 }),
+      estado: "PENDIENTE", total: 2, datos: expect.objectContaining({ profesoresIds: [5, 8], indice: 0, desde: "2025-03-01", hasta: "2025-06-30" }),
     }) });
   });
 
@@ -140,5 +158,36 @@ describe("RF-020: cola persistida de escaneo", () => {
   it("las actualizaciones de avance no sobrescriben la fecha original de inicio", async () => {
     await procesarSiguienteProfesor(7);
     for (const [llamada] of dobles.prisma.job.updateMany.mock.calls) expect(llamada.data).not.toHaveProperty("creadoEn");
+  });
+
+  it("#279: crea un reintento solo con los profesores de la lista que siguen activos", async () => {
+    dobles.prisma.profesor.findMany.mockResolvedValue([{ id: 3 }]);
+    await crearTrabajoEscaneo("escaneo-manual", [3, 8], undefined, ["OPENALEX"]);
+    expect(dobles.prisma.profesor.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { estatusLaboral: "ACTIVO", id: { in: [3, 8] } } }));
+    expect(dobles.prisma.job.create).toHaveBeenCalledWith({ data: expect.objectContaining({ total: 1, datos: expect.objectContaining({ profesoresIds: [3], fuentes: ["OPENALEX"] }) }) });
+  });
+
+  it("#279: no crea un reintento si ningún profesor sigue activo", async () => {
+    dobles.prisma.profesor.findMany.mockResolvedValue([]);
+    await expect(crearTrabajoEscaneo("escaneo-manual", [3, 8])).rejects.toThrow("Ninguno de los profesores sigue activo para reintentar.");
+    expect(dobles.prisma.job.create).not.toHaveBeenCalled();
+  });
+
+  it("#279: cancela una búsqueda pendiente y no toca una ya terminada", async () => {
+    expect(await cancelarTrabajoEscaneo(7)).toBe(true);
+    expect(trabajo.estado).toBe("CANCELADO");
+    expect(await cancelarTrabajoEscaneo(7)).toBe(false);
+  });
+
+  it("#279: el profesor en curso no sobrescribe la cancelación ni sigue con el siguiente", async () => {
+    dobles.ejecutarEscaneo.mockImplementation(async () => {
+      await cancelarTrabajoEscaneo(7);
+      return { ...resumenVacio(), profesoresProcesados: 1 };
+    });
+    await procesarSiguienteProfesor(7);
+    expect(trabajo.estado).toBe("CANCELADO");
+    dobles.ejecutarEscaneo.mockClear();
+    await procesarSiguienteProfesor(7);
+    expect(dobles.ejecutarEscaneo).not.toHaveBeenCalled();
   });
 });

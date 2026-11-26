@@ -1,7 +1,8 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { cookieTema, ETIQUETA_TEMA, temaDe, TEMAS, type Tema } from "@/modules/cuenta/tema";
+import { aplicarTema } from "@/components/aplicar-tema";
+import { ETIQUETA_TEMA, temaDe, TEMAS, type Tema } from "@/modules/cuenta/tema";
 
 // El tema vive en el atributo data-tema de <html> (lo pone el script de src/app/layout.tsx).
 // Se lee con useSyncExternalStore: el servidor no lo conoce y muestra «claro» hasta hidratar,
@@ -14,11 +15,6 @@ function suscribir(avisar: () => void) {
 
 const leerTema = (): Tema => temaDe(document.documentElement.getAttribute("data-tema"));
 const temaDelServidor = (): Tema => "claro";
-
-function aplicarTema(tema: Tema) {
-  document.documentElement.setAttribute("data-tema", tema);
-  document.cookie = cookieTema(tema);
-}
 
 export function Apariencia() {
   const actual = useSyncExternalStore(suscribir, leerTema, temaDelServidor);
@@ -40,7 +36,7 @@ export function Apariencia() {
           </button>
         ))}
       </div>
-      <p className="text-xs text-texto-3">Se guarda en este navegador y se aplica en toda la plataforma.</p>
+      <p className="text-xs text-texto-3">Se guarda en tu cuenta y se aplica en toda la plataforma, también en otros navegadores.</p>
     </div>
   );
 }

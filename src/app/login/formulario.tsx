@@ -12,18 +12,20 @@ export function FormularioLogin({ aviso }: { aviso?: string }) {
   return (
     <PantallaAcceso titulo="Iniciar sesión" subtitulo="Plataforma de Gestión de la Producción Científica">
       <SesionDesdeEnlace />
-      <form action={accion} className="flex flex-col gap-4">
+      {/* `noValidate`: el aviso nativo del navegador sale en el idioma de Chrome (en inglés para muchas
+          personas) y tapa el nuestro. La validación la hace la acción del servidor, en español. */}
+      <form action={accion} noValidate className="flex flex-col gap-4">
         {/* Si se activa SIIAU, este formulario también pedirá el código UDG (name="codigo").
             Ver docs/diseno/LOGIN_SIIAU.md. */}
         <label className={claseEtiqueta}>
           Correo institucional
           <input id="correo" name="correo" type="email" required autoComplete="email" defaultValue={estado.correo}
-            className={claseCampo(Boolean(estado.error))} />
+            aria-invalid={Boolean(estado.error)} className={claseCampo(Boolean(estado.error))} />
         </label>
         <label className={claseEtiqueta}>
           Contraseña
           <input id="contrasena" name="contrasena" type="password" required autoComplete="current-password"
-            className={claseCampo(Boolean(estado.error))} />
+            aria-invalid={Boolean(estado.error)} className={claseCampo(Boolean(estado.error))} />
         </label>
         {aviso && !estado.error && <Aviso tipo="aviso">{aviso}</Aviso>}
         {estado.error && <Aviso tipo="error">{estado.error}</Aviso>}

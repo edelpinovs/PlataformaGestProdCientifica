@@ -126,6 +126,21 @@ describe("RF-020: corte incremental recuperable", () => {
     expect(repo.registrarCorte).not.toHaveBeenCalled();
   });
 
+  it("con un rango de fechas consulta cada año que abarca, guarda solo las obras dentro y no adelanta el corte (#266)", async () => {
+    const repo = crearRepositorio();
+    const conFecha = (doi: string, dia: string) => ({ ...obra, doi, anio: Number(dia.slice(0, 4)), fechaPublicacion: new Date(`${dia}T00:00:00Z`) });
+    vi.mocked(consultarOrcid)
+      .mockResolvedValueOnce({ publicaciones: [conFecha("10.1000/antes", "2024-03-14"), conFecha("10.1000/inicio", "2024-03-15")] })
+      .mockResolvedValueOnce({ publicaciones: [conFecha("10.1000/fin", "2025-06-30"), conFecha("10.1000/despues", "2025-07-01")] });
+    const resultado = await ejecutarEscaneo({ fuentes: ["ORCID"], rango: { desde: "2024-03-15", hasta: "2025-06-30" } }, repo);
+    expect(vi.mocked(consultarOrcid).mock.calls.map(([, anio]) => anio)).toEqual([2024, 2025]);
+    expect(resultado.publicacionesEncontradas).toBe(2);
+    expect(repo.persistirOActualizar.mock.calls.map(([publicacion]) => publicacion.doi).sort()).toEqual(["10.1000/fin", "10.1000/inicio"]);
+    expect(resultado.consultasFuentes).toContainEqual({ profesorId: 1, fuente: "ORCID", estado: "COMPLETADA", cantidad: 2 });
+    expect(repo.obtenerUltimoCorte).not.toHaveBeenCalled();
+    expect(repo.registrarCorte).not.toHaveBeenCalled();
+  });
+
   it("no avanza si falla un año intermedio aunque otro año tenga resultados", async () => {
     const repo = crearRepositorio();
     repo.obtenerUltimoCorte.mockResolvedValue(new Date("2025-03-01T00:00:00Z"));

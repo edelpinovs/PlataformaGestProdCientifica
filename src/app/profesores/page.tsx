@@ -1,16 +1,20 @@
 import { FilaEditable } from "@/components/fila-editable";
 import { BarraListado, EncabezadoOrdenable, PaginacionListado } from "@/components/listado";
 import { Marco } from "@/components/marco";
+import { ModalDetalle } from "@/components/modal-detalle";
 import { Aviso, Avatar, claseBotonContorno, claseTabla, EstadoVacio, EtiquetaEstado, Icono, ICONOS, Panel } from "@/components/ui";
 import { requireModulo } from "@/lib/auth/session";
-import { analizarListado, hayFiltrosActivos, paginar } from "@/lib/listados/consulta";
+import { analizarListado, enlaceListado, hayFiltrosActivos, paginar } from "@/lib/listados/consulta";
 import { prisma } from "@/lib/prisma";
 import {
   COLUMNAS_PROFESORES, filtroProfesores, listadoProfesores, ordenProfesores,
 } from "@/modules/profesores/profesores-listado";
 import { enlaceExportacionProfesores } from "@/modules/profesores/exportar";
-import { ETIQUETA_CONTRATACION, ETIQUETA_ESTATUS } from "@/modules/profesores/profesores";
-import { editarProfesor, eliminarProfesor } from "./actions";
+import { idDeDetalle, seccionesDetalleProfesor, subtituloDetalleProfesor } from "@/modules/profesores/profesores-detalle";
+import {
+  ESTATUS_CON_GOCE, ETIQUETA_CONTRATACION, ETIQUETA_ESTATUS, opcionesContratacion, opcionesGenero,
+} from "@/modules/profesores/profesores";
+import { editarProfesor, eliminarProfesor, leerDetalleProfesor } from "./actions";
 import { RegistrarProfesor } from "./registrar-profesor";
 
 const BASE = "/profesores";
@@ -18,15 +22,8 @@ const BASE = "/profesores";
 const ESTATUS_TIPO = {
   ACTIVO: "exito",
   LICENCIA: "aviso",
-  BAJA_TEMPORAL: "aviso",
-  BAJA_POSDOCTORAL: "aviso",
-  TRASLADADO: "error",
+  ESTANCIA_POSDOCTORAL: "aviso",
 } as const;
-
-const OPCIONES_GENERO = [
-  { valor: "M", texto: "Masculino" },
-  { valor: "F", texto: "Femenino" },
-];
 
 export default async function ProfesoresPage({ searchParams }: PageProps<"/profesores">) {
   const perfil = await requireModulo("profesores");
@@ -44,7 +41,6 @@ export default async function ProfesoresPage({ searchParams }: PageProps<"/profe
     ...departamentos.map((d) => ({ valor: String(d.id), texto: d.nombre })),
   ];
   const opcionesEstatus = Object.entries(ETIQUETA_ESTATUS).map(([valor, texto]) => ({ valor, texto }));
-  const opcionesContratacion = Object.entries(ETIQUETA_CONTRATACION).map(([valor, texto]) => ({ valor, texto }));
 
   const parametros = await searchParams;
   const { editado, eliminado } = parametros;
@@ -70,6 +66,18 @@ export default async function ProfesoresPage({ searchParams }: PageProps<"/profe
   });
   const contexto = { base: BASE, definicion, consulta: { ...consulta, pagina: paginacion.pagina } };
   const hayFiltros = hayFiltrosActivos(consulta);
+  const listadoUrl = enlaceListado(BASE, definicion, contexto.consulta);
+  const conParametro = (clave: string, valor: string) =>
+    `${listadoUrl}${listadoUrl.includes("?") ? "&" : "?"}${clave}=${encodeURIComponent(valor)}`;
+  const verTexto = typeof parametros.ver === "string" ? parametros.ver : undefined;
+  const editarTexto = typeof parametros.editar === "string" ? parametros.editar : undefined;
+  const verId = verTexto === undefined ? null : idDeDetalle.safeParse(verTexto);
+  const editarId = editarTexto === undefined ? null : idDeDetalle.safeParse(editarTexto);
+  const detalle = verId?.success ? await leerDetalleProfesor(verId.data) : null;
+  const avisoDetalle = verTexto === undefined ? null
+    : !verId?.success ? "Ese detalle no es válido."
+    : !detalle ? "Ese profesor ya no existe en el directorio."
+    : null;
 
   return (
     <Marco correo={perfil.correo} rol={perfil.rol} activo="profesores" titulo="Profesores"
@@ -90,8 +98,14 @@ export default async function ProfesoresPage({ searchParams }: PageProps<"/profe
           <RegistrarProfesor grados={grados} departamentos={departamentos} />
         </div>
       </div>
+      {detalle && verId?.success && (
+        <ModalDetalle titulo="Detalle del profesor" subtitulo={subtituloDetalleProfesor(detalle)}
+          urlCerrar={listadoUrl} focoAlCerrar={`ver-profesor-${verId.data}`}
+          secciones={seccionesDetalleProfesor(detalle)} editarHref={conParametro("editar", String(verId.data))} />
+      )}
       <Panel>
         {resultado && <div className="mb-4"><Aviso tipo="exito">{resultado}</Aviso></div>}
+        {avisoDetalle && <div className="mb-4"><Aviso tipo="error">{avisoDetalle}</Aviso></div>}
         <div className="flex flex-col gap-4">
           <BarraListado {...contexto} columnas={COLUMNAS_PROFESORES} errores={errores}
             etiquetaBusqueda="Buscar profesores" placeholder="Buscar por código, nombre o correo"
@@ -128,15 +142,21 @@ export default async function ProfesoresPage({ searchParams }: PageProps<"/profe
               <tbody>
                 {profesores.map((p) => {
                   const nombre = `${p.nombres} ${p.apellidos}`;
-                  const etiquetaEstatus = (
-                    <EtiquetaEstado tipo={ESTATUS_TIPO[p.estatusLaboral]}>
-                      {ETIQUETA_ESTATUS[p.estatusLaboral]}
-                    </EtiquetaEstado>
+                  const etiquetaEstatus = () => (
+                    <span className="inline-flex flex-col items-start gap-1">
+                      <EtiquetaEstado tipo={ESTATUS_TIPO[p.estatusLaboral]}>
+                        {ETIQUETA_ESTATUS[p.estatusLaboral]}
+                      </EtiquetaEstado>
+                      {p.goceDeSueldo && <span className="text-xs font-normal text-texto-3">Con goce de sueldo</span>}
+                    </span>
                   );
                   return (
-                    <FilaEditable key={`${p.id}-${p.actualizadoEn.getTime()}`}
+                    <FilaEditable key={`${p.id}-${p.actualizadoEn.getTime()}-${editarId?.success === true && editarId.data === p.id ? "editar" : "fila"}`}
                       id={p.id} nombre={nombre} detalle={p.codigo}
                       editar={editarProfesor} eliminar={eliminarProfesor}
+                      verDetalle={{ href: conParametro("ver", String(p.id)), idFoco: `ver-profesor-${p.id}` }}
+                      edicionInicial={editarId?.success === true && editarId.data === p.id}
+                      urlListado={listadoUrl}
                       celdas={[
                         {
                           contenido: (
@@ -150,7 +170,7 @@ export default async function ProfesoresPage({ searchParams }: PageProps<"/profe
                                   <span className="font-mono">{p.codigo}</span>
                                   {p.grado && <span>· {p.grado.nombre}</span>}
                                   {p.departamento && <span>· {p.departamento.nombre}</span>}
-                                  {etiquetaEstatus}
+                                  {etiquetaEstatus()}
                                 </span>
                               </span>
                             </span>
@@ -174,18 +194,21 @@ export default async function ProfesoresPage({ searchParams }: PageProps<"/profe
                           ),
                           className: "hidden sm:table-cell",
                         },
-                        { contenido: etiquetaEstatus, className: "hidden sm:table-cell" },
+                        { contenido: etiquetaEstatus(), className: "hidden sm:table-cell" },
                       ]}
                       campos={[
                         { nombre: "codigo", etiqueta: "Código CUValles", valor: p.codigo, maxLength: 20, ancho: "corto" },
                         { nombre: "nombres", etiqueta: "Nombres", valor: p.nombres, maxLength: 150 },
                         { nombre: "apellidos", etiqueta: "Apellidos", valor: p.apellidos, maxLength: 150 },
                         { nombre: "correo", etiqueta: "Correo institucional", valor: p.correo, maxLength: 200 },
-                        { nombre: "genero", etiqueta: "Género", valor: p.genero, opciones: OPCIONES_GENERO, ancho: "corto" },
+                        { nombre: "genero", etiqueta: "Género", valor: p.genero, opciones: opcionesGenero(p.genero), ancho: "corto" },
                         { nombre: "tipoContratacion", etiqueta: "Tipo de contratación", valor: p.tipoContratacion,
-                          opciones: opcionesContratacion, ancho: "medio" },
+                          opciones: opcionesContratacion(p.tipoContratacion), ancho: "medio" },
                         { nombre: "estatusLaboral", etiqueta: "Estatus laboral", valor: p.estatusLaboral,
                           opciones: opcionesEstatus, ancho: "medio" },
+                        { nombre: "goceDeSueldo", etiqueta: "Con goce de sueldo", valor: p.goceDeSueldo ? "si" : "",
+                          tipo: "casilla", habilitadaPor: { campo: "estatusLaboral", valores: [...ESTATUS_CON_GOCE] },
+                          ayuda: "Se habilita en licencia o estancia posdoctoral.", opcional: true },
                         { nombre: "departamentoId", etiqueta: "Departamento", valor: p.departamentoId ? String(p.departamentoId) : "",
                           opciones: opcionesDepartamento, ancho: "medio", opcional: true },
                         { nombre: "gradoId", etiqueta: "Grado científico", valor: p.gradoId ? String(p.gradoId) : "",

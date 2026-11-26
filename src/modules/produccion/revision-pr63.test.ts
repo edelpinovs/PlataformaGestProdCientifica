@@ -147,7 +147,7 @@ describe("Notas 2 y 6 · Server Action iniciarEscaneoAction", { timeout: 30_000 
 
   it("control: encola el escaneo y responde sin esperar a las fuentes externas", async () => {
     const { iniciarEscaneoAction } = await import("@/app/produccion/actions");
-    const r = await iniciarEscaneoAction({}, formulario({ profesorId: "todos", anio: "" }));
+    const r = await iniciarEscaneoAction({}, formulario({ profesorId: "todos" }));
     expect(r.pendiente).toBe(true);
     expect(r.jobId).toBe(7);
     expect(trabajosFalsos.procesarSiguienteProfesor).not.toHaveBeenCalled();
@@ -169,7 +169,7 @@ describe("Notas 2 y 6 · Server Action iniciarEscaneoAction", { timeout: 30_000 
   it("6a. no muestra a la persona el mensaje técnico de la excepción", async () => {
     const { iniciarEscaneoAction } = await import("@/app/produccion/actions");
     trabajosFalsos.crearTrabajoEscaneo.mockRejectedValue(new Error("Connection terminated unexpectedly"));
-    const r = await iniciarEscaneoAction({}, formulario({ profesorId: "todos", anio: "" }));
+    const r = await iniciarEscaneoAction({}, formulario({ profesorId: "todos" }));
     expect(r.error).toBeDefined();
     expect(r.error).not.toContain("Connection terminated");
   });
@@ -195,19 +195,19 @@ describe("Notas 2 y 6 · Server Action iniciarEscaneoAction", { timeout: 30_000 
     expect(JSON.stringify(r.resultado)).not.toContain("NO_API_KEY");
   });
 
-  it("6c. rechaza un año fuera de rango en vez de escanear todos los años", async () => {
+  it("6c. rechaza una fecha fuera de rango en vez de escanear todos los años", async () => {
     const { iniciarEscaneoAction } = await import("@/app/produccion/actions");
-    const r = await iniciarEscaneoAction({}, formulario({ profesorId: "todos", anio: "1500" }));
+    const r = await iniciarEscaneoAction({}, formulario({ profesorId: "todos", desde: "1500-01-01" }));
     expect(r.error).toBeDefined();
     expect(trabajosFalsos.crearTrabajoEscaneo).not.toHaveBeenCalled();
   });
 
-  it("cada consulta de progreso exige Coordinación y restringe el tipo de Job", async () => {
+  it("cada consulta de progreso exige Administración o Coordinación y restringe el tipo de Job", async () => {
     const { iniciarEscaneoAction } = await import("@/app/produccion/actions");
     const { requireRol } = await import("@/lib/auth/session");
     prismaFalso.job.findFirst.mockResolvedValue({ id: 7, estado: "COMPLETADO", avance: 2, total: 2 });
     const resultado = await iniciarEscaneoAction({}, formulario({ jobId: "7" }));
-    expect(requireRol).toHaveBeenCalledWith(["COORDINADOR"]);
+    expect(requireRol).toHaveBeenCalledWith(["ADMINISTRADOR", "COORDINADOR"]);
     expect(prismaFalso.job.findFirst).toHaveBeenCalledWith({ where: { id: 7, tipo: { in: ["escaneo-manual", "escaneo-diario"] } } });
     expect(resultado.exito).toBe(true);
   });
@@ -216,7 +216,7 @@ describe("Notas 2 y 6 · Server Action iniciarEscaneoAction", { timeout: 30_000 
     const { iniciarEscaneoAction } = await import("@/app/produccion/actions");
     const { requireRol } = await import("@/lib/auth/session");
     vi.mocked(requireRol).mockRejectedValueOnce(new Error("Sin permiso"));
-    await expect(iniciarEscaneoAction({}, formulario({ profesorId: "todos", anio: "" }))).rejects.toThrow("Sin permiso");
+    await expect(iniciarEscaneoAction({}, formulario({ profesorId: "todos" }))).rejects.toThrow("Sin permiso");
     expect(trabajosFalsos.crearTrabajoEscaneo).not.toHaveBeenCalled();
   });
 });
