@@ -93,12 +93,16 @@ const CLASE_AVISO = {
   aviso: "bg-aviso-suave text-aviso",
 };
 
-/** Mensaje de resultado. Los errores se anuncian a lectores de pantalla. */
+/**
+ * Mensaje de resultado. Los errores se anuncian a lectores de pantalla. Es un <div> y no un <p>
+ * porque varias pantallas ponen dentro una lista de errores: un <ul> dentro de un <p> deja el
+ * aviso vacío para los lectores de pantalla y rompe la hidratación.
+ */
 export function Aviso({ tipo, children }: { tipo: keyof typeof CLASE_AVISO; children: React.ReactNode }) {
   return (
-    <p role={tipo === "error" ? "alert" : "status"} className={`rounded-xl px-4 py-3 text-sm ${CLASE_AVISO[tipo]}`}>
+    <div role={tipo === "error" ? "alert" : "status"} className={`rounded-xl px-4 py-3 text-sm ${CLASE_AVISO[tipo]}`}>
       {children}
-    </p>
+    </div>
   );
 }
 
