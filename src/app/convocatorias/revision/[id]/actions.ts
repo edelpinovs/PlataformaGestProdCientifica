@@ -2,9 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect, RedirectType } from "next/navigation";
+import { registrarAuditoria } from "@/lib/auditoria";
 import { requireModulo } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { revalidarProfesorSeleccionado } from "@/lib/selectores/profesor";
+import { eventoAuditoria, resumenCargaConfirmada } from "@/modules/administracion/auditoria";
 import { cargarConfirmacion } from "@/modules/convocatorias/cargar-confirmacion";
 import { planearConfirmacion } from "@/modules/convocatorias/confirmacion";
 import { recalcularConvocatoria } from "@/modules/convocatorias/recalcular";
@@ -112,7 +114,7 @@ const NO_EXISTE_CARGA = "Esa carga ya no existe. Recarga la página.";
  * guarda el resultado oficial de los participantes (RF-018). Si algo falla, no cambia nada.
  */
 export async function confirmarCarga(_: EstadoFila, formData: FormData): Promise<EstadoFila> {
-  await requireModulo("convocatorias");
+  const perfil = await requireModulo("convocatorias");
 
   const cargaId = idDe(formData.get("cargaId"));
   if (cargaId === null) return { error: NO_EXISTE_CARGA };
@@ -157,6 +159,10 @@ export async function confirmarCarga(_: EstadoFila, formData: FormData): Promise
       });
     }
     await recalcularConvocatoria(tx, convocatoria.id);
+    // #380: la constancia va en la misma transacción, con identificadores y conteos (D-294).
+    const renglones = await tx.renglonResultado.count({ where: { cargaId } });
+    const resumen = resumenCargaConfirmada(cargaId, renglones, plan.snii.length + plan.prodep.length);
+    await registrarAuditoria(tx, eventoAuditoria("carga.confirmada", perfil, { tipo: "CargaResultados", id: String(cargaId) }, resumen));
     return { nombre, creados: plan.snii.length + plan.prodep.length, omitidos: plan.omitidos.length };
   }, { timeout: 30_000 });
 

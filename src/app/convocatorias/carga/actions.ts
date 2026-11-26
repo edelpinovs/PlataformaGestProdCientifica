@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect, RedirectType } from "next/navigation";
 import { after } from "next/server";
+import { registrarAuditoria } from "@/lib/auditoria";
 import { requireModulo } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
@@ -19,6 +20,7 @@ import {
   TIEMPO_ATASCO_MS,
   tipoMime,
 } from "@/modules/convocatorias/carga";
+import { eventoAuditoria, resumenEliminacion } from "@/modules/administracion/auditoria";
 import { procesarCarga } from "./procesamiento";
 
 // RF-016 (CU-010) en tres pasos, porque Vercel no acepta más de 4.5 MB por petición:
@@ -125,8 +127,9 @@ export type EstadoFila = { error?: string };
 const NO_EXISTE = "Esa carga ya no existe. Recarga la página.";
 
 // #59: elimina una carga que aún no se confirma, su tarea pendiente y su archivo.
+// #380: el borrado y su constancia en la bitácora van en la misma transacción.
 export async function eliminarCarga(_: EstadoFila, formData: FormData): Promise<EstadoFila> {
-  await requireModulo("convocatorias");
+  const perfil = await requireModulo("convocatorias");
 
   const id = Number(formData.get("id"));
   if (!Number.isInteger(id) || id <= 0) return { error: NO_EXISTE };
@@ -148,6 +151,9 @@ export async function eliminarCarga(_: EstadoFila, formData: FormData): Promise<
     const { count } = await tx.cargaResultados.deleteMany({ where: { id, estado: { not: "CONFIRMADA" } } });
     if (count === 0) return false;
     await tx.job.deleteMany({ where: { ...tareas, estado: { not: "EN_PROCESO" } } });
+    // Solo identificadores: ni el nombre del archivo, que podría nombrar a una persona (D-294).
+    const resumen = resumenEliminacion("la carga", `${id} de ${carga.convocatoria.programa} ${carga.convocatoria.anio}`);
+    await registrarAuditoria(tx, eventoAuditoria("registro.eliminado", perfil, { tipo: "CargaResultados", id: String(id) }, resumen, "convocatorias"));
     return true;
   });
   if (!borrada) {

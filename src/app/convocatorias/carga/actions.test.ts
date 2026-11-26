@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // RF-017: registrar la carga lanza su lectura en segundo plano; «Volver a leer» la repite.
+// #380: eliminar una carga deja su constancia en la bitácora de auditoría.
 const dobles = vi.hoisted(() => ({
   requireModulo: vi.fn(),
   after: vi.fn(),
@@ -15,9 +16,10 @@ const dobles = vi.hoisted(() => ({
     },
   },
   prisma: {
-    cargaResultados: { findFirst: vi.fn(), findUnique: vi.fn(), create: vi.fn(), updateMany: vi.fn() },
+    cargaResultados: { findFirst: vi.fn(), findUnique: vi.fn(), create: vi.fn(), updateMany: vi.fn(), deleteMany: vi.fn() },
     convocatoria: { upsert: vi.fn() },
-    job: { create: vi.fn(), findFirst: vi.fn(), updateMany: vi.fn() },
+    job: { create: vi.fn(), findFirst: vi.fn(), updateMany: vi.fn(), count: vi.fn(), deleteMany: vi.fn() },
+    auditoria: { create: vi.fn() },
     $transaction: vi.fn(),
   },
 }));
@@ -32,7 +34,7 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("./procesamiento", () => ({ procesarCarga: dobles.procesarCarga, TIEMPO_ATASCO_MS: 10 * 60 * 1000 }));
 
-const { registrarCarga, volverALeer } = await import("./actions");
+const { eliminarCarga, registrarCarga, volverALeer } = await import("./actions");
 
 const formulario = (id: string) => {
   const datos = new FormData();
@@ -127,5 +129,43 @@ describe("volverALeer (RF-017)", () => {
     dobles.prisma.job.updateMany.mockResolvedValue({ count: 0 });
     expect(await volverALeer({}, formulario("3"))).toEqual({ error: "La carga se está leyendo. Espera unos minutos." });
     expect(dobles.after).not.toHaveBeenCalled();
+  });
+});
+
+describe("eliminarCarga deja constancia en la bitácora (#380)", () => {
+  const actor = { id: "00000000-0000-0000-0000-000000000001", correo: "coordinacion@demo.invalid" };
+  beforeEach(() => {
+    vi.resetAllMocks();
+    dobles.requireModulo.mockResolvedValue(actor);
+    dobles.prisma.cargaResultados.findUnique.mockResolvedValue({
+      estado: "EN_REVISION", archivoRuta: "snii/2026/20261018T160509-resultados-snii-2026.pdf", convocatoria: { programa: "SNII", anio: 2026 },
+    });
+    dobles.prisma.job.count.mockResolvedValue(0);
+    dobles.prisma.cargaResultados.deleteMany.mockResolvedValue({ count: 1 });
+    dobles.prisma.$transaction.mockImplementation(async (fn) => fn(dobles.prisma));
+  });
+
+  it("guarda el borrado y su registro en la misma transacción, sin datos personales", async () => {
+    await eliminarCarga({}, formulario("9"));
+    expect(dobles.prisma.auditoria.create).toHaveBeenCalledWith({
+      data: {
+        actorId: actor.id, actorCorreo: actor.correo, modulo: "convocatorias", accion: "registro.eliminado",
+        entidad: "CargaResultados", entidadId: "9", resumen: "Eliminó la carga 9 de SNII 2026.",
+      },
+    });
+    expect(dobles.redirect).toHaveBeenCalled();
+  });
+
+  it("no escribe en la bitácora si la carga ya se confirmó o no se borró", async () => {
+    dobles.prisma.cargaResultados.findUnique.mockResolvedValue({
+      estado: "CONFIRMADA", archivoRuta: "snii/2026/x-resultados.pdf", convocatoria: { programa: "SNII", anio: 2026 },
+    });
+    await eliminarCarga({}, formulario("9"));
+    dobles.prisma.cargaResultados.findUnique.mockResolvedValue({
+      estado: "EN_REVISION", archivoRuta: "snii/2026/x-resultados.pdf", convocatoria: { programa: "SNII", anio: 2026 },
+    });
+    dobles.prisma.cargaResultados.deleteMany.mockResolvedValue({ count: 0 });
+    await eliminarCarga({}, formulario("9"));
+    expect(dobles.prisma.auditoria.create).not.toHaveBeenCalled();
   });
 });

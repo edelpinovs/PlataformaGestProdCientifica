@@ -10,6 +10,7 @@ const dobles = vi.hoisted(() => ({
     profesor: { findFirst: vi.fn() },
     convocatoria: { findUnique: vi.fn(), upsert: vi.fn() },
     participacionConvocatoria: { findUnique: vi.fn(), create: vi.fn(), deleteMany: vi.fn() },
+    auditoria: { create: vi.fn() },
     $transaction: vi.fn(),
   },
 }));
@@ -32,7 +33,7 @@ const alta = (campos: Record<string, string> = {}) =>
 beforeEach(() => {
   vi.resetAllMocks();
   dobles.llamadas.length = 0;
-  dobles.requireModulo.mockImplementation(async () => { dobles.llamadas.push("permiso"); return { id: "u" }; });
+  dobles.requireModulo.mockImplementation(async () => { dobles.llamadas.push("permiso"); return { id: "u", correo: "coordinacion@demo.invalid" }; });
   dobles.prisma.profesor.findFirst.mockImplementation(async () => {
     dobles.llamadas.push("profesor");
     return { id: 40, nombres: "Ana", apellidos: "Prueba Uno", codigo: "2009001" };
@@ -136,5 +137,23 @@ describe("eliminarParticipante (RF-018)", () => {
     expect(dobles.redirect).toHaveBeenCalledWith(
       `/convocatorias/participantes?eliminado=${encodeURIComponent("Prueba Uno, Ana (SNII 2026)")}`, "replace",
     );
+  });
+
+  // #380: el borrado y su constancia van juntos; el resumen no lleva el nombre del profesor (D-294).
+  it("deja constancia en la bitácora con identificadores, sin el nombre del profesor", async () => {
+    await eliminarParticipante({}, formulario({ id: "1" }));
+    expect(dobles.prisma.auditoria.create).toHaveBeenCalledWith({
+      data: {
+        actorId: "u", actorCorreo: "coordinacion@demo.invalid", modulo: "convocatorias", accion: "registro.eliminado",
+        entidad: "ParticipacionConvocatoria", entidadId: "1", resumen: "Eliminó la participación 1 de SNII 2026.",
+      },
+    });
+    expect(JSON.stringify(dobles.prisma.auditoria.create.mock.calls)).not.toMatch(/Ana|Prueba Uno/);
+  });
+
+  it("no escribe en la bitácora si no se borró nada", async () => {
+    dobles.prisma.participacionConvocatoria.deleteMany.mockResolvedValue({ count: 0 });
+    await eliminarParticipante({}, formulario({ id: "1" }));
+    expect(dobles.prisma.auditoria.create).not.toHaveBeenCalled();
   });
 });

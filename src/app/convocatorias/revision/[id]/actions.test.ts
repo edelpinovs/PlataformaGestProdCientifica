@@ -15,6 +15,8 @@ const dobles = vi.hoisted(() => ({
   },
   tx: {
     cargaResultados: { findUnique: vi.fn(), findFirst: vi.fn(), updateMany: vi.fn() },
+    renglonResultado: { count: vi.fn() },
+    auditoria: { create: vi.fn() },
     reconocimientoSnii: { createMany: vi.fn() },
     reconocimientoProdep: { createMany: vi.fn() },
   },
@@ -43,7 +45,8 @@ const renglon = (cambios: object = {}) => ({
 
 beforeEach(() => {
   vi.resetAllMocks();
-  dobles.requireModulo.mockResolvedValue({ id: "u" });
+  dobles.requireModulo.mockResolvedValue({ id: "u", correo: "coordinacion@demo.invalid" });
+  dobles.tx.renglonResultado.count.mockResolvedValue(12);
   dobles.prisma.renglonResultado.findUnique.mockResolvedValue(renglon());
   dobles.prisma.renglonResultado.findFirst.mockResolvedValue(null);
   dobles.prisma.renglonResultado.updateMany.mockResolvedValue({ count: 1 });
@@ -205,6 +208,13 @@ describe("confirmarCarga (RF-019)", () => {
     });
     expect(dobles.tx.reconocimientoProdep.createMany).not.toHaveBeenCalled();
     expect(dobles.recalcularConvocatoria).toHaveBeenCalledWith(dobles.tx, 5);
+    // #380: la constancia va en la misma transacción, con identificadores y conteos (D-294).
+    expect(dobles.tx.auditoria.create).toHaveBeenCalledWith({
+      data: {
+        actorId: "u", actorCorreo: "coordinacion@demo.invalid", modulo: "convocatorias", accion: "carga.confirmada",
+        entidad: "CargaResultados", entidadId: "3", resumen: "Confirmó la carga 3: 12 renglones, 1 reconocimientos creados.",
+      },
+    });
     expect(dobles.redirect).toHaveBeenCalledWith(
       `/convocatorias?confirmada=${encodeURIComponent("SNII 2026: 1 reconocimiento registrado, 1 por registrar a mano")}`, "replace",
     );
@@ -215,5 +225,6 @@ describe("confirmarCarga (RF-019)", () => {
     expect((await confirmar()).error).toBe("Esta carga ya no está en revisión.");
     expect(dobles.tx.reconocimientoSnii.createMany).not.toHaveBeenCalled();
     expect(dobles.recalcularConvocatoria).not.toHaveBeenCalled();
+    expect(dobles.tx.auditoria.create).not.toHaveBeenCalled();
   });
 });

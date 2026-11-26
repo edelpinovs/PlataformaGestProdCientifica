@@ -4,9 +4,11 @@ import { revalidatePath } from "next/cache";
 import { redirect, RedirectType } from "next/navigation";
 import type { EstadoAlta } from "@/components/modal-alta-logica";
 import { Prisma } from "@/generated/prisma/client";
+import { registrarAuditoria } from "@/lib/auditoria";
 import { requireModulo } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { revalidarProfesorSeleccionado } from "@/lib/selectores/profesor";
+import { eventoAuditoria, resumenEliminacion } from "@/modules/administracion/auditoria";
 import { motivoConvocatoriaConfirmada, participante } from "@/modules/convocatorias/participantes";
 
 // RF-018: registro de quienes participaron en una convocatoria. El resultado se muestra como
@@ -83,7 +85,7 @@ const NO_EXISTE = "Ese participante ya no está registrado. Recarga la página."
 
 // #59: sin Editar; la participación solo tiene al profesor y el resultado lo pone la confirmación.
 export async function eliminarParticipante(_: EstadoFila, formData: FormData): Promise<EstadoFila> {
-  await requireModulo("convocatorias");
+  const perfil = await requireModulo("convocatorias");
 
   const id = Number(formData.get("id"));
   if (!Number.isInteger(id) || id <= 0 || id > 2147483647) return { error: NO_EXISTE };
@@ -105,8 +107,17 @@ export async function eliminarParticipante(_: EstadoFila, formData: FormData): P
   if (motivo) return { error: motivo };
 
   // La condición va en el mismo DELETE: si la convocatoria se confirma en este instante, no se borra.
-  const { count } = await prisma.participacionConvocatoria.deleteMany({
-    where: { id, convocatoria: { cargas: { none: { estado: "CONFIRMADA" } } } },
+  // #380: el borrado y su constancia van juntos; si no se borró nada, no se registra.
+  const count = await prisma.$transaction(async (tx) => {
+    const borrado = await tx.participacionConvocatoria.deleteMany({
+      where: { id, convocatoria: { cargas: { none: { estado: "CONFIRMADA" } } } },
+    });
+    if (borrado.count) {
+      // Sin el nombre del profesor (D-294): solo el id de la participación y la convocatoria.
+      const resumen = resumenEliminacion("la participación", `${id} de ${nombreConvocatoria}`);
+      await registrarAuditoria(tx, eventoAuditoria("registro.eliminado", perfil, { tipo: "ParticipacionConvocatoria", id: String(id) }, resumen, "convocatorias"));
+    }
+    return borrado.count;
   });
   if (!count) {
     const sigue = await prisma.participacionConvocatoria.findUnique({ where: { id }, select: { id: true } });
