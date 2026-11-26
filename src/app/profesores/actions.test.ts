@@ -1,11 +1,11 @@
 import { Prisma } from "@/generated/prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { crearProfesor, crearProfesorEnModal } from "./actions";
+import { crearProfesor, crearProfesorEnModal, leerDetalleProfesor } from "./actions";
 
 const dobles = vi.hoisted(() => ({
   requireModulo: vi.fn(),
   revalidatePath: vi.fn(),
-  profesor: { findMany: vi.fn(), create: vi.fn() },
+  profesor: { findMany: vi.fn(), findUnique: vi.fn(), create: vi.fn() },
 }));
 vi.mock("@/lib/auth/session", () => ({ requireModulo: dobles.requireModulo }));
 vi.mock("@/lib/prisma", () => ({ prisma: dobles }));
@@ -91,5 +91,25 @@ describe("alta de profesor en modal (D-214, piloto D-216)", () => {
     const invalido = await crearProfesor({}, formulario({ nombres: "" }));
     expect(invalido.error).toBe("El nombre es obligatorio.");
     expect(invalido.campo).toBe("nombres");
+  });
+});
+
+describe("detalle de profesor (issue 341)", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    dobles.requireModulo.mockResolvedValue({ rol: "ADMINISTRADOR" });
+    dobles.profesor.findUnique.mockResolvedValue(null);
+  });
+
+  it("exige el permiso del módulo antes de leer el registro", async () => {
+    dobles.requireModulo.mockRejectedValue(new Error("sin permiso"));
+    await expect(leerDetalleProfesor(4)).rejects.toThrow("sin permiso");
+    expect(dobles.requireModulo).toHaveBeenCalledWith("profesores");
+    expect(dobles.profesor.findUnique).not.toHaveBeenCalled();
+  });
+
+  it("devuelve null si ese profesor ya no existe", async () => {
+    await expect(leerDetalleProfesor(4)).resolves.toBeNull();
+    expect(dobles.profesor.findUnique).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 4 } }));
   });
 });

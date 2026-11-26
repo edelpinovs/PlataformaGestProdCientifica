@@ -1,6 +1,8 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Aviso,
   claseAccionIcono,
@@ -53,13 +55,23 @@ type Props = {
   campos: CampoFila[];
   editar: AccionFila;
   eliminar: AccionFila;
+  /** Icono de ojo que abre el detalle. El modal lo arma la página. */
+  verDetalle?: { href: string; idFoco: string };
+  /** La página pide abrir la edición de esta fila (desde el detalle) sin perder el listado. */
+  edicionInicial?: boolean;
+  /** URL del listado sin `editar`, para volver a la fila al cancelar esa edición. */
+  urlListado?: string;
 };
 
 const ANCHO = { amplio: "flex-1 sm:min-w-56", medio: "sm:w-64", corto: "sm:w-40" };
 
 export function FilaEditable(props: Props) {
-  const [modo, setModo] = useState<"ver" | "editar" | "eliminar">("ver");
-  const cerrar = () => setModo("ver");
+  const [modo, setModo] = useState<"ver" | "editar" | "eliminar">(props.edicionInicial ? "editar" : "ver");
+  const router = useRouter();
+  const cerrar = () => {
+    setModo("ver");
+    if (props.edicionInicial && props.urlListado) router.replace(props.urlListado, { scroll: false });
+  };
 
   // Edición y confirmación se montan de nuevo cada vez, así no arrastran errores anteriores.
   if (modo === "editar") return <Edicion {...props} cerrar={cerrar} />;
@@ -71,6 +83,12 @@ export function FilaEditable(props: Props) {
         <td key={i} className={`${claseTabla.celda} ${celda.className ?? ""}`}>{celda.contenido}</td>
       ))}
       <td className={`${claseTabla.celda} pr-0 text-right whitespace-nowrap`}>
+        {props.verDetalle && (
+          <Link id={props.verDetalle.idFoco} href={props.verDetalle.href} scroll={false} className={claseAccionIcono()}
+            aria-label={`Ver detalle de ${props.nombre}`} title="Ver detalle">
+            <Icono d={ICONOS.ver} />
+          </Link>
+        )}
         <button type="button" onClick={() => setModo("editar")} className={claseAccionIcono()}
           aria-label={`Editar ${props.nombre}`} title="Editar">
           <Icono d={ICONOS.editar} />

@@ -267,6 +267,25 @@ La pieza está en `src/components/modal-alta.tsx`; su lógica comprobable está 
 
 Prueba aislada reproducible: `node src/components/modal-alta.navegador.mjs`. Usa el Chrome instalado (configurable con `CHROME_BIN`), un perfil temporal y acciones ficticias; no consulta la base ni la sesión de la persona. Comprueba teclado real, cancelación, errores, envío único, éxito y contenido desplazable en claro, oscuro y a 390 píxeles.
 
+### Detalle en modal (D-277)
+
+> **Estado:** piloto en Profesores (#341). Las demás pantallas no lo usan hasta su propio issue. Producción conserva su diálogo de historial hasta que se migre a esta pieza.
+
+Cada fila con *Editar* y *Eliminar* puede ofrecer *Ver detalle*: un icono de ojo que abre un modal de solo lectura con el registro completo. No sustituye a *Editar*.
+
+| Momento | Qué hace el modal |
+| --- | --- |
+| Abrir | Icono con `aria-label="Ver detalle de <nombre>"` y `title`. La URL gana `ver=<id>` y conserva búsqueda, filtros, orden y página. El foco entra al diálogo |
+| Contenido | Secciones con pares etiqueta/valor. Un vacío se muestra «—». Un valor *Pendiente* usa `<EtiquetaEstado>`. Mientras llega, «Cargando…» |
+| Permisos | La lectura pasa por `requireModulo`/`requireRol`, igual que el listado. *Editar* dentro del modal solo aparece si la página pasa el enlace |
+| Editar | Cierra el detalle y abre la edición de esa fila, sin perder el estado del listado |
+| Cerrar | *Cerrar*, la X, Escape o un clic fuera quitan `ver` y devuelven el foco al icono de la fila. En celular el modal ocupa la pantalla y el contenido se desplaza |
+| Tema | Solo colores con nombre. Claro y oscuro cambian solos |
+
+- Las secciones y los campos los declara el módulo en una función pura con prueba (`src/modules/<módulo>/`). El listado no carga esos campos en las diez filas: los pide al abrir.
+- `<ModalDetalle>` está en `src/components/modal-detalle.tsx`. `<FilaEditable>` recibe `verDetalle` opcional (`href` e `idFoco`) y, si hace falta, `edicionInicial` para abrir la edición desde el modal.
+- El icono es `ICONOS.ver`.
+
 ### Selector de profesor (D-215)
 
 Para elegir un profesor en un formulario (por ejemplo, integrantes de un cuerpo académico) se usa un selector con búsqueda, no una lista larga.
