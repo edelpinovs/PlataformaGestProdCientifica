@@ -11,6 +11,7 @@ Revisión del [PR #363](https://github.com/edelpinovs/PlataformaGestProdCientifi
 | Revisó | Claude Code, a petición de @edelpinovs (I1) |
 | Entorno | Local (Windows 11, Node 24). `simular` contra la base compartida (solo lectura). **Sin ensayo en base local** (Docker no arranca en ese equipo) |
 | Resultado | **Aprobable con comentarios.** La lógica está probada con datos ficticios, las reglas clave tienen dientes y los dos refactores no cambian el comportamiento de F3 ni de `importar:limpiar`. Falta ejecutar `aplicar` y `revertir` contra una base real, y que otra persona apruebe |
+| Estado | **Integrado** en `main` el 2026-11-26 por @edelpinovs, el autor, **sin una aprobación registrada de otra persona** (D-006). **Aplicado** en la base compartida el mismo día, después de F3: 10 profesores creados. #356 sigue abierto hasta que una persona lo cierre |
 
 Esta revisión la hace el mismo agente que escribió el código: **no sustituye la aprobación de otra persona del equipo (D-006).**
 
