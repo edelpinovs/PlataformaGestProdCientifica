@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ControlBusqueda } from "@/app/produccion/control-busqueda";
 import { estadoConfiguracionScopus } from "@/app/produccion/configuracion-scopus";
 import { TIPOS_ESCANEO } from "@/app/produccion/trabajos";
 import { Marco } from "@/components/marco";
@@ -142,6 +143,12 @@ export default async function EscaneoPage() {
                     aria-label={`Ver el escaneo del ${fechaHora.format(t.creadoEn)}`}>
                     Ver
                   </Link>
+                </div>
+                {/* Cancelar y reintentar son las acciones de Producción (#279): validan el rol y el estado en el servidor. */}
+                <div className="basis-full">
+                  <ControlBusqueda key={`${t.id}-${t.estado}`} jobId={t.id}
+                    cancelar={t.estado === "PENDIENTE" || t.estado === "EN_PROCESO"}
+                    reintentar={t.estado === "FALLIDO" || t.estado === "CANCELADO"} />
                 </div>
               </li>
             ))}

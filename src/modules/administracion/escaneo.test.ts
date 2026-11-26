@@ -11,6 +11,7 @@ import {
   type ConteoPorEstado,
   type TrabajoResumen,
 } from "./escaneo";
+import { TIEMPO_RESERVA_MS } from "@/modules/produccion/lotes";
 
 const AHORA = new Date("2026-11-23T12:00:00Z");
 const haceDias = (n: number) => new Date(AHORA.getTime() - n * 24 * 60 * 60 * 1000);
@@ -38,7 +39,8 @@ describe("escaneos sin avance", () => {
     actualizadoEn: new Date(AHORA.getTime() - minutos * 60 * 1000),
   });
 
-  it("el límite es de 10 minutos, igual que la reserva de Producción", () => {
+  it("el límite es de 10 minutos y es el mismo valor que la reserva de Producción", () => {
+    expect(TIEMPO_SIN_AVANCE_MS).toBe(TIEMPO_RESERVA_MS);
     expect(TIEMPO_SIN_AVANCE_MS).toBe(10 * 60 * 1000);
     expect(sinAvanceDesde(AHORA).getTime()).toBe(AHORA.getTime() - 10 * 60 * 1000);
   });
