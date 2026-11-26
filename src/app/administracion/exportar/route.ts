@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireModulo } from "@/lib/auth/session";
 import { analizarListado, type ParametrosListado } from "@/lib/listados/consulta";
 import { prisma } from "@/lib/prisma";
+import { registrarAuditoria } from "@/lib/auditoria";
 import { eventoAuditoria } from "@/modules/administracion/auditoria";
 import { filtroAuditoria, LISTADO_AUDITORIA, ordenAuditoria } from "@/modules/administracion/auditoria-listado";
 import { filtrarHallazgos, LISTADO_CALIDAD, ordenarHallazgos } from "@/modules/administracion/calidad";
@@ -98,14 +99,15 @@ export async function GET(solicitud: Request) {
   const archivo = pedido.formato === "xlsx" ? await generarExcel(armado.tabla) : generarPdf(armado.tabla);
 
   try {
-    await prisma.auditoria.create({
-      data: eventoAuditoria(
+    await registrarAuditoria(
+      prisma,
+      eventoAuditoria(
         "listado.exportado",
         actor,
         { tipo: "Listado", id: pedido.listado },
         resumenExportacion(pedido.listado, pedido.formato, armado.tabla.filas.length, armado.filtros),
       ),
-    });
+    );
   } catch {
     // Sin constancia en la bitácora no se entrega el archivo; el mensaje no repite el error de la base.
     return texto("No se pudo registrar la descarga en la bitácora. Inténtalo de nuevo.", 500);
