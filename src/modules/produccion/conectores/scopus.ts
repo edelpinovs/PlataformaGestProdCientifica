@@ -30,21 +30,40 @@ export function mapearTipoScopus(subtipo?: string | null): TipoPublicacion {
 }
 
 /**
+ * Texto de un campo de Scopus, que puede llegar como texto, número, objeto `{ "$": valor }`
+ * o lista de esos objetos (así llega `prism:isbn` en libros y memorias, #396).
+ * De una lista toma el primer valor con contenido; cualquier otra forma se lee como vacía.
+ */
+export function textoScopus(valor: unknown): string {
+  if (typeof valor === "string") return limpiarTexto(valor);
+  if (typeof valor === "number" && Number.isFinite(valor)) return String(valor);
+  if (Array.isArray(valor)) {
+    for (const elemento of valor) {
+      const texto = textoScopus(elemento);
+      if (texto) return texto;
+    }
+    return "";
+  }
+  if (typeof valor === "object" && valor !== null && "$" in valor) return textoScopus((valor as Record<string, unknown>)["$"]);
+  return "";
+}
+
+/**
  * Transforma un elemento 'entry' devuelto por la API de Scopus en un PublicacionCandidata estándar.
  */
 export function mapearEntradaScopus(
   entry: Record<string, unknown>,
   profesorId: number,
 ): PublicacionCandidata | null {
-  const titulo = limpiarTexto(entry["dc:title"] as string);
+  const titulo = textoScopus(entry["dc:title"]);
   if (!titulo) return null;
 
-  const doi = limpiarDoi(entry["prism:doi"] as string);
-  const tipo = mapearTipoScopus(entry["subtypeDescription"] as string);
+  const doi = limpiarDoi(textoScopus(entry["prism:doi"]));
+  const tipo = mapearTipoScopus(textoScopus(entry["subtypeDescription"]));
 
   // Extraer autores
   const listaAutores: string[] = [];
-  const autorPrincipal = limpiarTexto(entry["dc:creator"] as string);
+  const autorPrincipal = textoScopus(entry["dc:creator"]);
   if (autorPrincipal) {
     listaAutores.push(autorPrincipal);
   }
@@ -53,7 +72,7 @@ export function mapearEntradaScopus(
   if (Array.isArray(rawAuthor)) {
     for (const a of rawAuthor) {
       if (typeof a === "object" && a !== null) {
-        const nombre = limpiarTexto((a as Record<string, unknown>)["authname"] as string);
+        const nombre = textoScopus((a as Record<string, unknown>)["authname"]);
         if (nombre && !listaAutores.includes(nombre)) {
           listaAutores.push(nombre);
         }
@@ -64,7 +83,7 @@ export function mapearEntradaScopus(
   const autoresTexto = listaAutores.length > 0 ? listaAutores.join("; ") : autorPrincipal || "Desconocido";
 
   // Fecha y año
-  const coverDate = limpiarTexto(entry["prism:coverDate"] as string);
+  const coverDate = textoScopus(entry["prism:coverDate"]);
   let fechaPublicacion: Date | null = null;
   let anio: number | null = null;
   if (coverDate) {
@@ -77,22 +96,23 @@ export function mapearEntradaScopus(
   }
 
   // Revista, ISSN e ISBN
-  const revista = limpiarTexto(entry["prism:publicationName"] as string) || null;
+  const revista = textoScopus(entry["prism:publicationName"]) || null;
   const issn = normalizarIssnIsbn(
-    (entry["prism:issn"] as string) || (entry["prism:eIssn"] as string) || (entry["prism:isbn"] as string),
+    textoScopus(entry["prism:issn"]) || textoScopus(entry["prism:eIssn"]) || textoScopus(entry["prism:isbn"]),
   );
 
   // Citas
   let citas: number | undefined;
-  if (entry["citedby-count"]) {
-    const parsed = parseInt(String(entry["citedby-count"]), 10);
+  const citasTexto = textoScopus(entry["citedby-count"]);
+  if (citasTexto) {
+    const parsed = parseInt(citasTexto, 10);
     if (!isNaN(parsed) && parsed >= 0) {
       citas = parsed;
     }
   }
 
-  const volumen = limpiarTexto(entry["prism:volume"] as string) || null;
-  const paginas = limpiarTexto(entry["prism:pageRange"] as string) || null;
+  const volumen = textoScopus(entry["prism:volume"]) || null;
+  const paginas = textoScopus(entry["prism:pageRange"]) || null;
 
   return {
     tipo,
@@ -173,8 +193,10 @@ export async function consultarScopus(
     if (entries.length === 0) break;
 
     for (const e of entries) {
-      if (e["error"]) continue;
-      const pub = mapearEntradaScopus(e, profesor.id);
+      if (typeof e !== "object" || e === null || e["error"]) continue;
+      // Una entrada con una forma inesperada se omite sin perder el resto de la fuente (#396).
+      let pub: PublicacionCandidata | null = null;
+      try { pub = mapearEntradaScopus(e, profesor.id); } catch { pub = null; }
       if (pub) {
         publicaciones.push(pub);
       }

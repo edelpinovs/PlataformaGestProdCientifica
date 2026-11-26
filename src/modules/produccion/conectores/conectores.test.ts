@@ -1,9 +1,19 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { consultarIndiceH, consultarScopus, mapearEntradaScopus, mapearTipoScopus } from "./scopus";
+import { consultarIndiceH, consultarScopus, mapearEntradaScopus, mapearTipoScopus, textoScopus } from "./scopus";
 import { consultarOpenAlex, mapearObraOpenAlex, mapearTipoOpenAlex } from "./openalex";
 import { consultarOrcid, mapearObraOrcid, mapearTipoOrcid } from "./orcid";
 import { enriquecerLoteConCrossref, requiereEnriquecimientoAutores } from "./crossref";
 import type { PublicacionCandidata } from "../tipos";
+
+// Solo para el #396: un DOI marcado simula una entrada cuya lectura lanza una excepción.
+const DOI_QUE_ROMPE = "10.0000/entrada.ilegible";
+vi.mock("../normalizacion", async (original) => {
+  const real = await original<typeof import("../normalizacion")>();
+  return { ...real, limpiarDoi: (doi?: string | null) => {
+    if (doi === DOI_QUE_ROMPE) throw new TypeError("forma inesperada");
+    return real.limpiarDoi(doi);
+  } };
+});
 
 function respuestaJson(cuerpo: unknown) {
   return new Response(JSON.stringify(cuerpo), { status: 200, headers: { "content-type": "application/json" } });
@@ -55,6 +65,51 @@ describe("conectores de fuentes externas (RF-020)", () => {
 
     it("descarta entradas sin título", () => {
       expect(mapearEntradaScopus({}, 1)).toBeNull();
+    });
+
+    // #396: Scopus manda el ISBN de libros y memorias como lista de objetos; antes lanzaba TypeError.
+    const libroConIsbnEnLista = {
+      "dc:title": "Libro ficticio de prueba",
+      "subtypeDescription": "Book",
+      "dc:creator": "Persona Ficticia",
+      "prism:coverDate": "2024-03-01",
+      "prism:isbn": [{ "@_fa": "true", "$": "978-0-000-00000-2" }, { "@_fa": "true", "$": "9780000000019" }],
+      "prism:volume": 7,
+      "citedby-count": "3",
+    };
+
+    it("lee un libro con el ISBN en lista sin fallar y guarda el primer ISBN", () => {
+      const resultado = mapearEntradaScopus(libroConIsbnEnLista, 4);
+      expect(resultado?.titulo).toBe("Libro ficticio de prueba");
+      expect(resultado?.tipo).toBe("LIBRO");
+      expect(resultado?.isbnIssn).toBe("9780000000002");
+      expect(resultado?.volumen).toBe("7");
+      expect(resultado?.citas).toBe(3);
+      expect(resultado?.anio).toBe(2024);
+    });
+
+    it("textoScopus acepta texto, número, objeto con «$» y listas, y deja vacío lo demás", () => {
+      expect(textoScopus("  Revista   ficticia ")).toBe("Revista ficticia");
+      expect(textoScopus(12)).toBe("12");
+      expect(textoScopus({ "$": "0957-4174" })).toBe("0957-4174");
+      expect(textoScopus([{ "$": "" }, { "$": "1234-5678" }])).toBe("1234-5678");
+      expect(textoScopus({ otro: "x" })).toBe("");
+      expect(textoScopus(null)).toBe("");
+      expect(textoScopus(undefined)).toBe("");
+      expect(textoScopus(Number.NaN)).toBe("");
+    });
+
+    it("una entrada ilegible se omite y la fuente conserva las demás", async () => {
+      const entradaQueFalla = { "dc:title": "Obra ficticia ilegible", "prism:doi": DOI_QUE_ROMPE };
+      vi.stubGlobal("fetch", vi.fn(async () => respuestaJson({
+        "search-results": {
+          "opensearch:totalResults": "3",
+          entry: [{ "dc:title": "Obra ficticia A" }, entradaQueFalla, libroConIsbnEnLista],
+        },
+      })));
+      const r = await consultarScopus({ id: 1, scopusId: "57200000000" }, 2024, "clave-ficticia");
+      expect(r.error).toBeUndefined();
+      expect(r.publicaciones.map((p) => p.titulo)).toEqual(["Obra ficticia A", "Libro ficticio de prueba"]);
     });
 
     it("3b. Scopus: un profesor con 150 obras devuelve las 150 paginadas", async () => {
