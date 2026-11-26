@@ -11,6 +11,7 @@ Revisión del [PR #361](https://github.com/edelpinovs/PlataformaGestProdCientifi
 | Revisó | Claude Code, a petición de @edelpinovs (I1) |
 | Entorno | Local (Windows 11, Node 24). `simular` contra la base compartida (solo lectura). **Sin ensayo en base local** (Docker no arranca en ese equipo) |
 | Resultado | **Aprobable con comentarios.** La lógica está probada con datos ficticios y las reglas clave tienen dientes (ver §3). Falta ejecutar `aplicar` y `revertir` contra una base real, y que otra persona apruebe |
+| Estado | **Integrado** en `main` el 2026-11-26 (merge `265402d`) por @edelpinovs, el autor, **sin una aprobación registrada de otra persona** (D-006). #354 sigue abierto: la base no ha cambiado |
 
 Esta revisión la hace el mismo agente que escribió el código: **no sustituye la aprobación de otra persona del equipo (D-006).**
 
