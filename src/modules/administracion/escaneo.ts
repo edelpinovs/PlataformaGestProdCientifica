@@ -1,3 +1,4 @@
+import { TIEMPO_RESERVA_MS } from "@/modules/produccion/lotes";
 import { FUENTES_ESCANEO, NOMBRES_FUENTE, type FuenteEscaneo } from "@/modules/produccion/fuentes";
 
 // Control del escaneo (issue 243), solo lectura: resume lo que el motor de Producción ya guarda.
@@ -32,10 +33,10 @@ export type ResumenTrabajos = {
 
 /**
  * Tiempo sin actualizarse tras el que un escaneo «en proceso» se considera sin avance. Es el mismo
- * valor con que Producción deja de reservar un escaneo (`TIEMPO_RESERVA_MS` en
- * src/app/produccion/trabajos.ts, 10 minutos); mientras no se unifique, hay que cambiar los dos.
+ * valor con que Producción deja de reservar un escaneo (`TIEMPO_RESERVA_MS`, 10 minutos): se importa de
+ * ahí para que no haya dos copias que puedan separarse (acordado con I6 en #279).
  */
-export const TIEMPO_SIN_AVANCE_MS = 10 * 60 * 1000;
+export const TIEMPO_SIN_AVANCE_MS = TIEMPO_RESERVA_MS;
 
 /** Fecha límite: un trabajo en proceso actualizado antes de esta fecha está sin avance. */
 export function sinAvanceDesde(ahora: Date): Date {
@@ -45,6 +46,18 @@ export function sinAvanceDesde(ahora: Date): Date {
 /** Un escaneo está «sin avance» si sigue en proceso y no se actualiza desde hace `TIEMPO_SIN_AVANCE_MS`. */
 export function estaSinAvance(trabajo: Pick<TrabajoResumen, "estado" | "actualizadoEn">, ahora: Date): boolean {
   return trabajo.estado === "EN_PROCESO" && trabajo.actualizadoEn.getTime() < sinAvanceDesde(ahora).getTime();
+}
+
+/**
+ * Qué botones de control corresponden a un escaneo según su estado (#279): cancelar solo lo que aún no
+ * termina; reintentar solo lo que falló o se canceló. Son los mismos criterios que usa el historial de
+ * Producción y que sus acciones vuelven a comprobar en el servidor.
+ */
+export function controlesEscaneo(estado: EstadoTrabajo): { cancelar: boolean; reintentar: boolean } {
+  return {
+    cancelar: estado === "PENDIENTE" || estado === "EN_PROCESO",
+    reintentar: estado === "FALLIDO" || estado === "CANCELADO",
+  };
 }
 
 /** Desde cuándo cuenta la ventana de «recientes». */
