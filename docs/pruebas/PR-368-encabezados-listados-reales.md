@@ -62,8 +62,27 @@ Script temporal que llama a `interpretarListado` (se borró después):
 | 2 | Media | **«El resultado manda» es más amplio de lo pedido.** El issue lo limita a cuando el archivo trae «nivel anterior y resultado»; el código lo aplica siempre que exista una columna `RESULTADO`, incluso si hay `NIVEL OTORGADO` explícito. Un archivo con `NIVEL OTORGADO` más un `RESULTADO` de otro tipo («Aprobado», «Pendiente») pierde el nivel. Conviene aplicar el cambio solo si la columna de nivel es la del año o `NIVEL SNII` (no `NIVEL OTORGADO`) |
 | 3 | Menor | Con resultado vacío y **sin CVU ni código** en el archivo, el renglón se descarta sin aviso, aunque el PR dice que queda «con aviso». Con CVU o código sí funciona. Añadir la prueba de ese caso o ajustar el texto |
 | 4 | Menor | Con dos columnas de nivel con año se toma la primera sin avisar. Si el archivo trae `NIVEL SNII 2026` y `NIVEL SNII 2027`, lo normal es que el otorgado sea el de la convocatoria nueva |
-| 5 | Pendiente | La prueba de solo lectura con los `.xlsx` reales (último punto de «Terminado cuando» del issue) no se ha hecho. Quien tenga `datos-reales/pgpc-2027/` debe correrla antes de integrar, y de ella depende el hallazgo 1 |
+| 5 | Hecho el 2026-11-26 | La prueba de solo lectura con los `.xlsx` reales se corrió después de integrar el PR; resultado en la sección 7. Con esos archivos el hallazgo 1 **no se reprodujo**, pero el código sigue sin filtrar filas de totales |
+| 6 | Media | **Con el Perfil Deseable real, 22 de 128 renglones se descartan sin aviso** (sin código ni resultado; solo traen nombre y fechas). Es el hallazgo 3 con datos reales. Ver sección 7 |
 
 ## 6. Dictamen
 
 **Aprobable con comentarios.** Puede integrarse cuando otra persona del equipo lo apruebe y se haya corrido la prueba con los archivos reales (hallazgo 5). Conviene corregir antes los hallazgos 1 y 2; el 3 y el 4 son menores.
+
+## 7. Prueba de solo lectura con los `.xlsx` reales (2026-11-26)
+
+La hizo Claude Code a petición de @edelpinovs (I1), **después de que el PR se integrara**, con los tres archivos de `datos-reales/pgpc-2027/data/ingesta/`. Un comando temporal de `npx tsx` (no se guardó en el repo) pasó cada archivo por `filasDeExcel` y `interpretarListado`, el mismo camino que la pantalla de carga. No usó la base, Storage ni la pantalla de carga, y solo se anotan conteos y categorías, sin nombres.
+
+| Archivo | Programa | Resultado |
+|---|---|---|
+| Listado SNII | SNII | **Se acepta.** 135 renglones (los 135 de datos), 118 con CVU, 135 con vigencia y 135 con apellidos. Por nivel: Candidato 33, Nivel 1 87, Nivel 2 11 y 4 sin nivel con aviso «no se reconoce el nivel» (los 4 con resultado vacío; el estatus del mismo archivo trae 4 «No aprobado») |
+| Perfil Deseable | PRODEP | **Se acepta, pero lee 106 de 128 renglones de datos y no avisa de los 22 que faltan.** De los 106: 98 con código y 98 con vigencia |
+| Cuerpos académicos | — | No es un listado de convocatoria: el lector no encuentra filas. Fuera del alcance de M5 |
+
+Qué confirma y qué no:
+
+- Los encabezados `APELLIDOS`, `NIVEL ANTERIOR 2026`, `RESULTADO EN CONVOCATORIA 2026`, `INICIO` y `FIN` se reconocen, y el resultado manda sobre el nivel anterior (el nivel sale de la columna de resultado, con `C`, `I` y `II`).
+- **Hallazgo 1 (filas de totales):** en este archivo no aparece. Hay 135 renglones leídos para 135 filas de datos, así que ninguna fila de totales se coló como persona. El comportamiento del código no cambió: otro archivo con totales en la zona de datos sí los leería como personas.
+- El archivo de Perfil Deseable trae las columnas `TIPO SOLICITUD` y `RESULTADO`: **`TIPO SOLICITUD` está vacío en los 128 renglones** y `RESULTADO` trae «Aprobada» en 30 (98 vacíos). Confirma que el Excel no resuelve P8 (D-285).
+- **Hallazgo nuevo (6, media): 22 de los 128 Perfiles se descartan sin aviso.** `interpretarListado` descarta el renglón que no trae ninguna de las columnas que identifican a la persona (CVU, código o resultado), y en este archivo hay 22 personas con nombre y fechas, sin código y sin resultado. Es el mismo mecanismo del hallazgo 3, ahora con datos reales: quien cargue este listado verá 106 renglones sin ningún aviso de que faltan 22. Conviene avisar de los renglones descartados o contarlos en el resumen.
+- Quedan sin atender los hallazgos 2, 3, 4 y 6 de la revisión.
