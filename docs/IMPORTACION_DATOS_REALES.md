@@ -325,3 +325,42 @@ Código en `scripts/altas-profesores.ts` y `scripts/lib/altas-profesores.ts`; la
 **Para el informe al cliente** (se entrega por otro medio, nunca por el repositorio): las 38 personas sin código UdeG, las 8 sin correo institucional y las 10 que conservan un código `PEND`. Las 8 que solo carecen de correo se podrían dar de alta si lo entrega.
 
 Para deshacer lo que nadie ha tocado ni usado: `npm run importar:altas:revertir -- <bitácora> --confirmo`.
+
+## Reconocimientos SNII reales (F5)
+
+Plan en [`PLAN_IMPORTACION_DATOS_REALES_2027.md`](PLAN_IMPORTACION_DATOS_REALES_2027.md) y decisión P7 (D-284) en [`DECISIONES.md`](DECISIONES.md). Crea los periodos SNII del paquete 2027 (`reconocimientos_snii.json`, 157 periodos de 136 profesores) para los profesores que ya están en la base.
+
+```bash
+npm run importar:snii:simular                              # calcula el plan; no escribe en la base
+npm run importar:snii:aplicar -- --confirmo                # una persona; una sola transacción, con bitácora
+npm run importar:snii:revertir -- <bitácora> --confirmo    # borra solo lo que nadie ha tocado
+```
+
+- **Solo se carga un periodo si el paquete trae su tipo de participación (D-284, opción B):** `INGRESO` → nuevo ingreso; `PROMOVIDO` → renovación; «se mantuvo» y participó en la convocatoria 2026 → renovación. El tipo no se inventa: el resto va al informe del cliente. Inferirlo (opción A) exigiría una decisión nueva que reemplace a D-284.
+- **Nivel:** `C`, `I`, `II`, `III` y `E` → Candidato, Nivel 1, Nivel 2, Nivel 3 y Emérito. Resultado `APROBADO`; sin convocatoria.
+- **Mismas reglas del formulario de SNII:** Candidato con Renovación se rechaza (D-225), el fin debe ser posterior al inicio y no se admiten traslapes con la base ni dentro del lote (D-103).
+- **Se omite** a quien no tiene código UdeG, no está en la base o no tiene CVU en la base (el formulario SNII lo exige; este script **nunca escribe el CVU**).
+- **Los cuatro «no aprobado»** no se pueden registrar con nivel `NO_APROBADO` (D-104): el paquete trae solo su periodo anterior y ninguna fecha del dictamen, y crearlo exigiría inventar el inicio y el fin. Quedan en el informe.
+- **`revertir`** borra solo lo que conserva sus valores y sigue sin convocatoria (un resultado oficial no se borra, D-107).
+- Imprime en la terminal solo conteos y la base a la que se conecta; el detalle con nombres queda en `datos-reales/plan-snii.md` y la bitácora en `datos-reales/bitacoras/snii-<fecha>.json`.
+
+Código en `scripts/importar-snii.ts` y `scripts/lib/importar-snii.ts`; la parte pura está probada en `scripts/lib/importar-snii.test.ts` con datos ficticios. **`aplicar` y `revertir` no tienen prueba automática** (escriben en la base compartida): se comprueban con `simular` antes y después.
+
+### Simulación del 2026-11-26 (base compartida, solo lectura)
+
+| Concepto | Cantidad |
+|---|---|
+| Periodos en el paquete | 157 |
+| **A crear** | **22** |
+| — Nivel 1, por iniciar | 19 |
+| — Nivel 1, vigente | 1 |
+| — Nivel 2, por iniciar | 2 |
+| Omitidos (al informe del cliente) | 135 |
+| — sin tipo de participación (D-284) | 112 |
+| — profesor sin CVU en la base | 10 |
+| — profesor que no está en la base | 10 |
+| — profesor sin código UdeG | 3 |
+
+> **Con D-284 el listado SNII quedaría casi vacío de vigentes.** De los 22 periodos que se crearían, solo uno está vigente hoy; los demás empiezan en 2027. Los reportes y el semáforo de SNII mostrarían una cifra muy inferior a la real (en el paquete, 120 de los 157 periodos están vigentes) hasta que el cliente entregue el tipo de participación de los periodos que se mantuvieron sin participar en 2026.
+
+Aún **no se ha aplicado** en la base compartida ni se ha hecho el ensayo local (aplazado); tampoco se han visto el listado SNII ni el semáforo en pantalla.

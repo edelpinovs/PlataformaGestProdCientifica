@@ -43,19 +43,31 @@ const SIN_COLUMNAS_PRODEP = "No se encontró la columna de nombre en el archivo.
 const SIN_RENGLONES = "El archivo no tiene ningún renglón con nombre.";
 const SIN_NIVEL = "Sin nivel";
 
-type Columna = "cvu" | "codigo" | "paterno" | "materno" | "nombres" | "nombreCompleto" | "nivel" | "vigencia" | "inicio" | "fin";
+type Columna =
+  | "cvu" | "codigo" | "paterno" | "materno" | "nombres" | "nombreCompleto" | "nivel" | "resultado" | "vigencia" | "inicio" | "fin";
 
 const ENCABEZADOS: Record<Columna, string[]> = {
   cvu: ["CVU", "NO CVU", "NUM CVU", "NUMERO CVU", "CVU CONAHCYT", "CVU SECIHTI"],
-  codigo: ["CODIGO", "CODIGO UDG", "CODIGO CUVALLES"],
-  paterno: ["APELLIDO PATERNO", "PRIMER APELLIDO"],
+  codigo: ["CODIGO", "CODIGO UDG", "CODIGO UDEG", "CODIGO CUVALLES"],
+  // «APELLIDOS» trae los dos juntos (archivos de la Coordinación, #355): se guardan en el paterno y
+  // el cruce por nombre (RF-018) los vuelve a unir con el nombre, sin intentar separarlos.
+  paterno: ["APELLIDO PATERNO", "PRIMER APELLIDO", "APELLIDOS"],
   materno: ["APELLIDO MATERNO", "SEGUNDO APELLIDO"],
   nombres: ["NOMBRES"],
   nombreCompleto: ["NOMBRE", "NOMBRE COMPLETO", "NOMBRE DEL PROFESOR", "NOMBRE DEL DOCENTE"],
   nivel: ["NIVEL OTORGADO", "NIVEL", "DISTINCION", "NIVEL RECOMENDADO"],
+  resultado: ["RESULTADO"],
   vigencia: ["VIGENCIA"],
-  inicio: ["INICIO", "FECHA DE INICIO", "VIGENCIA INICIO", "INICIO DE VIGENCIA"],
-  fin: ["FIN", "FECHA DE FIN", "VIGENCIA FIN", "FIN DE VIGENCIA", "FECHA DE TERMINO"],
+  inicio: ["INICIO", "FECHA DE INICIO", "VIGENCIA INICIO", "INICIO DE VIGENCIA", "INICIO VIGENCIA"],
+  fin: ["FIN", "FECHA DE FIN", "VIGENCIA FIN", "FIN DE VIGENCIA", "FIN VIGENCIA", "FECHA DE TERMINO"],
+};
+
+// Encabezados que llevan el año de la convocatoria («NIVEL SNII 2026», «Resultado en convocatoria
+// 2026»). Cada patrón cubre el encabezado completo, así que «Resultado final» o «Nivel SNII
+// anterior» no coinciden, ni las vigencias del nombramiento («INICIO VIGENCIA UdeG»).
+const PATRONES: Partial<Record<Columna, RegExp>> = {
+  nivel: /^NIVEL SNII(?: \d{4})?$/,
+  resultado: /^RESULTADO(?: EN CONVOCATORIA)?(?: \d{4})?$/,
 };
 
 // Forma de comparación de un encabezado: sin acentos, en mayúsculas, sin puntos ni paréntesis
@@ -75,9 +87,13 @@ function mapearColumnas(celdas: string[]): Partial<Record<Columna, number>> {
   celdas.forEach((celda, indice) => {
     const clave = claveEncabezado(celda);
     for (const [columna, nombres] of Object.entries(ENCABEZADOS) as [Columna, string[]][]) {
-      if (columnas[columna] === undefined && nombres.includes(clave)) columnas[columna] = indice;
+      const coincide = nombres.includes(clave) || Boolean(PATRONES[columna]?.test(clave));
+      if (columnas[columna] === undefined && coincide) columnas[columna] = indice;
     }
   });
+  // Si el archivo trae el nivel que la persona ya tenía y el resultado de la convocatoria, el nivel
+  // otorgado es el resultado (#355), aunque venga vacío: vacío es que no lo obtuvo.
+  if (columnas.resultado !== undefined) columnas.nivel = columnas.resultado;
   return columnas;
 }
 

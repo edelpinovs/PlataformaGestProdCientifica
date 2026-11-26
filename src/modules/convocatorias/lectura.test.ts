@@ -285,3 +285,91 @@ describe("interpretarListado: archivos que no se pueden leer (RF-017)", () => {
     });
   });
 });
+
+// #355: formatos de los archivos que entrega la Coordinación (docs/COMPARACION_DATOS_REALES_2027.md
+// §3.3). Mismos encabezados que los reales; personas, CVU y códigos inventados.
+describe("interpretarListado con los formatos de la Coordinación (#355)", () => {
+  const fecha = (texto: string) => new Date(`${texto}T00:00:00Z`);
+
+  it("listado SNII vigente: el nivel sale de «Resultado 2026», no de «NIVEL SNII 2026»", () => {
+    const encabezado = ["6", "CENTRO UNIVERSITARIO", "GDO.", "APELLIDOS", "NOMBRE", "NIVEL SNII 2026", "Resultado 2026", "Sexo",
+      "Inicio vigencia", "Fin de vigencia", "CÓDIGO UdeG", "NOMBRAMIENTO UdeG", "INICIO VIGENCIA UdeG", "FIN VIGENCIA  UdeG",
+      "DIVISIÓN", "DEPARTAMENTO DE ADSCRIPCIÓN"];
+    const persona = (apellidos: string, nombre: string, anterior: string, resultado: string, codigo: string) =>
+      ["1", "CUVALLES", "DRA.", apellidos, nombre, anterior, resultado, "M", "2027-01-01", "2031-12-31", codigo,
+        "TITULAR A", "2020-02-01", "2030-01-31", "DIVISIÓN FICTICIA", "DEPARTAMENTO FICTICIO"];
+    const { renglones, resumen } = leer([encabezado,
+      persona("PRUEBA FICTICIA", "ANA", "C", "I", "9990001"),
+      persona("INVENTADO DEMO", "LUIS", "I", "II", "9990002"),
+      persona("EJEMPLO PRUEBA", "SOFIA", "--", "C", "9990003"),
+      persona("FICTICIO UNO", "MARIO", "III", "III", "9990004"),
+    ]);
+    expect(renglones.map((r) => r.nivel)).toEqual(["NIVEL_1", "NIVEL_2", "CANDIDATO", "NIVEL_3"]);
+    expect(resumen.totalAvisos).toBe(0);
+    // «APELLIDOS» trae los dos apellidos juntos: se guardan en el paterno y el cruce los une con el nombre.
+    expect(renglones[0]).toMatchObject({
+      apellidoPaterno: "PRUEBA FICTICIA", apellidoMaterno: null, nombres: "ANA", codigo: "9990001",
+      // La vigencia es la del SNII, no la del nombramiento UdeG.
+      vigenciaInicio: fecha("2027-01-01"), vigenciaFin: fecha("2031-12-31"),
+    });
+  });
+
+  it("listado SNII vigente: un resultado vacío queda sin nivel y se avisa; no toma el nivel anterior", () => {
+    const { renglones, resumen } = leer([
+      ["APELLIDOS", "NOMBRE", "NIVEL SNII 2026", "Resultado 2026", "CÓDIGO UdeG"],
+      ["FICTICIO DOS", "ROSA", "C", "", "9990005"],
+    ]);
+    expect(renglones[0].nivel).toBeNull();
+    expect(resumen.avisos[0].mensaje).toBe("Renglón 2: no se reconoce el nivel «».");
+  });
+
+  it("el resultado manda aunque venga antes que el nivel anterior", () => {
+    const { renglones } = leer([["NOMBRE", "Resultado 2026", "NIVEL SNII 2026"], ["ANA PRUEBA", "II", "I"]]);
+    expect(renglones[0].nivel).toBe("NIVEL_2");
+  });
+
+  it("planta SNII: reconoce «NIVEL SNII» sin año y el «CÓDIGO UdeG»", () => {
+    const { renglones, resumen } = leer([
+      ["CVU", "NOMBRE", "NIVEL SNII", "INICIO", "FIN", "CÓDIGO UdeG"],
+      ["900001", "PRUEBA FICTICIA ANA", "I", "2023-01-01", "2026-12-31", "9990001"],
+    ]);
+    expect(renglones[0]).toMatchObject({ cvu: "900001", codigo: "9990001", nombres: "PRUEBA FICTICIA ANA", nivel: "NIVEL_1",
+      vigenciaInicio: fecha("2023-01-01"), vigenciaFin: fecha("2026-12-31") });
+    expect(resumen.totalAvisos).toBe(0);
+  });
+
+  it("perfil PRODEP vigente: reconoce «Inicio vigencia» y «Fin vigencia»", () => {
+    const { renglones, resumen } = leer([
+      ["NOMBRE", "Inicio vigencia", "Fin vigencia", "CORREO"],
+      ["PRUEBA FICTICIA ANA", "2025-08-01", "2028-07-31", "ana@demo.invalid"],
+    ], prodep);
+    expect(renglones[0]).toMatchObject({ vigenciaInicio: fecha("2025-08-01"), vigenciaFin: fecha("2028-07-31") });
+    expect(resumen.conVigencia).toBe(1);
+  });
+
+  it("layout de ejemplo SNII: reconoce «APELLIDOS» y «Resultado en convocatoria 2026»", () => {
+    const { renglones, resumen } = leer([
+      ["CVU", "APELLIDOS", "NOMBRE(S)", "Resultado en convocatoria 2026", "INICIO", "FIN"],
+      ["900001", "PRUEBA FICTICIA", "ANA", "Candidato", "2027-01-01", "2030-12-31"],
+    ]);
+    expect(renglones[0]).toMatchObject({ cvu: "900001", apellidoPaterno: "PRUEBA FICTICIA", nombres: "ANA", nivel: "CANDIDATO" });
+    expect(resumen.totalAvisos).toBe(0);
+  });
+
+  it("layout de ejemplo Perfil Deseable: sigue funcionando", () => {
+    const { renglones } = leer([
+      ["CODIGO", "NOMBRE", "INICIO", "FIN"],
+      ["9990001", "PRUEBA FICTICIA ANA", "2025-08-01", "2028-07-31"],
+    ], prodep);
+    expect(renglones[0]).toMatchObject({ codigo: "9990001", vigenciaInicio: fecha("2025-08-01") });
+  });
+
+  it("no confunde encabezados parecidos con el nivel, el resultado o la vigencia", () => {
+    for (const ajeno of ["Resultado final", "Nivel SNII anterior", "Resultado 2026 observaciones", "INICIO VIGENCIA UdeG", "FIN VIGENCIA UdeG"]) {
+      expect(esFilaEncabezado(["NOMBRE", ajeno])).toBe(false);
+    }
+    expect(interpretarListado([["NOMBRE", "Resultado final"], ["ANA PRUEBA", "I"]], snii)).toEqual({
+      ok: false, error: "No se encontraron las columnas de nombre y nivel otorgado en el archivo.",
+    });
+  });
+});

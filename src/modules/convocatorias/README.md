@@ -2,8 +2,11 @@
 
 Reglas de negocio, servicios y esquemas Zod de este módulo. Ver `src/modules/registry.ts` para su dueño y RF.
 
-## Lectura del listado oficial (RF-017)
+## Lectura de listados (RF-017)
 
+- Los encabezados se reconocen por nombre en `lectura.ts`, sin acentos ni mayúsculas. Además del listado oficial del SNII (`CVU | APELLIDO PATERNO | APELLIDO MATERNO | NOMBRES | NIVEL OTORGADO`), se leen los formatos de la Coordinación (#355): `APELLIDOS` en una sola columna (se guarda en el apellido paterno), `CÓDIGO UdeG`, `Inicio vigencia` / `Fin vigencia`, `NIVEL SNII [<año>]` y `Resultado [en convocatoria] [<año>]`.
+- Si un archivo trae el nivel que la persona ya tenía (`NIVEL SNII 2026`) y el resultado de la convocatoria (`Resultado 2026`), el nivel otorgado es el **resultado**. Un resultado vacío queda sin nivel y se avisa: no se toma el nivel anterior.
+- Las vigencias del nombramiento UdeG (`INICIO VIGENCIA UdeG`) se ignoran.
 - El SNII publica sus resultados en la SECIHTI como PDF nacional: `RESULTADOS_COMISIONES_DICTAMINADORAS_<año>.pdf` (por ejemplo, [2026](https://secihti.mx/wp-content/uploads/snii/resultados/2026/RESULTADOS_COMISIONES_DICTAMINADORAS_2026.pdf)), con columnas `CVU | APELLIDO PATERNO | APELLIDO MATERNO | NOMBRES | NIVEL OTORGADO` y el encabezado repetido en cada página. Eméritos y reconsideración se publican aparte. No trae Código UdeG ni vigencia (D-224).
 - Comprobado en local el 2026-11-23 con el listado 2026 (296 páginas): se leen los 11,523 renglones, todos con CVU y sin avisos. El archivo no se subió a la base ni al repositorio: trae datos reales.
 - Un apellido de una letra puede llegar pegado al CVU en la misma celda («1234567 Y»); el lector los separa si la columna del apellido viene vacía.
