@@ -1,13 +1,17 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect, RedirectType } from "next/navigation";
 import { requireModulo } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { revalidarProfesorSeleccionado } from "@/lib/selectores/profesor";
+import { cargarConfirmacion } from "@/modules/convocatorias/cargar-confirmacion";
+import { planearConfirmacion } from "@/modules/convocatorias/confirmacion";
+import { recalcularConvocatoria } from "@/modules/convocatorias/recalcular";
 
 // RF-019 (CU-010): en la revisión de una carga, la Coordinación resuelve a mano los renglones
-// dudosos o sin coincidencia. Solo cambia el renglón (profesor y criterio MANUAL); nada se escribe
-// en M3 ni en los participantes hasta confirmar la carga (#24).
+// dudosos o sin coincidencia (solo cambia el renglón: profesor y criterio MANUAL) y, al final,
+// confirma la carga: eso registra los reconocimientos en M3 y el resultado de los participantes.
 
 export type EstadoFila = { error?: string; exito?: string };
 
@@ -98,4 +102,70 @@ export async function quitarAsignacion(_: EstadoFila, formData: FormData): Promi
 
   revalidatePath(ruta(renglon.cargaId));
   return { exito: `Se quitó la asignación del renglón ${renglon.numero}.` };
+}
+
+const NO_EXISTE_CARGA = "Esa carga ya no existe. Recarga la página.";
+
+/**
+ * Confirma la carga en una sola transacción: la carga pasa a Confirmada, se crean los
+ * reconocimientos que planea planearConfirmacion (lo omitido se muestra antes y no se crea) y se
+ * guarda el resultado oficial de los participantes (RF-018). Si algo falla, no cambia nada.
+ */
+export async function confirmarCarga(_: EstadoFila, formData: FormData): Promise<EstadoFila> {
+  await requireModulo("convocatorias");
+
+  const cargaId = idDe(formData.get("cargaId"));
+  if (cargaId === null) return { error: NO_EXISTE_CARGA };
+
+  const resultado = await prisma.$transaction(async (tx) => {
+    const carga = await tx.cargaResultados.findUnique({
+      where: { id: cargaId },
+      select: { estado: true, convocatoria: { select: { id: true, programa: true, anio: true } } },
+    });
+    if (!carga) return { error: NO_EXISTE_CARGA };
+    if (carga.estado !== "EN_REVISION") return { error: NO_EN_REVISION };
+    const { convocatoria } = carga;
+    const nombre = `${convocatoria.programa} ${convocatoria.anio}`;
+    const otra = await tx.cargaResultados.findFirst({ where: { convocatoriaId: convocatoria.id, estado: "CONFIRMADA" }, select: { id: true } });
+    if (otra) return { error: `Ya hay otra carga confirmada de ${nombre}; no se puede confirmar una segunda.` };
+
+    const plan = planearConfirmacion(await cargarConfirmacion(tx, cargaId, convocatoria));
+    if (plan.bloqueo) return { error: plan.bloqueo };
+
+    // La condición va en el mismo UPDATE: si otra persona la confirmó o la eliminó en este instante, no se repite.
+    const { count } = await tx.cargaResultados.updateMany({
+      where: { id: cargaId, estado: "EN_REVISION" },
+      data: { estado: "CONFIRMADA", balance: { snii: plan.snii.length, prodep: plan.prodep.length, omitidos: plan.omitidos.length } },
+    });
+    if (!count) return { error: NO_EN_REVISION };
+
+    const dia = (texto: string) => new Date(`${texto}T00:00:00.000Z`);
+    if (plan.snii.length) {
+      await tx.reconocimientoSnii.createMany({
+        data: plan.snii.map((s) => ({
+          profesorId: s.profesorId, nivel: s.nivel, tipoParticipacion: s.tipoParticipacion, resultado: "APROBADO" as const,
+          inicio: dia(s.inicio), fin: dia(s.fin), convocatoriaId: convocatoria.id,
+        })),
+      });
+    }
+    if (plan.prodep.length) {
+      await tx.reconocimientoProdep.createMany({
+        data: plan.prodep.map((p) => ({
+          profesorId: p.profesorId, tipoSolicitud: p.tipoSolicitud, resultado: "APROBADO" as const,
+          inicio: dia(p.inicio), fin: dia(p.fin), convocatoriaId: convocatoria.id,
+        })),
+      });
+    }
+    await recalcularConvocatoria(tx, convocatoria.id);
+    return { nombre, creados: plan.snii.length + plan.prodep.length, omitidos: plan.omitidos.length };
+  }, { timeout: 30_000 });
+
+  if ("error" in resultado) return { error: resultado.error };
+  revalidatePath("/convocatorias");
+  revalidatePath("/convocatorias/participantes");
+  revalidatePath(ruta(cargaId));
+  revalidatePath("/reconocimientos", "layout");
+  const texto = `${resultado.nombre}: ${resultado.creados} ${resultado.creados === 1 ? "reconocimiento registrado" : "reconocimientos registrados"}`
+    + (resultado.omitidos ? `, ${resultado.omitidos} por registrar a mano` : "");
+  redirect(`/convocatorias?confirmada=${encodeURIComponent(texto)}`, RedirectType.replace);
 }

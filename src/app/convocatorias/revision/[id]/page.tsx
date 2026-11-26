@@ -6,6 +6,8 @@ import { requireModulo } from "@/lib/auth/session";
 import { analizarListado, hayFiltrosActivos, paginar } from "@/lib/listados/consulta";
 import { prisma } from "@/lib/prisma";
 import { clasificarCarga, type Clasificacion } from "@/modules/convocatorias/balance";
+import { cargarConfirmacion } from "@/modules/convocatorias/cargar-confirmacion";
+import { planearConfirmacion } from "@/modules/convocatorias/confirmacion";
 import { nombreDeRuta } from "@/modules/convocatorias/carga";
 import {
   COLUMNAS_REVISION,
@@ -15,6 +17,7 @@ import {
   filtrarYOrdenarRevision,
   LISTADO_REVISION,
 } from "@/modules/convocatorias/revision-listado";
+import { ConfirmarCarga } from "./confirmar-carga";
 import { CuerpoRevision, type FilaVista } from "./fila-revision";
 
 const cifra = new Intl.NumberFormat("es-MX");
@@ -32,9 +35,10 @@ const TARJETAS: { clave: Clasificacion; titulo: string; nota: string }[] = [
   { clave: "NO_APROBADO", titulo: "No aprobados", nota: "participantes que no aparecen" },
 ];
 
-// RF-019 (CU-010): previsualización del balance de una carga en revisión antes de confirmarla.
+// RF-019 (CU-010): previsualización del balance de una carga en revisión y su confirmación.
 // La clasificación sale del historial aprobado de M3 con las reglas del reporte anual (RF-028), así
-// que la lista completa se arma y pagina en memoria (justificado en el #24). Nada se confirma aquí.
+// que la lista completa se arma y pagina en memoria (D-291). Antes de confirmar se muestra qué se
+// registrará en M3 y qué se omite (planearConfirmacion), con las mismas reglas que usa la acción.
 export default async function RevisionPage({ params, searchParams }: PageProps<"/convocatorias/revision/[id]">) {
   const perfil = await requireModulo("convocatorias");
 
@@ -115,6 +119,9 @@ export default async function RevisionPage({ params, searchParams }: PageProps<"
     ? profesores.filter((p) => p.estatusLaboral === "ACTIVO").map(({ id: pid, nombres, apellidos, codigo }) => ({ id: pid, nombres, apellidos, codigo }))
     : [];
   const nombreConvocatoria = `${convocatoria.programa} ${convocatoria.anio}`;
+  const plan = enRevision ? planearConfirmacion(await cargarConfirmacion(prisma, carga.id, convocatoria)) : null;
+  const creados = plan ? plan.snii.length + plan.prodep.length : 0;
+  const resumenConfirmacion = `Se registrarán ${cifra.format(creados)} ${creados === 1 ? "reconocimiento" : "reconocimientos"} ${programa} con resultado Aprobado y se guardará el resultado oficial de los participantes.`;
 
   return (
     <Marco correo={perfil.correo} rol={perfil.rol} activo="convocatorias" titulo={`Balance de ${nombreConvocatoria}`}
@@ -167,9 +174,50 @@ export default async function RevisionPage({ params, searchParams }: PageProps<"
         </div>
       </Panel>
 
-      <p className="text-xs text-texto-3">
-        La confirmación se habilitará cuando se resuelvan D-224 y las reglas de M3 (#24). Mientras tanto, nada de esta pantalla cambia los reconocimientos ni el resultado de los participantes.
-      </p>
+      {plan && (
+        <Panel titulo="Confirmar la carga"
+          descripcion="Registra en SNII y PRODEP los reconocimientos de quienes coincidieron y guarda el resultado de los participantes (RF-018).">
+          <div className="flex flex-col gap-4">
+            {plan.bloqueo && <Aviso tipo="aviso">{plan.bloqueo}</Aviso>}
+            <p className="text-sm text-texto-2">
+              {resumenConfirmacion}
+              {programa === "SNII" && " Si el listado no trae vigencia, va del 1 de enero del año siguiente al 31 de diciembre: 4 años Candidato y 5 los niveles (D-224, pendiente de confirmar)."}
+            </p>
+            {plan.omitidos.length > 0 && (
+              <div className="flex flex-col gap-2">
+                <p className="text-sm font-medium text-texto">
+                  {plan.omitidos.length === 1 ? "1 profesor no se registrará" : `${cifra.format(plan.omitidos.length)} profesores no se registrarán`}; hazlo a mano en SNII y PRODEP:
+                </p>
+                <table className={claseTabla.tabla}>
+                  <thead className={claseTabla.encabezado}>
+                    <tr>
+                      <th scope="col" className={claseTabla.celdaEncabezado}>En el listado</th>
+                      <th scope="col" className={`${claseTabla.celdaEncabezado} hidden sm:table-cell`}>Profesor</th>
+                      <th scope="col" className={`${claseTabla.celdaEncabezado} hidden sm:table-cell`}>Motivo</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {plan.omitidos.map((o) => (
+                      <tr key={o.renglonId} className={claseTabla.fila}>
+                        <td className={claseTabla.celda}>
+                          <span className="font-semibold text-texto">{o.nombre}</span>
+                          <span className="block text-xs text-texto-3">Renglón {o.numero}</span>
+                          {/* En celular el profesor y el motivo van debajo del nombre. */}
+                          <span className="mt-1 block text-texto-2 sm:hidden">{nombreProfesor(o.profesorId)}</span>
+                          <span className="mt-1 block text-xs text-aviso sm:hidden">{o.motivo}</span>
+                        </td>
+                        <td className={`${claseTabla.celda} hidden sm:table-cell`}>{nombreProfesor(o.profesorId)}</td>
+                        <td className={`${claseTabla.celda} hidden text-xs text-aviso sm:table-cell`}>{o.motivo}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            <ConfirmarCarga cargaId={carga.id} nombre={nombreConvocatoria} resumen={resumenConfirmacion} bloqueada={Boolean(plan.bloqueo)} />
+          </div>
+        </Panel>
+      )}
     </Marco>
   );
 }
