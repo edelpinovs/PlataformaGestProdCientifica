@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useState } from "react";
 import {
   Aviso,
@@ -76,6 +77,13 @@ export function FilaCarga({ carga }: { carga: Carga }) {
       <td className={`${claseTabla.celda} pr-0 text-right whitespace-nowrap`}>
         {/* En celular las acciones se apilan para que la tabla no se salga del panel. */}
         <div className="flex flex-col items-end gap-1 sm:flex-row sm:items-center sm:justify-end">
+          {/* RF-019: balance antes de confirmar y, ya confirmada, solo para consulta. */}
+          {(carga.estado === "EN_REVISION" || carga.estado === "CONFIRMADA") && (
+            <Link href={`/convocatorias/revision/${carga.id}`} className={claseAccionFila()}
+              aria-label={`Ver balance de ${carga.programa} ${carga.anio} ${carga.nombre}`}>
+              Ver balance
+            </Link>
+          )}
           {carga.volverALeer && <VolverALeer carga={carga} />}
           {carga.estado !== "CONFIRMADA" && (
             <button type="button" onClick={() => setConfirmando(true)} className={claseAccionFila(true)}

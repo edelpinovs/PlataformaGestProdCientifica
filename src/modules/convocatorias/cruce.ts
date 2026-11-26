@@ -12,13 +12,17 @@ export type RenglonCruce = {
   nombres: string;
 };
 
-export type Criterio = "CVU" | "CODIGO" | "NOMBRE" | "AMBIGUO" | "SIN_COINCIDENCIA";
+// MANUAL no lo produce el cruce: lo pone la revisión de la carga (RF-019).
+export type Criterio = "CVU" | "CODIGO" | "NOMBRE" | "MANUAL" | "AMBIGUO" | "SIN_COINCIDENCIA";
 export type Cruce = { profesorId: number | null; criterio: Criterio };
 export type ResumenCruce = { coincidencias: number; dudosos: number; sinCoincidencia: number };
 
 /**
  * Forma de comparar nombres: sin acentos, signos ni mayúsculas, con las palabras ordenadas.
  * Así «ANA MARÍA PÉREZ LÓPEZ» y «Pérez López, Ana María» dan la misma clave.
+ * Límite conocido (revisión del #236): «Ana María López» y «María Ana López» también dan la
+ * misma clave. Si los dos están en el directorio, el renglón queda dudoso (nunca se asigna mal) y
+ * la Coordinación lo resuelve a mano en la revisión de la carga (RF-019, criterio MANUAL).
  */
 export function claveNombre(texto: string): string {
   return texto

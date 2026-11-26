@@ -162,6 +162,19 @@ describe("interpretarListado: avisos (RF-017)", () => {
     expect(resumen.avisos).toEqual([{ renglon: 2, mensaje: "Renglón 2: el CVU «12A4» no es válido; se guardó sin CVU." }]);
   });
 
+  // En el listado oficial 2026 un apellido de una letra quedó tan cerca del CVU que el PDF los juntó
+  // en la misma celda y dejó vacío el apellido (revisado el 2026-11-23; aquí con datos inventados).
+  it("separa el apellido pegado al CVU cuando la columna del apellido viene vacía", () => {
+    const { renglones, resumen } = leer([ENCABEZADO_SNII, ["1234567 Y", "", "", "ANA LUZ", "Investigador Nacional Nivel I"]]);
+    expect(renglones[0]).toMatchObject({ cvu: "1234567", apellidoPaterno: "Y", apellidoMaterno: null, nombres: "ANA LUZ" });
+    expect(resumen.totalAvisos).toBe(0);
+  });
+
+  it("no separa un CVU con texto si el apellido ya viene en su columna", () => {
+    const { renglones } = leer([ENCABEZADO_SNII, ["1234567 Y", "LUNA", "", "ANA", "Candidato"]]);
+    expect(renglones[0]).toMatchObject({ cvu: null, apellidoPaterno: "LUNA" });
+  });
+
   it("avisa un CVU repetido y guarda ambos renglones", () => {
     const { renglones, resumen } = leer([
       ENCABEZADO_SNII,
