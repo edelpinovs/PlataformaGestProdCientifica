@@ -68,6 +68,7 @@ describe("participante (esquema)", () => {
   it("da mensajes en español para valores atípicos", () => {
     expect(error({ programa: "OTRO", anio: "2026" })).toBe("Elige si la convocatoria es SNII o PRODEP.");
     expect(error({ programa: "SNII", anio: "1999" })).toBe("El año debe ser 2000 o posterior.");
+    expect(error({ programa: "SNII", anio: "" })).toBe("El año debe ser 2000 o posterior.");
     expect(error({ programa: "SNII", anio: "2028" })).toBe("El año no puede ser posterior a 2027.");
     expect(error({ programa: "SNII", anio: "abc" })).toBe("Escribe el año de la convocatoria.");
     expect(error({ programa: "SNII", anio: "2026.5" })).toBe("El año debe ser un número entero.");

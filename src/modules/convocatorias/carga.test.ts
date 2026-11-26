@@ -67,6 +67,8 @@ describe("cargaResultados (RF-016)", () => {
 
   it("rechaza años fuera de rango o no enteros", () => {
     expect(mensajes({ ...valida, anio: "1999" })).toContain("El año debe ser 2000 o posterior.");
+    expect(mensajes({ ...valida, anio: "" })).toContain("El año debe ser 2000 o posterior.");
+    expect(mensajes({ ...valida, anio: "abc" })).toContain("Escribe el año de la convocatoria.");
     expect(mensajes({ ...valida, anio: "2028" })).toContain("El año no puede ser posterior a 2027.");
     expect(mensajes({ ...valida, anio: "2025.5" })).toContain("El año debe ser un número entero.");
   });

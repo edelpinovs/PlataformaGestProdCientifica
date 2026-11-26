@@ -7,7 +7,7 @@ export function SimuladorEscaneo() {
   const [estado, accion, pendiente] = useActionState<EstadoDemo, FormData>(demostrarEscaneoAction, { memoria: { obras: [], autorias: [], cortes: [] } });
   return <>
     <Panel titulo="Prueba paso a paso">
-      <form action={accion} className="flex flex-col gap-4">
+      <form action={accion} noValidate className="flex flex-col gap-4">
         <p className="text-sm text-texto-2">1. Escanea a Elena sin año: tres registros de ORCID y OpenAlex se unifican en dos obras (2018 y 2023). 2. Repite: no habrá duplicados. 3. Escanea a Tomás: compartirá las dos obras. 4. Cambia los estados y reescanea para comprobar que se conservan.</p>
         <label className={claseEtiqueta}>Año opcional
           <input name="anio" type="number" min="1900" max="2099" disabled={pendiente} aria-invalid={!!estado.error} className={claseCampo(!!estado.error)} placeholder="Vacío para historial o incremental" />

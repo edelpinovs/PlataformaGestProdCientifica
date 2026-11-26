@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { demoHabilitada, ejecutarDemostracion, memoriaDemoVacia } from "./demostracion";
+import { demoHabilitada, ejecutarDemostracion, memoriaDemoVacia, solicitudDemoEsquema } from "./demostracion";
 
 describe("Demostración aislada", () => {
   afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
@@ -35,6 +35,12 @@ describe("Demostración aislada", () => {
     expect(otro.memoria.cortes).toEqual(segundo.memoria.cortes);
     expect((await ejecutarDemostracion(otro.memoria, "reiniciar")).memoria).toEqual(vacia);
     expect(http).not.toHaveBeenCalled();
+  });
+  it("un año fuera de 1900 a 2099 responde en español y el vacío se acepta", () => {
+    const fuera = solicitudDemoEsquema.safeParse({ operacion: "escanear-1", anio: "1899" });
+    expect(fuera.success).toBe(false);
+    if (!fuera.success) expect(fuera.error.issues[0]?.message).toBe("Indica un año entre 1900 y 2099 o deja el campo vacío.");
+    expect(solicitudDemoEsquema.parse({ operacion: "escanear-1", anio: "" }).anio).toBe("");
   });
   it("respeta el año solicitado y no crea corte histórico", async () => {
     const resultado = await ejecutarDemostracion(memoriaDemoVacia(), "escanear-1", 2018);
