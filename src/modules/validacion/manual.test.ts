@@ -202,6 +202,7 @@ describe("RF-023: Captura manual de publicaciones", () => {
         evidenciaUrl: "no-es-url",
       });
       expect(malaUrl.success).toBe(false);
+      if (!malaUrl.success) expect(malaUrl.error.issues[0]?.message).toContain("enlace válido");
 
       const xssUrl = publicacionManualEsquema.safeParse({
         ...datosValidos,

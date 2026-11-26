@@ -84,16 +84,21 @@ export function claveEncabezado(texto: string): string {
 
 function mapearColumnas(celdas: string[]): Partial<Record<Columna, number>> {
   const columnas: Partial<Record<Columna, number>> = {};
+  let nivelAnterior = false;
   celdas.forEach((celda, indice) => {
     const clave = claveEncabezado(celda);
     for (const [columna, nombres] of Object.entries(ENCABEZADOS) as [Columna, string[]][]) {
-      const coincide = nombres.includes(clave) || Boolean(PATRONES[columna]?.test(clave));
-      if (columnas[columna] === undefined && coincide) columnas[columna] = indice;
+      const porPatron = !nombres.includes(clave) && Boolean(PATRONES[columna]?.test(clave));
+      if (columnas[columna] === undefined && (nombres.includes(clave) || porPatron)) {
+        columnas[columna] = indice;
+        if (columna === "nivel") nivelAnterior = porPatron;
+      }
     }
   });
-  // Si el archivo trae el nivel que la persona ya tenía y el resultado de la convocatoria, el nivel
-  // otorgado es el resultado (#355), aunque venga vacío: vacío es que no lo obtuvo.
-  if (columnas.resultado !== undefined) columnas.nivel = columnas.resultado;
+  // Si el archivo trae el nivel que la persona ya tenía («NIVEL SNII 2026») y el resultado de la
+  // convocatoria, el nivel otorgado es el resultado (#355), aunque venga vacío: vacío es que no lo
+  // obtuvo. Un «NIVEL OTORGADO» explícito manda sobre un «RESULTADO» de otro tipo («Aprobado»).
+  if (columnas.resultado !== undefined && (columnas.nivel === undefined || nivelAnterior)) columnas.nivel = columnas.resultado;
   return columnas;
 }
 
@@ -158,6 +163,8 @@ export function leerVigencia(texto: string | { inicio: string; fin: string }): {
 
 const espacios = (texto: string) => texto.replace(/\s+/g, " ").trim();
 const esPie = (fila: string[]) => /^p[aá]gina \d+ de \d+$/i.test(espacios(fila.join(" ")));
+// Las listas de la Coordinación pueden cerrar con filas de totales («TOTAL SNII», «Total de candidatos»).
+const esTotal = (texto: string) => /^total\b/i.test(texto);
 
 export function interpretarListado(filas: string[][], programa: Programa): ResultadoLectura {
   const sinColumnas = programa === "SNII" ? SIN_COLUMNAS_SNII : SIN_COLUMNAS_PRODEP;
@@ -168,8 +175,13 @@ export function interpretarListado(filas: string[][], programa: Programa): Resul
 
   // En los PDF, la dirección y otras líneas sueltas caen en alguna columna: si el listado tiene
   // columnas que identifican a la persona (CVU, código o nivel), un renglón que no trae ninguna
-  // de ellas no es una persona. La vigencia no cuenta: una persona puede venir sin ella.
-  const columnasDePersona = [columnas.cvu, columnas.codigo, columnas.nivel].filter((c) => c !== undefined);
+  // de ellas ni vigencia no es una persona. La vigencia cuenta para no perder a quien solo trae
+  // nombre y fechas (Perfil Deseable de la Coordinación, revisión del #368), pero no es obligatoria:
+  // un listado sin esas columnas no se filtra.
+  const identificadores = [columnas.cvu, columnas.codigo, columnas.nivel].filter((c) => c !== undefined);
+  const columnasDePersona = identificadores.length
+    ? [...identificadores, columnas.vigencia, columnas.inicio, columnas.fin].filter((c) => c !== undefined)
+    : [];
 
   const renglones: RenglonLeido[] = [];
   const avisos: AvisoLectura[] = [];
@@ -192,6 +204,7 @@ export function interpretarListado(filas: string[][], programa: Programa): Resul
     const materno = celda("materno");
     const nombres = celda("nombres") || celda("nombreCompleto");
     if (!paterno && !materno && !nombres) return;
+    if ([paterno, nombres].some(esTotal)) return;
 
     const numero = indice + 1;
     const avisar = (mensaje: string) => avisos.push({ renglon: numero, mensaje: `Renglón ${numero}: ${mensaje}` });

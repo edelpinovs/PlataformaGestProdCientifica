@@ -28,6 +28,6 @@ describe("Protección del modo de demostración", () => {
     const resultado = await demostrarEscaneoAction({ memoria: memoriaDemoVacia() }, formulario());
     expect(resultado.memoria.obras).toHaveLength(2);
     const datos = formulario(); datos.set("anio", "no-es-un-año");
-    expect((await demostrarEscaneoAction(resultado, datos)).error).toContain("Revisa");
+    expect((await demostrarEscaneoAction(resultado, datos)).error).toBe("Indica un año entre 1900 y 2099 o deja el campo vacío.");
   });
 });

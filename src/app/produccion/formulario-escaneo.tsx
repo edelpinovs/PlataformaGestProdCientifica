@@ -98,7 +98,7 @@ export function FormularioEscaneo({
 
   return (
     <div className="flex flex-col gap-4">
-      <form key={estado.intento ?? 0} action={formAction} className="flex flex-col gap-4">
+      <form key={estado.intento ?? 0} action={formAction} noValidate className="flex flex-col gap-4">
         {(estado.pendiente || estado.continuar) && estado.jobId && <input type="hidden" name="jobId" value={estado.jobId} />}
         <fieldset disabled={estado.pendiente || estado.continuar} className="flex flex-col gap-3">
           <TituloPaso numero={1}>¿Dónde buscar?</TituloPaso>

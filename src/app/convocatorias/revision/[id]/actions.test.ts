@@ -55,7 +55,8 @@ beforeEach(() => {
   dobles.cargarConfirmacion.mockResolvedValue({
     programa: "SNII", anio: 2026, contratacion: {}, historialSnii: [], historialProdep: [],
     renglones: [
-      { id: 7, numero: 12, nombre: "PRUEBA ANA", profesorId: 40, criterio: "CVU", nivel: "CANDIDATO", vigenciaInicio: null, vigenciaFin: null },
+      // Con la vigencia en el archivo: sin ella el SNII espera D-292 y se omite.
+      { id: 7, numero: 12, nombre: "PRUEBA ANA", profesorId: 40, criterio: "CVU", nivel: "CANDIDATO", vigenciaInicio: "2027-01-01", vigenciaFin: "2030-12-31" },
       { id: 8, numero: 13, nombre: "PRUEBA LUIS", profesorId: 41, criterio: "CVU", nivel: null, vigenciaInicio: null, vigenciaFin: null },
     ],
   });

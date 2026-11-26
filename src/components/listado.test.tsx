@@ -45,6 +45,7 @@ describe("componentes de listado", () => {
       <BarraListado {...c} columnas={columnas} filtros={[{ clave: "estatus", etiqueta: "Estatus", opciones: [{ valor: "ACTIVO", texto: "Activo" }, { valor: "BAJA", texto: "Baja" }] }]} />,
     );
     expect(html).toContain('action="/profesores"');
+    expect(html).toMatch(/noValidate/i);
     expect(html).toContain('method="get"');
     expect(html).toContain('name="q"');
     expect(html).toContain('value="ana"');

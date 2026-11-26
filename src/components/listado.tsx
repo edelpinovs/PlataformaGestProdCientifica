@@ -66,8 +66,9 @@ export function BarraListado({ base, definicion, consulta, filtros = [], segment
     <div className="flex flex-col gap-4">
       {/* La key vuelve a montar el formulario al cambiar la URL (p. ej. «Limpiar»); los campos usan
           defaultValue y, sin ella, conservarían lo que la persona eligió antes. */}
+      {/* noValidate: un type=date inválido mostraría el aviso de Chrome, en su idioma. */}
       <form key={JSON.stringify([consulta.q, consulta.orden, consulta.dir, consulta.filtros])}
-        action={base} method="get" className="flex flex-col gap-3">
+        action={base} method="get" noValidate className="flex flex-col gap-3">
         {segmentado && valorSegmentado && <input type="hidden" name={segmentado.clave} value={valorSegmentado} />}
         <div className="flex flex-wrap items-center gap-3">
           <label className="relative min-w-60 flex-1">

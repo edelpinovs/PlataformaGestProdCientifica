@@ -141,7 +141,7 @@ function DialogoAlta({ titulo, descripcion, accion, children, cerrar, guardado }
       <div hidden={confirmando}>
         <h2 id={`${id}-titulo`} className="text-base font-semibold">{titulo}</h2>
         {descripcion && <p id={`${id}-descripcion`} className="mt-1 text-sm text-texto-3">{descripcion}</p>}
-        <form key={estado.intento} ref={formulario} action={enviar} className="mt-4 flex flex-col gap-4"
+        <form key={estado.intento} ref={formulario} action={enviar} noValidate className="mt-4 flex flex-col gap-4"
           onInput={revisarCambios} onChange={revisarCambios}
           onSubmit={evento => {
             if (bloqueo.current || enviando) { evento.preventDefault(); return; }

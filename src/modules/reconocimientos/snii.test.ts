@@ -57,8 +57,10 @@ describe("reconocimientoSnii (RF-007)", () => {
   });
 
   it("rechaza días inexistentes, formatos distintos y años bisiestos inválidos", () => {
-    for (const fechaInicio of ["2026-02-29", "2026-13-01", "01-01-2026"]) {
-      expect(reconocimientoSnii.safeParse({ ...reconocimiento, fechaInicio }).success).toBe(false);
+    for (const fechaInicio of ["", "2026-02-29", "2026-13-01", "01-01-2026"]) {
+      const resultado = reconocimientoSnii.safeParse({ ...reconocimiento, fechaInicio });
+      expect(resultado.success).toBe(false);
+      if (!resultado.success) expect(resultado.error.issues[0]?.message).toBe("Ingresa una fecha válida.");
     }
   });
 
