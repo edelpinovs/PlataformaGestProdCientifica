@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { Aviso, claseAccionFila, claseBotonPeligro, claseBotonSecundario, EtiquetaEstado } from "@/components/ui";
+import { Aviso, claseAccionIcono, claseBotonPeligro, claseBotonSecundario, EtiquetaEstado, Icono, ICONOS } from "@/components/ui";
 import type { NIVELES_SNII, TIPOS_PARTICIPACION_SNII } from "@/modules/reconocimientos/snii";
 import { eliminarReconocimientoSnii, type EstadoSnii } from "./actions";
 import { FormularioEdicionSnii } from "./formulario-edicion";
@@ -52,9 +52,15 @@ export function FilaSnii({ reconocimiento, profesores }: {
       <div><EtiquetaEstado tipo={tipoEstado}>{etiquetaResultado}</EtiquetaEstado></div>
       <div className="flex gap-1 sm:justify-end">
         {reconocimiento.convocatoriaId === null && (
-          <button type="button" onClick={() => setModo("editar")} className={claseAccionFila()} aria-label={`Editar reconocimiento de ${persona}`}>Editar</button>
+          <button type="button" onClick={() => setModo("editar")} className={claseAccionIcono()}
+            aria-label={`Editar reconocimiento de ${persona}`} title="Editar">
+            <Icono d={ICONOS.editar} />
+          </button>
         )}
-        <button type="button" onClick={() => setModo("eliminar")} className={claseAccionFila(true)} aria-label={`Eliminar reconocimiento de ${persona}`}>Eliminar</button>
+        <button type="button" onClick={() => setModo("eliminar")} className={claseAccionIcono(true)}
+          aria-label={`Eliminar reconocimiento de ${persona}`} title="Eliminar">
+          <Icono d={ICONOS.eliminar} />
+        </button>
       </div>
     </li>
   );

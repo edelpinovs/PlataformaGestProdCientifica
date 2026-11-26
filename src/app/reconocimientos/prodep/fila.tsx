@@ -3,10 +3,12 @@
 import { useActionState, useState } from "react";
 import {
   Aviso,
-  claseAccionFila,
+  claseAccionIcono,
   claseBotonPeligro,
   claseBotonSecundario,
   EtiquetaEstado,
+  Icono,
+  ICONOS,
 } from "@/components/ui";
 import {
   ETIQUETAS_RESULTADO_PRODEP,
@@ -68,11 +70,15 @@ export function FilaProdep({ reconocimiento, profesores }: {
       </td>
       <td className="col-span-2 flex gap-1 py-3 sm:table-cell sm:text-right">
         {reconocimiento.convocatoriaId === null && (
-          <button type="button" onClick={() => setModo("editar")} className={claseAccionFila()}
-            aria-label={`Editar reconocimiento PRODEP de ${persona}`}>Editar</button>
+          <button type="button" onClick={() => setModo("editar")} className={claseAccionIcono()}
+            aria-label={`Editar reconocimiento PRODEP de ${persona}`} title="Editar">
+            <Icono d={ICONOS.editar} />
+          </button>
         )}
-        <button type="button" onClick={() => setModo("eliminar")} className={claseAccionFila(true)}
-          aria-label={`Eliminar reconocimiento PRODEP de ${persona}`}>Eliminar</button>
+        <button type="button" onClick={() => setModo("eliminar")} className={claseAccionIcono(true)}
+          aria-label={`Eliminar reconocimiento PRODEP de ${persona}`} title="Eliminar">
+          <Icono d={ICONOS.eliminar} />
+        </button>
       </td>
     </tr>
   );
