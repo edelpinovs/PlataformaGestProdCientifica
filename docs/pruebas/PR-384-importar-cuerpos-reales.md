@@ -59,7 +59,7 @@ Cada vez se restauró el archivo desde una copia y se comprobó que quedara idé
 
 ## 5. Comentarios
 
-1. **Alta (decisión, no código): no se crearía nada.** Ningún CA pasa D-109 porque no hay PRODEP de personas reales (F6 tampoco crea ninguno, D-285, D-290, D-291). Los 55 integrantes restantes fallan solo por esa regla. Con PRODEP supuesto para todos, la estimación en solo lectura (no aprobada) daría 17 CA (3 consolidados, 7 en consolidación y 7 en formación), 55 integrantes, 15 con líder y las 32 LGAC. Salida: resolver F6 o una decisión nueva sobre D-109.
+1. **Alta (decisión, no código): no se crearía nada.** Ningún CA pasa D-109 porque no hay PRODEP de personas reales (F6 tampoco crea ninguno, D-285, D-295, D-296). Los 55 integrantes restantes fallan solo por esa regla. Con PRODEP supuesto para todos, la estimación en solo lectura (no aprobada) daría 17 CA (3 consolidados, 7 en consolidación y 7 en formación), 55 integrantes, 15 con líder y las 32 LGAC. Salida: resolver F6 o una decisión nueva sobre D-109.
 2. **Media:** un CA solo se crea si al menos un integrante pasa las reglas (`CREAR_CA_SIN_INTEGRANTES_POR_OMISION`). Un CA vacío no se completaría después porque un CA existente no se vuelve a tocar. Cambiarlo exige una decisión nueva.
 3. **Media:** `aplicar` y `revertir` nunca se han ejecutado contra una base real, y `revertir` borra filas.
 4. **Baja:** al dar de alta a quienes faltan (22 sin código UdeG, 2 fuera de la base), más integrantes llegarán a D-109.

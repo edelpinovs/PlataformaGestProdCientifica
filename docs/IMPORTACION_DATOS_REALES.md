@@ -442,6 +442,50 @@ Código en `scripts/importar-cuerpos.ts` y `scripts/lib/importar-cuerpos.ts`; la
 | — no son de tiempo completo | 1 |
 | LGAC en el paquete | 32 |
 
-> **Con F6 sin Perfiles PRODEP, F7 no crea ningún CA.** La base no tiene PRODEP de personas reales (los 10 que existen son de demostración) y D-109 exige que el primer integrante lo tenga. Los 55 integrantes que quedan fallan **solo** por esa regla. Estimación en solo lectura, suponiendo PRODEP vigente para todos (no es un valor aprobado): se crearían los 17 CA (3 consolidados, 7 en consolidación y 7 en formación), 55 integrantes, 15 con líder asignado y las 32 LGAC. F7 depende de que se resuelva F6 (tipo de solicitud e historial, D-285, D-290, D-291) o de una decisión nueva sobre D-109.
+> **Con F6 sin Perfiles PRODEP, F7 no crea ningún CA.** La base no tiene PRODEP de personas reales (los 10 que existen son de demostración) y D-109 exige que el primer integrante lo tenga. Los 55 integrantes que quedan fallan **solo** por esa regla. Estimación en solo lectura, suponiendo PRODEP vigente para todos (no es un valor aprobado): se crearían los 17 CA (3 consolidados, 7 en consolidación y 7 en formación), 55 integrantes, 15 con líder asignado y las 32 LGAC. F7 depende de que se resuelva F6 (tipo de solicitud e historial, D-285, D-295, D-296) o de una decisión nueva sobre D-109.
 
 Aún **no se ha aplicado** en la base compartida ni se ha hecho el ensayo local (aplazado); tampoco se ha visto la pantalla de Cuerpos Académicos (detalle, líder e integrantes).
+
+## Cierre de la importación 2027 (F9)
+
+Plan en [`PLAN_IMPORTACION_DATOS_REALES_2027.md`](PLAN_IMPORTACION_DATOS_REALES_2027.md) §8. Estado al 2026-11-26, sin nombres.
+
+### Estado de cada fase
+
+| Fase | Qué hace | Estado | Resultado |
+|---|---|---|---|
+| F3 | Completa los pendientes de los profesores | **Aplicada** el 2026-11-26 ([PR #361](https://github.com/edelpinovs/PlataformaGestProdCientifica/pull/361)) | 121 personas y 700 cambios |
+| F4 | Da de alta a los profesores que faltan | **Aplicada** el 2026-11-26 ([PR #363](https://github.com/edelpinovs/PlataformaGestProdCientifica/pull/363)) | 10 altas; 46 omitidos (38 sin código y 8 sin correo) |
+| F5 | Reconocimientos SNII | Integrada, **sin aplicar** ([PR #366](https://github.com/edelpinovs/PlataformaGestProdCientifica/pull/366)) | 22 periodos a crear (1 vigente) por D-284 |
+| F6 | Perfiles PRODEP | Integrada, **sin aplicar** ([PR #375](https://github.com/edelpinovs/PlataformaGestProdCientifica/pull/375)) | 0 a crear (D-285, D-295, D-296) |
+| F7 | Cuerpos académicos | Integrada, **sin aplicar** ([PR #384](https://github.com/edelpinovs/PlataformaGestProdCientifica/pull/384)) | 0 a crear (D-109 sin PRODEP real) |
+| F8 | Encabezados de los listados de M5 | Hecha por I5 ([PR #368](https://github.com/edelpinovs/PlataformaGestProdCientifica/pull/368)); verificada con los `.xlsx` reales | El listado SNII se lee completo; el Perfil Deseable pierde 22 de 128 renglones sin aviso |
+
+Una segunda `simular` de F3, F4, F5, F6 y F7 el mismo día confirma que las fases ya aplicadas no tienen nada más que hacer (0 a actualizar en F3, 0 altas en F4) y que las demás dan lo mismo que al integrarse.
+
+### Cifras de control de la base compartida
+
+Incluyen los datos de demostración (`db:demo:contar`: 50 profesores, 18 SNII, 10 PRODEP, 6 cuerpos académicos, 30 publicaciones). Mientras no se limpien (P12, D-289) no se pueden comparar con el paquete.
+
+| Concepto | Cantidad |
+|---|---|
+| Profesores en la base | 188 (138 sin los de demostración) |
+| — tiempo completo / asignatura / contratación pendiente | 133 / 44 / 11 |
+| — con código `PEND` | 10 |
+| — con género pendiente | 8 |
+| — sin departamento | 4 |
+| — sin CVU | 40 |
+| Reconocimientos SNII | 19 |
+| Perfiles PRODEP | 10 (todos de demostración) |
+| Cuerpos académicos / LGAC / integrantes | 8 / 11 / 22 |
+| Profesores en el paquete (con código UdeG / de tiempo completo) | 181 (133 / 96) |
+
+### Pendientes para cerrar
+
+1. **Una migración de `main` no está aplicada en la base compartida.** `npx prisma migrate status` (2026-11-26) lista `20261126142529_criterio_manual` (valor `MANUAL` de `CriterioCruce`, PR #369). Es compatible con `main` (solo agrega un valor de enum), pero el código ya la usa: resolver a mano un renglón de una carga de convocatoria puede fallar hasta que quien la escribió ejecute `npm run db:migrar` y avise al equipo (D-275).
+2. **Datos que solo puede dar el cliente** (el informe con nombres está en `datos-reales/informe-cliente.md`, que git ignora, y se entrega por otro medio): tipo de participación SNII de 112 periodos (D-284); tipo de solicitud de los Perfiles PRODEP de 3 años y el historial de los de 6 años (D-285, D-296); qué convención de fecha de fin vale para los 45 Perfiles que terminan un día después (D-295); código UdeG o correo de los 46 profesores que F4 no pudo dar de alta; CVU de los periodos SNII sin CVU en la base.
+3. **Decisión nueva sobre D-109** (o PRODEP real) para que F7 pueda crear los 17 cuerpos académicos.
+4. **P12 y D-219:** decidir cuándo se ejecuta `npm run db:demo:limpiar` (D-289: después de F9, con una decisión registrada) y separar la base de producción antes de la entrega final.
+5. **Lo que sigue sin probarse:** `aplicar` y `revertir` de F5, F6 y F7; el ensayo local completo (aplazado: Docker/WSL no corre en el equipo de I1); las pantallas en el navegador (tema claro, tema oscuro y celular) y las cifras de control contra el paquete.
+6. **Respaldos:** los `.dump` de `datos-reales/respaldos/` contienen datos reales; guardarlos fuera del equipo personal y borrar la copia local cuando ya no hagan falta.
+7. **Issues:** #354 y #356 ya se aplicaron y pueden cerrarse; #357, #358 y #359 siguen abiertos hasta que una persona aplique.
