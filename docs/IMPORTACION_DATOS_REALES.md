@@ -364,3 +364,45 @@ Código en `scripts/importar-snii.ts` y `scripts/lib/importar-snii.ts`; la parte
 > **Con D-284 el listado SNII quedaría casi vacío de vigentes.** De los 22 periodos que se crearían, solo uno está vigente hoy; los demás empiezan en 2027. Los reportes y el semáforo de SNII mostrarían una cifra muy inferior a la real (en el paquete, 120 de los 157 periodos están vigentes) hasta que el cliente entregue el tipo de participación de los periodos que se mantuvieron sin participar en 2026.
 
 Aún **no se ha aplicado** en la base compartida ni se ha hecho el ensayo local (aplazado); tampoco se han visto el listado SNII ni el semáforo en pantalla.
+
+## Perfiles PRODEP reales (F6)
+
+Plan en [`PLAN_IMPORTACION_DATOS_REALES_2027.md`](PLAN_IMPORTACION_DATOS_REALES_2027.md) y decisiones P8 (D-285) y P9 en [`DECISIONES.md`](DECISIONES.md). Crea los Perfiles Deseables del paquete 2027 (`reconocimientos_prodep.json`, 128 registros) para los profesores que ya están en la base.
+
+```bash
+npm run importar:prodep:simular                              # calcula el plan; no escribe en la base
+npm run importar:prodep:aplicar -- --confirmo                # una persona; una sola transacción, con bitácora
+npm run importar:prodep:revertir -- <bitácora> --confirmo    # borra solo lo que nadie ha tocado
+```
+
+- **Mismas reglas que la pantalla de PRODEP:** tiempo completo (`validarContratacionProdep`), la vigencia que calcula el repo según el historial del profesor (`crearEsquemaReconocimientoProdep`, RF-010, D-232) y sin traslapes (`hayTraslapeProdep`, RF-011). Resultado `APROBADO`; sin convocatoria.
+- **No ajusta fechas.** Si la fecha de fin del Excel no es la que calcula el repo, el Perfil se omite y el informe dice qué trae el Excel y qué calcula el repo.
+- **Tipo de solicitud (D-285):** los de 6 años son `RENOVACION`; los de 3 años no se cargan mientras el cliente no diga si son primer reconocimiento o renovación. Los 6 años solo pasan si el profesor ya tiene en la base el primer reconocimiento y la renovación previos, contiguos y aprobados (D-232).
+- **Se omite** a quien no tiene fechas, código UdeG, no está en la base o no es de tiempo completo (P9). La contratación `PENDIENTE` se informa aparte.
+- **`revertir`** borra solo lo que conserva sus valores, sigue aprobado y sin convocatoria (un resultado oficial no se borra, D-107).
+- Imprime en la terminal solo conteos y la base a la que se conecta; el detalle con nombres queda en `datos-reales/plan-prodep.md` y la bitácora en `datos-reales/bitacoras/prodep-<fecha>.json`.
+
+Código en `scripts/importar-prodep.ts` y `scripts/lib/importar-prodep.ts`; la parte pura está probada en `scripts/lib/importar-prodep.test.ts` con datos ficticios. **`aplicar` y `revertir` no tienen prueba automática** (escriben en la base compartida): se comprueban con `simular` antes y después.
+
+### Simulación del 2026-11-26 (base compartida, solo lectura)
+
+| Concepto | Cantidad |
+|---|---|
+| Perfiles en el paquete | 128 |
+| **A crear** | **0** |
+| Omitidos (al informe del cliente) | 128 |
+| — sin fecha de inicio o de fin | 13 |
+| — profesor sin código UdeG | 25 |
+| — profesor que no está en la base | 2 |
+| — Perfil de 3 años sin tipo de solicitud (D-285) | 80 |
+| — fecha de fin distinta a la que calcula el repo | 8 |
+
+> **Con D-285 y las reglas del repo no se cargaría ningún Perfil.** Hay tres obstáculos, y los dos últimos no dependen del tipo de solicitud:
+>
+> 1. **Tipo de los de 3 años:** el Excel no lo trae (D-285). Si fuera `RENOVACION` para todos, se crearían 42 y los otros 46 caerían por el punto siguiente (estimación en solo lectura; no es un valor aprobado).
+> 2. **Convención de la fecha de fin:** de los 115 Perfiles con fechas, 62 de 3 años terminan el día anterior al aniversario (la regla del repo) y **45 de 3 años terminan el día del aniversario, un día después**. El script no los ajusta.
+> 3. **Los 8 de 6 años** coinciden con la regla de seis años, pero el repo solo la aplica si el profesor ya tiene en la base el primer reconocimiento y la renovación previos (D-232). La base no los tiene (los 10 PRODEP que existen son de demostración), así que el repo calcula tres años y el Perfil se omite.
+>
+> **Decisión de I1 (2026-11-26):** se mantiene la regla del repo para la fecha de fin (no se ajustan los 45 de 3 años) y para los 6 años (D-232): esos Perfiles quedan en el informe del cliente. El tipo de los de 3 años sigue pendiente del cliente (D-285). Con esto, F6 no crea nada hasta que el cliente responda o el historial exista en la base.
+
+Aún **no se ha aplicado** en la base compartida ni se ha hecho el ensayo local (aplazado); tampoco se han visto el listado PRODEP ni el indicador «PRODEP activo» en pantalla.
