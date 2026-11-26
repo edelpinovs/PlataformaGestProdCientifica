@@ -5,8 +5,10 @@ import { redirect, RedirectType } from "next/navigation";
 import type { EstadoFila } from "@/components/fila-editable";
 import type { EstadoAlta } from "@/components/modal-alta-logica";
 import { Prisma } from "@/generated/prisma/client";
+import { registrarAuditoria } from "@/lib/auditoria";
 import { requireModulo } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
+import { eventoAuditoria, resumenEliminacion } from "@/modules/administracion/auditoria";
 import { idDeFormulario } from "@/modules/catalogos/comun";
 import { buscarDuplicada, division, motivoDivisionNoEliminable } from "@/modules/catalogos/divisiones";
 
@@ -86,7 +88,7 @@ export async function editarDivision(_: EstadoFila, formData: FormData): Promise
 
 // #59: elimina una división solo si no tiene departamentos.
 export async function eliminarDivision(_: EstadoFila, formData: FormData): Promise<EstadoFila> {
-  await requireModulo("catalogos");
+  const actor = await requireModulo("catalogos");
 
   const id = idDeFormulario(formData);
   if (!id) return { error: NO_EXISTE };
@@ -103,7 +105,15 @@ export async function eliminarDivision(_: EstadoFila, formData: FormData): Promi
   // La condición va en el mismo DELETE; además la base lo impide (relación obligatoria, P2003).
   let borradas = 0;
   try {
-    ({ count: borradas } = await prisma.division.deleteMany({ where: { id, departamentos: { none: {} } } }));
+    // El borrado y su constancia en la bitácora se guardan juntos o no se guarda ninguno (#277).
+    borradas = await prisma.$transaction(async (tx) => {
+      const { count } = await tx.division.deleteMany({ where: { id, departamentos: { none: {} } } });
+      if (count > 0) {
+        await registrarAuditoria(tx, eventoAuditoria("registro.eliminado", actor, { tipo: "Division", id: String(id) },
+          resumenEliminacion("la división", `«${actual.nombre}» (id ${id})`), "catalogos"));
+      }
+      return count;
+    });
   } catch (e) {
     if (!(e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2003")) throw e;
   }
