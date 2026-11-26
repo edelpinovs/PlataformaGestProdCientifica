@@ -7,6 +7,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { requireModulo } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { revalidarProfesorSeleccionado } from "@/lib/selectores/profesor";
+import { registrarAuditoria } from "@/lib/auditoria";
 import { eventoAuditoria, resumenCambioEstado, resumenEdicionUsuario } from "@/modules/administracion/auditoria";
 import {
   buscarDuplicado,
@@ -84,7 +85,7 @@ export async function editarUsuario(_: EstadoFila, formData: FormData): Promise<
     // El cambio y su constancia en la bitácora se guardan juntos o no se guarda ninguno.
     await prisma.$transaction([
       prisma.perfil.update({ where: { id }, data: { rol: datos.data.rol, profesorId } }),
-      prisma.auditoria.create({ data: eventoAuditoria("usuario.editado", actor, { tipo: "Perfil", id }, resumen) }),
+      registrarAuditoria(prisma, eventoAuditoria("usuario.editado", actor, { tipo: "Perfil", id }, resumen)),
     ]);
   } catch (e) {
     if (e instanceof Prisma.PrismaClientKnownRequestError) {
@@ -122,14 +123,15 @@ export async function cambiarEstadoUsuario(_: EstadoFila, formData: FormData): P
   try {
     await prisma.$transaction([
       prisma.perfil.update({ where: { id }, data: { activo: activar } }),
-      prisma.auditoria.create({
-        data: eventoAuditoria(
+      registrarAuditoria(
+        prisma,
+        eventoAuditoria(
           activar ? "usuario.reactivado" : "usuario.desactivado",
           actor,
           { tipo: "Perfil", id },
           resumenCambioEstado(perfil.correo, activar),
         ),
-      }),
+      ),
     ]);
   } catch (e) {
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2025") return { error: NO_EXISTE };
