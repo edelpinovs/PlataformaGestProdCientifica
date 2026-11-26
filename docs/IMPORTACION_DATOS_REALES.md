@@ -363,7 +363,23 @@ Código en `scripts/importar-snii.ts` y `scripts/lib/importar-snii.ts`; la parte
 
 > **Con D-284 el listado SNII quedaría casi vacío de vigentes.** De los 22 periodos que se crearían, solo uno está vigente hoy; los demás empiezan en 2027. Los reportes y el semáforo de SNII mostrarían una cifra muy inferior a la real (en el paquete, 120 de los 157 periodos están vigentes) hasta que el cliente entregue el tipo de participación de los periodos que se mantuvieron sin participar en 2026.
 
-Aún **no se ha aplicado** en la base compartida ni se ha hecho el ensayo local (aplazado); tampoco se han visto el listado SNII ni el semáforo en pantalla.
+**Aplicada el 2026-11-26** en la base compartida, con respaldo previo y después de aplicar la migración `criterio_manual`, por una persona. El ensayo local no se hizo (aplazado).
+
+### Resultado de la aplicación de F5 (2026-11-26)
+
+| Concepto | Cantidad |
+|---|---|
+| Periodos creados | **22** (Nivel 1: 20 y Nivel 2: 2) |
+| — de ellos, vigentes el día de la aplicación | 1 |
+| Ya existen en la base (antes 0) | 22 |
+| Omitidos (al informe del cliente) | 135: 112 sin tipo de participación, 10 sin CVU en la base, 10 fuera de la base y 3 sin código |
+| Reconocimientos SNII en la base (antes 19) | 41, de los cuales 18 son de demostración |
+
+**Cómo se verificó:** una `simular` posterior da 0 a crear y los 22 aparecen como existentes; la bitácora trae 22 periodos con el mismo host de la base compartida; `prisma migrate status` dice «up to date». Todos se crearon con resultado aprobado y sin convocatoria. **No se vieron el listado SNII ni el semáforo en el navegador.**
+
+**Para el informe al cliente** (se entrega por otro medio, nunca por el repositorio): el tipo de participación de los 112 periodos que no lo traen y el CVU de quienes no lo tienen en la base. Hasta entonces el listado y el semáforo de SNII subestiman los vigentes (D-284).
+
+Para deshacer lo que nadie ha tocado ni usado: `npm run importar:snii:revertir -- <bitácora> --confirmo`.
 
 ## Perfiles PRODEP reales (F6)
 
@@ -456,12 +472,12 @@ Plan en [`PLAN_IMPORTACION_DATOS_REALES_2027.md`](PLAN_IMPORTACION_DATOS_REALES_
 |---|---|---|---|
 | F3 | Completa los pendientes de los profesores | **Aplicada** el 2026-11-26 ([PR #361](https://github.com/edelpinovs/PlataformaGestProdCientifica/pull/361)) | 121 personas y 700 cambios |
 | F4 | Da de alta a los profesores que faltan | **Aplicada** el 2026-11-26 ([PR #363](https://github.com/edelpinovs/PlataformaGestProdCientifica/pull/363)) | 10 altas; 46 omitidos (38 sin código y 8 sin correo) |
-| F5 | Reconocimientos SNII | Integrada, **sin aplicar** ([PR #366](https://github.com/edelpinovs/PlataformaGestProdCientifica/pull/366)) | 22 periodos a crear (1 vigente) por D-284 |
+| F5 | Reconocimientos SNII | **Aplicada** el 2026-11-26 ([PR #366](https://github.com/edelpinovs/PlataformaGestProdCientifica/pull/366)) | 22 periodos creados (1 vigente) por D-284; 135 omitidos |
 | F6 | Perfiles PRODEP | Integrada, **sin aplicar** ([PR #375](https://github.com/edelpinovs/PlataformaGestProdCientifica/pull/375)) | 0 a crear (D-285, D-295, D-296) |
 | F7 | Cuerpos académicos | Integrada, **sin aplicar** ([PR #384](https://github.com/edelpinovs/PlataformaGestProdCientifica/pull/384)) | 0 a crear (D-109 sin PRODEP real) |
 | F8 | Encabezados de los listados de M5 | Hecha por I5 ([PR #368](https://github.com/edelpinovs/PlataformaGestProdCientifica/pull/368)); verificada con los `.xlsx` reales | El listado SNII se lee completo; el Perfil Deseable pierde 22 de 128 renglones sin aviso |
 
-Una segunda `simular` de F3, F4, F5, F6 y F7 el mismo día confirma que las fases ya aplicadas no tienen nada más que hacer (0 a actualizar en F3, 0 altas en F4) y que las demás dan lo mismo que al integrarse.
+Una segunda `simular` de F3, F4, F5, F6 y F7 el mismo día confirma que las fases ya aplicadas no tienen nada más que hacer (0 a actualizar en F3, 0 altas en F4) y que las demás dan lo mismo que al integrarse; F5 se aplicó después (ver su sección).
 
 ### Cifras de control de la base compartida
 
@@ -475,17 +491,17 @@ Incluyen los datos de demostración (`db:demo:contar`: 50 profesores, 18 SNII, 1
 | — con género pendiente | 8 |
 | — sin departamento | 4 |
 | — sin CVU | 40 |
-| Reconocimientos SNII | 19 |
+| Reconocimientos SNII | 41 (18 de demostración) |
 | Perfiles PRODEP | 10 (todos de demostración) |
 | Cuerpos académicos / LGAC / integrantes | 8 / 11 / 22 |
 | Profesores en el paquete (con código UdeG / de tiempo completo) | 181 (133 / 96) |
 
 ### Pendientes para cerrar
 
-1. **Una migración de `main` no está aplicada en la base compartida.** `npx prisma migrate status` (2026-11-26) lista `20261126142529_criterio_manual` (valor `MANUAL` de `CriterioCruce`, PR #369). Es compatible con `main` (solo agrega un valor de enum), pero el código ya la usa: resolver a mano un renglón de una carga de convocatoria puede fallar hasta que quien la escribió ejecute `npm run db:migrar` y avise al equipo (D-275).
+1. **La migración `20261126142529_criterio_manual` ya está aplicada** (2026-11-26, `migrate status` «up to date» y el valor `MANUAL` existe en `CriterioCruce`). Queda avisar al equipo de `git pull` y `npx prisma generate`.
 2. **Datos que solo puede dar el cliente** (el informe con nombres está en `datos-reales/informe-cliente.md`, que git ignora, y se entrega por otro medio): tipo de participación SNII de 112 periodos (D-284); tipo de solicitud de los Perfiles PRODEP de 3 años y el historial de los de 6 años (D-285, D-296); qué convención de fecha de fin vale para los 45 Perfiles que terminan un día después (D-295); código UdeG o correo de los 46 profesores que F4 no pudo dar de alta; CVU de los periodos SNII sin CVU en la base.
 3. **Decisión nueva sobre D-109** (o PRODEP real) para que F7 pueda crear los 17 cuerpos académicos.
 4. **P12 y D-219:** decidir cuándo se ejecuta `npm run db:demo:limpiar` (D-289: después de F9, con una decisión registrada) y separar la base de producción antes de la entrega final.
 5. **Lo que sigue sin probarse:** `aplicar` y `revertir` de F5, F6 y F7; el ensayo local completo (aplazado: Docker/WSL no corre en el equipo de I1); las pantallas en el navegador (tema claro, tema oscuro y celular) y las cifras de control contra el paquete.
 6. **Respaldos:** los `.dump` de `datos-reales/respaldos/` contienen datos reales; guardarlos fuera del equipo personal y borrar la copia local cuando ya no hagan falta.
-7. **Issues:** #354 y #356 ya se aplicaron y pueden cerrarse; #357, #358 y #359 siguen abiertos hasta que una persona aplique.
+7. **Issues:** #354, #356 y #357 ya se aplicaron y pueden cerrarse (#357 cuando se vea el listado SNII); #358 y #359 siguen abiertos porque F6 y F7 no crean nada todavía.
