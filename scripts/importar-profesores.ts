@@ -18,6 +18,7 @@ import { leerCsvReales } from "./lib/datos-reales";
 import {
   DOMINIO_PENDIENTE,
   PREFIJO_CODIGO,
+  SIN_USO_PROFESOR,
   informePlan,
   prepararCarga,
   type EstadoBase,
@@ -141,23 +142,9 @@ async function contar() {
 }
 
 async function limpiar() {
-  // Solo se borra a quien conserva las dos marcas Y no tiene nada colgando. Las relaciones opcionales sin
-  // onDelete harían SetNull (la base no lo impide), por eso cada una va en la condición.
-  const sinUso = {
-    perfil: { is: null },
-    programas: { none: {} },
-    reconocimientosSnii: { none: {} },
-    reconocimientosProdep: { none: {} },
-    cuerposAcademicos: { none: {} },
-    cuerposLiderados: { none: {} },
-    lgacs: { none: {} },
-    participaciones: { none: {} },
-    renglonesResultado: { none: {} },
-    autorias: { none: {} },
-    cortesEscaneo: { none: {} },
-  };
+  // Solo se borra a quien conserva las dos marcas Y no tiene nada colgando (SIN_USO_PROFESOR).
   const antes = await prisma.profesor.count({ where: marcado });
-  const { count } = await prisma.profesor.deleteMany({ where: { ...marcado, ...sinUso } });
+  const { count } = await prisma.profesor.deleteMany({ where: { ...marcado, ...SIN_USO_PROFESOR } });
   console.log(`Borrados: ${count}. Con marca y en uso (no se borran): ${antes - count}.`);
 }
 

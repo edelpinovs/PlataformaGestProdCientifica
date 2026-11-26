@@ -148,6 +148,49 @@ function indexar(paquete: RegistroPaquete[]) {
 const etiquetaDe = (p: ProfesorBase) => `${p.apellidos}, ${p.nombres}`;
 const esPendiente = (p: ProfesorBase) => p.codigo.startsWith(PREFIJO_CODIGO);
 
+// ─── Validación con las reglas del formulario ────────────────────────────────
+
+export interface CandidatoRegistro {
+  codigo: string;
+  nombres: string;
+  apellidos: string;
+  correo: string;
+  /** Si no se propone (queda PENDIENTE), se usa un relleno solo para poder validar el resto. */
+  genero?: string;
+  tipoContratacion?: string;
+  departamentoId?: number;
+  gradoId?: number;
+  cvu?: string;
+}
+
+export interface Incidencia {
+  campo: string;
+  mensaje: string;
+}
+
+/**
+ * Las mismas reglas que el formulario de Profesores. `registrarProfesor` lleva un transform y no se puede
+ * revisar campo por campo: se arma un candidato completo y se devuelven todas las incidencias; quien llama
+ * decide cuáles le importan (por ejemplo, solo las de los campos que propone).
+ */
+export function incidenciasDeRegistro(candidato: CandidatoRegistro): Incidencia[] {
+  const resultado = registrarProfesor.safeParse({
+    codigo: candidato.codigo,
+    nombres: candidato.nombres,
+    apellidos: candidato.apellidos,
+    correo: candidato.correo,
+    genero: candidato.genero ?? "M",
+    tipoContratacion: candidato.tipoContratacion ?? "ASIGNATURA",
+    estatusLaboral: "ACTIVO",
+    departamentoId: candidato.departamentoId === undefined ? "" : String(candidato.departamentoId),
+    gradoId: candidato.gradoId === undefined ? "" : String(candidato.gradoId),
+    cvu: candidato.cvu ?? "",
+    goceDeSueldo: false,
+  });
+  if (resultado.success) return [];
+  return resultado.error.issues.map((i) => ({ campo: String(i.path[0]), mensaje: i.message }));
+}
+
 // ─── Plan ────────────────────────────────────────────────────────────────────
 
 export function planCompletar(base: ProfesorBase[], paquete: RegistroPaquete[], catalogos: Catalogos): PlanCompletar {
@@ -264,27 +307,22 @@ export function planCompletar(base: ProfesorBase[], paquete: RegistroPaquete[], 
 
     // 4. Las mismas reglas que el formulario. `registrarProfesor` lleva un transform y no se puede revisar campo
     //    por campo: se arma un candidato completo y solo cuentan las incidencias de los campos que se proponen.
-    const candidato = {
+    const incidencias = incidenciasDeRegistro({
       codigo: String(propuesta.codigo ?? p.codigo),
       nombres: p.nombres,
       apellidos: p.apellidos,
       correo: String(propuesta.correo ?? p.correo),
-      genero: String(propuesta.genero ?? "M"),
-      tipoContratacion: String(propuesta.tipoContratacion ?? "ASIGNATURA"),
-      estatusLaboral: "ACTIVO",
-      departamentoId: propuesta.departamentoId === undefined ? "" : String(propuesta.departamentoId),
-      gradoId: propuesta.gradoId === undefined ? "" : String(propuesta.gradoId),
-      cvu: String(propuesta.cvu ?? ""),
-      goceDeSueldo: false,
-    };
-    const resultado = registrarProfesor.safeParse(candidato);
-    if (!resultado.success) {
-      for (const incidencia of resultado.error.issues) {
-        const campo = incidencia.path[0] as CampoCompletable;
-        if (!(campo in propuesta)) continue;
-        conflicto(p, campo, incidencia.message);
-        delete propuesta[campo];
-      }
+      genero: propuesta.genero === undefined ? undefined : String(propuesta.genero),
+      tipoContratacion: propuesta.tipoContratacion === undefined ? undefined : String(propuesta.tipoContratacion),
+      departamentoId: propuesta.departamentoId as number | undefined,
+      gradoId: propuesta.gradoId as number | undefined,
+      cvu: propuesta.cvu === undefined ? undefined : String(propuesta.cvu),
+    });
+    for (const incidencia of incidencias) {
+      const campo = incidencia.campo as CampoCompletable;
+      if (!(campo in propuesta)) continue;
+      conflicto(p, campo, incidencia.mensaje);
+      delete propuesta[campo];
     }
 
     const cambios: CambioCampo[] = CAMPOS_COMPLETABLES.flatMap((campo) =>
