@@ -34,7 +34,8 @@ describe("registro de auditoría", () => {
 
   it("toda acción tiene módulo y texto", () => {
     for (const a of CLAVES_ACCION) {
-      expect(ACCIONES_AUDITORIA[a].modulo).toBeTruthy();
+      // Solo el borrado deja el módulo a quien lo registra.
+      if (a !== "registro.eliminado") expect(ACCIONES_AUDITORIA[a].modulo).toBeTruthy();
       expect(ACCIONES_AUDITORIA[a].texto).toBeTruthy();
     }
   });
