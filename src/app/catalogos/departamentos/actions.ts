@@ -5,8 +5,10 @@ import { redirect, RedirectType } from "next/navigation";
 import type { EstadoFila } from "@/components/fila-editable";
 import type { EstadoAlta } from "@/components/modal-alta-logica";
 import { Prisma } from "@/generated/prisma/client";
+import { registrarAuditoria } from "@/lib/auditoria";
 import { requireModulo } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
+import { eventoAuditoria, resumenEliminacion } from "@/modules/administracion/auditoria";
 import { idDeFormulario } from "@/modules/catalogos/comun";
 import { departamento, motivoDepartamentoNoEliminable, revisarDepartamento } from "@/modules/catalogos/departamentos";
 
@@ -99,7 +101,7 @@ export async function editarDepartamento(_: EstadoFila, formData: FormData): Pro
 
 // #59: elimina un departamento solo si no tiene profesores, programas educativos ni cuerpos académicos.
 export async function eliminarDepartamento(_: EstadoFila, formData: FormData): Promise<EstadoFila> {
-  await requireModulo("catalogos");
+  const actor = await requireModulo("catalogos");
 
   const id = idDeFormulario(formData);
   if (!id) return { error: NO_EXISTE };
@@ -119,9 +121,17 @@ export async function eliminarDepartamento(_: EstadoFila, formData: FormData): P
   // la base los dejaría sin departamento (SetNull). Cuerpos académicos: relación obligatoria (P2003).
   let borrados = 0;
   try {
-    ({ count: borrados } = await prisma.departamento.deleteMany({
-      where: { id, profesores: { none: {} }, programas: { none: {} }, cuerposAcademicos: { none: {} } },
-    }));
+    // El borrado y su constancia en la bitácora se guardan juntos o no se guarda ninguno (#277).
+    borrados = await prisma.$transaction(async (tx) => {
+      const { count } = await tx.departamento.deleteMany({
+        where: { id, profesores: { none: {} }, programas: { none: {} }, cuerposAcademicos: { none: {} } },
+      });
+      if (count > 0) {
+        await registrarAuditoria(tx, eventoAuditoria("registro.eliminado", actor, { tipo: "Departamento", id: String(id) },
+          resumenEliminacion("el departamento", `«${actual.nombre}» (id ${id})`), "catalogos"));
+      }
+      return count;
+    });
   } catch (e) {
     if (!(e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2003")) throw e;
   }

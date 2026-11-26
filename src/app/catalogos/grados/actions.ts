@@ -5,8 +5,10 @@ import { redirect, RedirectType } from "next/navigation";
 import type { EstadoFila } from "@/components/fila-editable";
 import type { EstadoAlta } from "@/components/modal-alta-logica";
 import { Prisma } from "@/generated/prisma/client";
+import { registrarAuditoria } from "@/lib/auditoria";
 import { requireModulo } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
+import { eventoAuditoria, resumenEliminacion } from "@/modules/administracion/auditoria";
 import { idDeFormulario } from "@/modules/catalogos/comun";
 import { buscarDuplicado, gradoCientifico, motivoNoEliminable } from "@/modules/catalogos/grados";
 
@@ -85,7 +87,7 @@ export async function editarGrado(_: EstadoFila, formData: FormData): Promise<Es
 
 // #55: elimina un grado solo si ningún profesor lo tiene asignado.
 export async function eliminarGrado(_: EstadoFila, formData: FormData): Promise<EstadoFila> {
-  await requireModulo("catalogos");
+  const actor = await requireModulo("catalogos");
 
   const id = idDeFormulario(formData);
   if (!id) return { error: NO_EXISTE };
@@ -101,7 +103,15 @@ export async function eliminarGrado(_: EstadoFila, formData: FormData): Promise<
 
   // La condición va en el mismo DELETE (... AND NOT EXISTS profesor): si alguien asigna el grado
   // a un profesor en este instante, no se borra. Sin ella, la base dejaría a ese profesor sin grado.
-  const { count } = await prisma.gradoCientifico.deleteMany({ where: { id, profesores: { none: {} } } });
+  // El borrado y su constancia en la bitácora se guardan juntos o no se guarda ninguno (#277).
+  const count = await prisma.$transaction(async (tx) => {
+    const { count } = await tx.gradoCientifico.deleteMany({ where: { id, profesores: { none: {} } } });
+    if (count > 0) {
+      await registrarAuditoria(tx, eventoAuditoria("registro.eliminado", actor, { tipo: "GradoCientifico", id: String(id) },
+        resumenEliminacion("el grado científico", `«${grado.nombre}» (id ${id})`), "catalogos"));
+    }
+    return count;
+  });
   if (count === 0) {
     const profesores = await prisma.profesor.count({ where: { gradoId: id } });
     return { error: motivoNoEliminable(grado.nombre, profesores) ?? NO_EXISTE };
