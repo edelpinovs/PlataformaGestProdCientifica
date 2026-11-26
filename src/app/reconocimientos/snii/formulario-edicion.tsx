@@ -33,7 +33,7 @@ export function FormularioEdicionSnii({ reconocimiento, profesores, cerrar }: {
 
   return (
     <li className="border-b border-linea py-3 last:border-0">
-      <form action={accion} className="flex flex-col gap-4 rounded-xl bg-superficie-alt p-4">
+      <form action={accion} noValidate className="flex flex-col gap-4 rounded-xl bg-superficie-alt p-4">
         <input type="hidden" name="id" value={reconocimiento.id} />
         <FormularioSniiCampos profesores={profesores} valores={valores} estado={estado} />
         {estado.error && <Aviso tipo="error">{estado.error}</Aviso>}

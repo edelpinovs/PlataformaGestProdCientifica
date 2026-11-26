@@ -114,7 +114,7 @@ function Edicion({ id, celdas, campos, editar, cerrar }: Props & { cerrar: () =>
   return (
     <tr className={claseTabla.fila}>
       <td colSpan={celdas.length + 1} className="py-3">
-        <form action={accion} className="flex flex-col gap-3 rounded-xl bg-superficie-alt p-4">
+        <form action={accion} noValidate className="flex flex-col gap-3 rounded-xl bg-superficie-alt p-4">
           <input type="hidden" name="id" value={id} />
           <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end">
             {campos.map((campo, i) => {
@@ -182,7 +182,7 @@ function Confirmacion({ id, nombre, detalle, celdas, eliminar, cerrar }: Props &
   return (
     <tr className={claseTabla.fila}>
       <td colSpan={celdas.length + 1} className="py-3">
-        <form action={accion} className="flex flex-col gap-3 rounded-xl bg-peligro-suave p-4">
+        <form action={accion} noValidate className="flex flex-col gap-3 rounded-xl bg-peligro-suave p-4">
           <input type="hidden" name="id" value={id} />
           {estado.error ? (
             <Aviso tipo="error">{estado.error}</Aviso>

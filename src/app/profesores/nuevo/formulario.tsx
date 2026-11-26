@@ -18,7 +18,7 @@ export function FormularioProfesor({ grados, departamentos }: Props) {
   const errorEnGenero = estado.campo === "genero";
 
   return (
-    <form key={estado.registrado ?? "formulario"} action={accion} className="flex flex-col gap-5">
+    <form key={estado.registrado ?? "formulario"} action={accion} noValidate className="flex flex-col gap-5">
       <CamposProfesor
         grados={grados}
         departamentos={departamentos}

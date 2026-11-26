@@ -45,12 +45,12 @@ describe("reconocimientoProdep", () => {
   });
 
   it("rechaza fechas inexistentes y un fin anterior o igual al inicio", () => {
-    for (const fechaFin of ["2026-02-30", "2026-01-01", "2025-12-31"]) {
+    for (const fechaFin of ["", "2026-02-30", "2026-01-01", "2025-12-31"]) {
       const resultado = reconocimientoProdep.safeParse({ ...datosValidos, fechaFin });
       expect(resultado.success).toBe(false);
       if (!resultado.success) {
         expect(resultado.error.issues[0]?.message).toBe(
-          fechaFin === "2026-02-30"
+          fechaFin === "2026-02-30" || fechaFin === ""
             ? "Ingresa una fecha válida."
             : "La fecha de fin debe ser posterior a la fecha de inicio.",
         );

@@ -9,7 +9,7 @@ export function FormularioSnii({ profesores }: { profesores: ProfesorOpcion[] })
   const [estado, accion, enviando] = useActionState<EstadoSnii, FormData>(registrarReconocimientoSnii, {});
 
   return (
-    <form key={estado.registrado ?? "formulario-snii"} action={accion} className="flex flex-col gap-4">
+    <form key={estado.registrado ?? "formulario-snii"} action={accion} noValidate className="flex flex-col gap-4">
       <FormularioSniiCampos profesores={profesores} valores={estado.valores} estado={estado} />
       {estado.error && <Aviso tipo="error">{estado.error}</Aviso>}
       {estado.registrado && <Aviso tipo="exito">Se registró el reconocimiento para el CVU {estado.registrado}.</Aviso>}
