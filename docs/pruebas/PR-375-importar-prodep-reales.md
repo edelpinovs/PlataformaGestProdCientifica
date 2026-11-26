@@ -10,7 +10,7 @@ Revisión del [PR #375](https://github.com/edelpinovs/PlataformaGestProdCientifi
 | Fecha de la revisión | 2026-11-26 |
 | Revisó | Claude Code, a petición de @edelpinovs (I1) |
 | Entorno | Local (Windows 11, Node 24). `simular` contra la base compartida (solo lectura). **Sin ensayo en base local** (aplazado) |
-| Resultado | **Aprobable con comentarios, no aplicar todavía.** La lógica reutiliza las reglas de la pantalla de PRODEP y tiene dientes; con D-285, D-290 y D-291 **no crearía ningún Perfil** |
+| Resultado | **Aprobable con comentarios, no aplicar todavía.** La lógica reutiliza las reglas de la pantalla de PRODEP y tiene dientes; con D-285, D-295 y D-296 **no crearía ningún Perfil** |
 | Estado | **Abierto** |
 
 Esta revisión la hace el mismo agente que escribió el código: **no sustituye la aprobación de otra persona del equipo (D-006).**
@@ -57,7 +57,7 @@ La primera versión de la cuarta mutación no tenía efecto (el historial falso 
 
 ## 5. Comentarios
 
-1. **Alta (decisión, no código): no se crearía nada.** De los 115 Perfiles con fechas: 62 de 3 años cumplen la regla de fecha del repo pero no tienen tipo de solicitud (D-285); 45 de 3 años terminan en el día del aniversario, un día después que el repo (D-290); los 8 de 6 años no tienen en la base el primer reconocimiento y la renovación previos (D-291, D-232). Con un tipo supuesto de `RENOVACION` se crearían 42 (estimación en solo lectura, no aprobada).
+1. **Alta (decisión, no código): no se crearía nada.** De los 115 Perfiles con fechas: 62 de 3 años cumplen la regla de fecha del repo pero no tienen tipo de solicitud (D-285); 45 de 3 años terminan en el día del aniversario, un día después que el repo (D-295); los 8 de 6 años no tienen en la base el primer reconocimiento y la renovación previos (D-296, D-232). Con un tipo supuesto de `RENOVACION` se crearían 42 (estimación en solo lectura, no aprobada).
 2. **Media:** `aplicar` y `revertir` nunca se han ejecutado contra una base real, y `revertir` borra filas.
 3. **Baja:** la precedencia de motivos subestima «sin tipo» y «fecha distinta»: al resolver código y altas faltantes, más Perfiles caerán ahí. Conviene decirlo al cliente.
 4. **Baja:** los 10 PRODEP que hay en la base son de demostración (D-289); no afectan a personas reales.
