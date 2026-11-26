@@ -63,6 +63,15 @@ describe("componentes de listado", () => {
     expect(html).toContain("La página debe ser un número entero");
   });
 
+  it("BarraListado deja la lista de errores dentro del aviso, sin anidarla en un párrafo", () => {
+    // Un <ul> dentro de un <p> es HTML inválido: el navegador cierra el <p> antes de la lista, el
+    // aviso con role="alert" queda vacío para los lectores de pantalla y React marca un error de hidratación.
+    const c = contexto({ orden: "otra" });
+    const html = renderToStaticMarkup(<BarraListado {...c} columnas={columnas} />);
+    expect(html).toMatch(/<div role="alert"[^>]*><ul><li>Ordena por una columna válida\.<\/li><\/ul><\/div>/);
+    expect(html).not.toMatch(/<p(?:\s[^>]*)?>(?:(?!<\/p>)[\s\S])*<ul>/);
+  });
+
   it("PaginacionListado muestra el rango y los enlaces que conservan el estado", () => {
     const c = contexto({ q: "ana", pagina: "2" });
     const html = renderToStaticMarkup(<PaginacionListado {...c} paginacion={paginar(25, c.consulta)} nombre="profesores" />);
