@@ -286,6 +286,7 @@ enum CriterioCruce {
   CVU
   CODIGO
   NOMBRE
+  MANUAL // RF-019: lo asignó a mano la Coordinación en la revisión
   AMBIGUO
   SIN_COINCIDENCIA
 }

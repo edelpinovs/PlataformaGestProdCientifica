@@ -183,7 +183,12 @@ export function interpretarListado(filas: string[][], programa: Programa): Resul
     };
     if (columnasDePersona.length && columnasDePersona.every((c) => !espacios(fila[c] ?? ""))) return;
 
-    const paterno = celda("paterno");
+    // En el PDF, un apellido muy corto puede quedar tan cerca del CVU que llega en la misma celda
+    // («1234567 Y») y deja vacía la del apellido: se separan para no perder ni el CVU ni el apellido.
+    let textoCvu = celda("cvu");
+    let paterno = celda("paterno");
+    const pegado = /^(\d{1,8}) (\S.*)$/.exec(textoCvu);
+    if (pegado && !paterno) [textoCvu, paterno] = [pegado[1], pegado[2]];
     const materno = celda("materno");
     const nombres = celda("nombres") || celda("nombreCompleto");
     if (!paterno && !materno && !nombres) return;
@@ -191,9 +196,9 @@ export function interpretarListado(filas: string[][], programa: Programa): Resul
     const numero = indice + 1;
     const avisar = (mensaje: string) => avisos.push({ renglon: numero, mensaje: `Renglón ${numero}: ${mensaje}` });
 
-    let cvu = limpiarCvu(celda("cvu"));
+    let cvu = limpiarCvu(textoCvu);
     if (cvu === "invalido") {
-      avisar(`el CVU «${celda("cvu")}» no es válido; se guardó sin CVU.`);
+      avisar(`el CVU «${textoCvu}» no es válido; se guardó sin CVU.`);
       cvu = null;
     } else if (cvu) {
       const anterior = primeraFilaDeCvu.get(cvu);

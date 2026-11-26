@@ -30,6 +30,8 @@ export type CambiosParticipacion = {
 export function calcularParticipaciones(actuales: Participacion[], enListado: Set<number> | null): CambiosParticipacion {
   const cambios: CambiosParticipacion = { crear: [], borrar: [], aprobar: [], noAprobar: [], limpiar: [] };
   for (const p of actuales) {
+    // Un caso en reconsideración lo resuelve la Coordinación, no el listado: se deja tal cual.
+    if (p.resultado === "EN_RECONSIDERACION") continue;
     const aparece = enListado?.has(p.profesorId) ?? false;
     if (p.origen === "LISTADO" && !aparece) cambios.borrar.push(p.id);
     else if (!enListado) { if (p.resultado !== null) cambios.limpiar.push(p.id); }

@@ -55,7 +55,7 @@ export default async function Page({ searchParams }: PageProps<"/convocatorias">
   const ahora = new Date();
 
   // Eliminar redirige aquí con el resultado (#59).
-  const { eliminado } = await searchParams;
+  const { eliminado, confirmada } = await searchParams;
 
   return (
     <Marco
@@ -136,6 +136,10 @@ export default async function Page({ searchParams }: PageProps<"/convocatorias">
         titulo={`Historial de cargas (${numero.format(totalCargas)})`}
         descripcion={totalCargas > cargas.length ? `Se muestran las ${cargas.length} más recientes` : "Archivos oficiales cargados, del más reciente al más antiguo"}
       >
+        {/* RF-019: resultado de la confirmación de una carga. */}
+        {typeof confirmada === "string" && (
+          <div className="mb-4"><Aviso tipo="exito">Se confirmó la carga. {confirmada}.</Aviso></div>
+        )}
         {typeof eliminado === "string" && (
           <div className="mb-4"><Aviso tipo="exito">Se eliminó la carga «{eliminado}».</Aviso></div>
         )}

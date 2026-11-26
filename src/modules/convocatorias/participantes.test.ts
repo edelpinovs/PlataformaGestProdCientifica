@@ -28,6 +28,14 @@ describe("calcularParticipaciones (RF-018)", () => {
     expect(calcularParticipaciones([p(1, 10, "MANUAL", "APROBADO"), p(2, 20, "MANUAL", "NO_APROBADO")], new Set([10])))
       .toEqual({ crear: [], borrar: [], aprobar: [], noAprobar: [], limpiar: [] });
   });
+
+  it("respeta un resultado En reconsideración: no lo aprueba, no lo cambia a No Aprobado, no lo limpia ni lo borra (revisión del #236)", () => {
+    const enReconsideracion = [p(1, 10, "MANUAL", "EN_RECONSIDERACION"), p(2, 20, "MANUAL", "EN_RECONSIDERACION"), p(3, 30, "LISTADO", "EN_RECONSIDERACION")];
+    const nada = { crear: [], borrar: [], aprobar: [], noAprobar: [], limpiar: [] };
+    expect(calcularParticipaciones(enReconsideracion, new Set([10, 30]))).toEqual(nada);
+    expect(calcularParticipaciones(enReconsideracion, new Set())).toEqual(nada);
+    expect(calcularParticipaciones(enReconsideracion, null)).toEqual(nada);
+  });
 });
 
 describe("resultadoPreliminar", () => {
