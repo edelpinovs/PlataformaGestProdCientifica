@@ -373,3 +373,37 @@ describe("interpretarListado con los formatos de la Coordinación (#355)", () =>
     });
   });
 });
+
+// Hallazgos de la revisión del #368 (docs/pruebas/PR-368-encabezados-listados-reales.md). Datos inventados.
+describe("interpretarListado: hallazgos de la revisión del #368", () => {
+  const fecha = (texto: string) => new Date(`${texto}T00:00:00Z`);
+
+  it("no pierde a la persona que solo trae nombre y vigencia (hallazgo 6, Perfil Deseable)", () => {
+    const { renglones } = leer([
+      ["CODIGO", "NOMBRE", "INICIO", "FIN", "TIPO SOLICITUD", "RESULTADO"],
+      ["9990001", "PRUEBA FICTICIA ANA", "2025-08-01", "2028-07-31", "", "Aprobada"],
+      ["", "INVENTADO DEMO LUIS", "2024-08-01", "2027-07-31", "", ""],
+    ], prodep);
+    expect(renglones.map((r) => r.nombres)).toEqual(["PRUEBA FICTICIA ANA", "INVENTADO DEMO LUIS"]);
+    expect(renglones[1]).toMatchObject({ codigo: null, vigenciaInicio: fecha("2024-08-01"), vigenciaFin: fecha("2027-07-31") });
+  });
+
+  it("no toma por persona una fila de totales (hallazgo 1)", () => {
+    const { renglones, resumen } = leer([
+      ["APELLIDOS", "NOMBRE", "NIVEL SNII 2026", "Resultado 2026", "CÓDIGO UdeG"],
+      ["PRUEBA FICTICIA", "ANA", "C", "I", "9990001"],
+      ["TOTAL SNII", "", "118", "129", ""],
+      ["Total de candidatos", "", "", "33", ""],
+    ]);
+    expect(renglones.map((r) => r.apellidoPaterno)).toEqual(["PRUEBA FICTICIA"]);
+    expect(resumen.totalAvisos).toBe(0);
+  });
+
+  it("el resultado no reemplaza un «NIVEL OTORGADO» explícito (hallazgo 2)", () => {
+    const { renglones } = leer([
+      ["CVU", "NOMBRES", "NIVEL OTORGADO", "RESULTADO"],
+      ["900001", "ANA PRUEBA", "Investigador Nacional Nivel II", "Aprobado"],
+    ]);
+    expect(renglones[0]).toMatchObject({ nivel: "NIVEL_2", nivelTexto: "Investigador Nacional Nivel II" });
+  });
+});
