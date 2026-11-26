@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  controlesEscaneo,
   resumirFuentes,
   estaSinAvance,
   resumirTrabajos,
@@ -138,5 +139,21 @@ describe("texto de avance", () => {
 
   it("un lote vacío no divide ni muestra 0 de 0", () => {
     expect(textoAvance(0, 0)).toBe("Sin profesores en el lote");
+  });
+});
+
+describe("controles de un escaneo (#279)", () => {
+  it("permite cancelar solo lo pendiente o en proceso", () => {
+    expect(controlesEscaneo("PENDIENTE")).toEqual({ cancelar: true, reintentar: false });
+    expect(controlesEscaneo("EN_PROCESO")).toEqual({ cancelar: true, reintentar: false });
+  });
+
+  it("permite reintentar solo lo que falló o se canceló", () => {
+    expect(controlesEscaneo("FALLIDO")).toEqual({ cancelar: false, reintentar: true });
+    expect(controlesEscaneo("CANCELADO")).toEqual({ cancelar: false, reintentar: true });
+  });
+
+  it("un escaneo completado no ofrece ninguna acción", () => {
+    expect(controlesEscaneo("COMPLETADO")).toEqual({ cancelar: false, reintentar: false });
   });
 });

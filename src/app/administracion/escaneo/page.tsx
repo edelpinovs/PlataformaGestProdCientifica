@@ -7,6 +7,7 @@ import { Aviso, claseBotonSecundario, claseTabla, EstadoVacio, EtiquetaEstado, P
 import { requireModulo } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import {
+  controlesEscaneo,
   estaSinAvance,
   resumirFuentes,
   resumirTrabajos,
@@ -130,7 +131,9 @@ export default async function EscaneoPage() {
           <EstadoVacio>Aún no se ha ejecutado ningún escaneo.</EstadoVacio>
         ) : (
           <ul className="flex flex-col">
-            {recientes.map((t) => (
+            {recientes.map((t) => {
+              const controles = controlesEscaneo(t.estado);
+              return (
               <li key={t.id} className="flex flex-wrap items-center justify-between gap-3 border-b border-linea py-3 text-sm last:border-0">
                 <div className="flex flex-col">
                   <span className="text-texto">{fechaHora.format(t.creadoEn)}</span>
@@ -144,14 +147,15 @@ export default async function EscaneoPage() {
                     Ver
                   </Link>
                 </div>
-                {/* Cancelar y reintentar son las acciones de Producción (#279): validan el rol y el estado en el servidor. */}
-                <div className="basis-full">
-                  <ControlBusqueda key={`${t.id}-${t.estado}`} jobId={t.id}
-                    cancelar={t.estado === "PENDIENTE" || t.estado === "EN_PROCESO"}
-                    reintentar={t.estado === "FALLIDO" || t.estado === "CANCELADO"} />
-                </div>
+                {/* Cancelar y reintentar son las acciones de Producción (issue 279): validan el rol y el estado en el servidor. */}
+                {(controles.cancelar || controles.reintentar) && (
+                  <div className="basis-full">
+                    <ControlBusqueda key={`${t.id}-${t.estado}`} jobId={t.id} {...controles} />
+                  </div>
+                )}
               </li>
-            ))}
+              );
+            })}
           </ul>
         )}
       </Panel>

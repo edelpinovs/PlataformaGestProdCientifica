@@ -48,6 +48,18 @@ export function estaSinAvance(trabajo: Pick<TrabajoResumen, "estado" | "actualiz
   return trabajo.estado === "EN_PROCESO" && trabajo.actualizadoEn.getTime() < sinAvanceDesde(ahora).getTime();
 }
 
+/**
+ * Qué botones de control corresponden a un escaneo según su estado (#279): cancelar solo lo que aún no
+ * termina; reintentar solo lo que falló o se canceló. Son los mismos criterios que usa el historial de
+ * Producción y que sus acciones vuelven a comprobar en el servidor.
+ */
+export function controlesEscaneo(estado: EstadoTrabajo): { cancelar: boolean; reintentar: boolean } {
+  return {
+    cancelar: estado === "PENDIENTE" || estado === "EN_PROCESO",
+    reintentar: estado === "FALLIDO" || estado === "CANCELADO",
+  };
+}
+
 /** Desde cuándo cuenta la ventana de «recientes». */
 export function ventanaDesde(ahora: Date): Date {
   return new Date(ahora.getTime() - VENTANA_DIAS * MS_DIA);
