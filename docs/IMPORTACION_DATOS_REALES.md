@@ -250,3 +250,40 @@ Código en `scripts/completar-profesores.ts` y `scripts/lib/completar-profesores
 | CVU | 111 |
 
 Aún **no se ha aplicado** en la base compartida ni se ha hecho el ensayo local (aplazado). Antes de aplicar: respaldo fresco, aviso en el chat del equipo y una persona que ejecute `aplicar`.
+
+## Alta de los profesores que faltan (F4)
+
+Plan en [`PLAN_IMPORTACION_DATOS_REALES_2027.md`](PLAN_IMPORTACION_DATOS_REALES_2027.md) y decisión P6 (D-283) en [`DECISIONES.md`](DECISIONES.md). Da de alta a las personas del paquete 2027 que **no están en la base**: ingresos SNII, quienes solo aparecen en PRODEP y los integrantes de cuerpos académicos.
+
+```bash
+npm run importar:altas:simular                              # calcula el plan; no escribe en la base
+npm run importar:altas:aplicar -- --confirmo                # una persona; una sola transacción, con bitácora
+npm run importar:altas:revertir -- <bitácora> --confirmo    # borra solo lo que nadie ha tocado ni usado
+```
+
+- **Solo se crea a quien tiene código UdeG real y correo institucional.** Quien no los tiene (o trae un código `PEND`) va a `datos-reales/plan-altas.md` para el cliente: no se inventa nada.
+- **Quien ya existe no se vuelve a crear:** se compara el nombre normalizado (exacto y, si no, las mismas palabras en otro orden). Un código que ya tiene otra persona con distinto nombre se informa, no se toma por la misma persona.
+- **Se omite** a las personas con nombre, código o correo repetidos en el paquete, y a quien choca en código o correo con alguien de la base. Si solo choca el CVU, se crea sin CVU.
+- **Campos:** nombres y apellidos en nombre propio; género `H→M` y `M→F`; contratación, grado y departamento con las mismas conversiones de F3 (si no son claras, género y contratación quedan `PENDIENTE`, como en la primera carga). Estatus `ACTIVO` y goce de sueldo sin marcar. **No** escribe ORCID, Scopus ni Scholar.
+- Cada alta pasa por las mismas reglas del formulario de Profesores; un dato obligatorio inválido manda a la persona al informe y uno opcional se descarta.
+- **Conviene aplicar después de F3**, para que los `PEND` ya tengan su código real: el resumen avisa cuántos `PEND` siguen en la base.
+- **`revertir`** borra solo a quien conserva el código y el correo de la bitácora y no tiene perfil, programas, reconocimientos, cuerpos académicos, LGAC, participaciones, resultados, autorías ni cortes (la misma condición de `importar:limpiar`).
+- Imprime en la terminal solo conteos y la base a la que se conecta; el detalle con nombres queda en `datos-reales/plan-altas.md` y la bitácora en `datos-reales/bitacoras/altas-<fecha>.json`.
+
+Código en `scripts/altas-profesores.ts` y `scripts/lib/altas-profesores.ts`; la parte pura está probada en `scripts/lib/altas-profesores.test.ts` con datos ficticios. **`aplicar` y `revertir` no tienen prueba automática** (escriben en la base compartida): se comprueban con `simular` antes y después.
+
+### Simulación del 2026-11-26 (base compartida, solo lectura)
+
+| Concepto | Cantidad |
+|---|---|
+| Registros en el paquete | 181 |
+| Con código UdeG real | 133 |
+| Ya existen en la base | 125 |
+| **A dar de alta** | **10** |
+| Omitidos (al informe del cliente) | 46 |
+| — sin código UdeG real | 38 |
+| — sin correo institucional | 8 |
+| Campos opcionales ajustados | 0 |
+| Profesores `PEND` que siguen en la base | 122 |
+
+Aún **no se ha aplicado** en la base compartida ni se ha hecho el ensayo local (aplazado).

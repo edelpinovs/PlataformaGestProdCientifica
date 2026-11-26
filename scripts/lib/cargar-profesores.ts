@@ -8,6 +8,23 @@ import { limpiarTexto, sinAcentos, type PersonaImportable } from "./importar-pro
 export const PREFIJO_CODIGO = "PEND";
 export const DOMINIO_PENDIENTE = "pendiente.invalid";
 
+// Condición «el profesor no tiene nada colgando». Las relaciones opcionales sin onDelete harían SetNull al borrar
+// (la base no lo impide), por eso cada una va en la condición del borrado. La comparten `importar:limpiar` y la
+// reversión de `importar:altas`; si el esquema agrega una relación a Profesor, se agrega aquí (hay una prueba).
+export const SIN_USO_PROFESOR = {
+  perfil: { is: null },
+  programas: { none: {} },
+  reconocimientosSnii: { none: {} },
+  reconocimientosProdep: { none: {} },
+  cuerposAcademicos: { none: {} },
+  cuerposLiderados: { none: {} },
+  lgacs: { none: {} },
+  participaciones: { none: {} },
+  renglonesResultado: { none: {} },
+  autorias: { none: {} },
+  cortesEscaneo: { none: {} },
+};
+
 const PARTICULAS = new Set(["de", "del", "la", "las", "los", "y", "e"]);
 
 // «ABUNDIS GUTIÉRREZ» → «Abundis Gutiérrez»; «DE LA TORRE» → «De la Torre». Lo que ya trae
