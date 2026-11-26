@@ -7,7 +7,7 @@ import { analizarListado, hayFiltrosActivos, paginar } from "@/lib/listados/cons
 import { prisma } from "@/lib/prisma";
 import { clasificarCarga, type Clasificacion } from "@/modules/convocatorias/balance";
 import { cargarConfirmacion } from "@/modules/convocatorias/cargar-confirmacion";
-import { planearConfirmacion } from "@/modules/convocatorias/confirmacion";
+import { planearConfirmacion, VIGENCIA_SNII_CONFIRMADA } from "@/modules/convocatorias/confirmacion";
 import { nombreDeRuta } from "@/modules/convocatorias/carga";
 import {
   COLUMNAS_REVISION,
@@ -181,7 +181,9 @@ export default async function RevisionPage({ params, searchParams }: PageProps<"
             {plan.bloqueo && <Aviso tipo="aviso">{plan.bloqueo}</Aviso>}
             <p className="text-sm text-texto-2">
               {resumenConfirmacion}
-              {programa === "SNII" && " Si el listado no trae vigencia, va del 1 de enero del año siguiente al 31 de diciembre: 4 años Candidato y 5 los niveles (D-224, pendiente de confirmar)."}
+              {programa === "SNII" && (VIGENCIA_SNII_CONFIRMADA
+                ? " Si el listado no trae vigencia, va del 1 de enero del año siguiente al 31 de diciembre: 4 años Candidato y 5 los niveles (D-292)."
+                : " Si el listado no trae vigencia, el reconocimiento no se registra hasta que la Coordinación confirme la regla (D-292); se puede registrar a mano.")}
             </p>
             {plan.omitidos.length > 0 && (
               <div className="flex flex-col gap-2">
