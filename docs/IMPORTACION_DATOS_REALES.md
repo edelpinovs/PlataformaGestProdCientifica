@@ -406,3 +406,42 @@ Código en `scripts/importar-prodep.ts` y `scripts/lib/importar-prodep.ts`; la p
 > **Decisión de I1 (2026-11-26):** se mantiene la regla del repo para la fecha de fin (no se ajustan los 45 de 3 años) y para los 6 años (D-232): esos Perfiles quedan en el informe del cliente. El tipo de los de 3 años sigue pendiente del cliente (D-285). Con esto, F6 no crea nada hasta que el cliente responda o el historial exista en la base.
 
 Aún **no se ha aplicado** en la base compartida ni se ha hecho el ensayo local (aplazado); tampoco se han visto el listado PRODEP ni el indicador «PRODEP activo» en pantalla.
+
+## Cuerpos Académicos reales (F7)
+
+Plan en [`PLAN_IMPORTACION_DATOS_REALES_2027.md`](PLAN_IMPORTACION_DATOS_REALES_2027.md) y decisiones P10 (D-287) y P11 (D-288) en [`DECISIONES.md`](DECISIONES.md). Crea los Cuerpos Académicos del paquete 2027 (`cuerpos_academicos.json`, `ca_integrantes.json` y `ca_lgac.json`: 17 CA, 82 integrantes y 32 LGAC) con las personas que ya están en la base.
+
+```bash
+npm run importar:cuerpos:simular                              # calcula el plan; no escribe en la base
+npm run importar:cuerpos:aplicar -- --confirmo                # una persona; una sola transacción, con bitácora
+npm run importar:cuerpos:revertir -- <bitácora> --confirmo    # borra solo los CA que nadie ha cambiado
+```
+
+- **CA:** nivel de `nivel_vigente_2027` (`CAEF`, `CAEC`, `CAC` → En formación, En consolidación, Consolidado); departamento por nomenclatura, como en F3; `anioVencimiento` = año de *Próxima evaluación* (D-287). Se valida con las mismas reglas del formulario de CA (RF-012). **Un CA cuya clave ya existe no se modifica.**
+- **Integrantes**, en el orden del Excel y con las reglas de la pantalla (RF-013): tiempo completo y activo (D-108) y el primero con PRODEP vigente (D-109). Quien espera por no tener PRODEP entra si después llega alguien que sí lo tiene. No se cargan las altas y bajas solicitadas en 2026 (D-252); quien no pasa va al informe.
+- **Líder:** solo si quedó como integrante (RF-014, D-111). Se guarda con la condición dentro de la misma escritura.
+- **LGAC:** una por renglón, sin profesores asignados (el Excel no los trae); se omiten las vacías, de más de 200 caracteres o repetidas en el CA.
+- **Un CA solo se crea si al menos un integrante pasa las reglas.** Como un CA que ya existe no se vuelve a tocar, crear uno vacío lo dejaría así hasta que alguien lo complete a mano. Es la constante `CREAR_CA_SIN_INTEGRANTES_POR_OMISION`; cambiarla en una carga real exige una decisión nueva.
+- **`revertir`** borra solo el CA que conserva su clave, sus integrantes, su líder y sus LGAC, y cuyas LGAC no tienen profesores asignados; todo en una transacción.
+- Imprime en la terminal solo conteos y la base a la que se conecta; el detalle con nombres queda en `datos-reales/plan-cuerpos.md` y la bitácora en `datos-reales/bitacoras/cuerpos-<fecha>.json`.
+
+Código en `scripts/importar-cuerpos.ts` y `scripts/lib/importar-cuerpos.ts`; la parte pura está probada en `scripts/lib/importar-cuerpos.test.ts` con datos ficticios. **`aplicar` y `revertir` no tienen prueba automática** (escriben en la base compartida): se comprueban con `simular` antes y después.
+
+### Simulación del 2026-11-26 (base compartida, solo lectura)
+
+| Concepto | Cantidad |
+|---|---|
+| Cuerpos académicos en el paquete | 17 |
+| **A crear** | **0** |
+| Omitidos: ningún integrante pasa las reglas (D-108, D-109) | 17 |
+| Integrantes en el paquete | 82 |
+| — sin PRODEP activo y nadie con PRODEP antes (D-109) | 55 |
+| — sin código UdeG | 22 |
+| — alta solicitada en 2026 (D-252) | 2 |
+| — no están en la base | 2 |
+| — no son de tiempo completo | 1 |
+| LGAC en el paquete | 32 |
+
+> **Con F6 sin Perfiles PRODEP, F7 no crea ningún CA.** La base no tiene PRODEP de personas reales (los 10 que existen son de demostración) y D-109 exige que el primer integrante lo tenga. Los 55 integrantes que quedan fallan **solo** por esa regla. Estimación en solo lectura, suponiendo PRODEP vigente para todos (no es un valor aprobado): se crearían los 17 CA (3 consolidados, 7 en consolidación y 7 en formación), 55 integrantes, 15 con líder asignado y las 32 LGAC. F7 depende de que se resuelva F6 (tipo de solicitud e historial, D-285, D-290, D-291) o de una decisión nueva sobre D-109.
+
+Aún **no se ha aplicado** en la base compartida ni se ha hecho el ensayo local (aplazado); tampoco se ha visto la pantalla de Cuerpos Académicos (detalle, líder e integrantes).
