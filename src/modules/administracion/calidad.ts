@@ -174,14 +174,36 @@ export const COLUMNAS_CALIDAD = [
 ];
 
 /**
+ * Reglas que no se listan salvo que se pida su filtro (#348): «Sin perfil de acceso» es el estado
+ * normal de un profesor hasta que se le invita (#275) y llegó a ser 172 de 182 hallazgos, así que
+ * tapaba lo demás. Sigue contándose en el inicio del panel y se ve con `?regla=SIN_PERFIL`.
+ */
+export const REGLAS_OCULTAS_POR_OMISION: readonly ReglaCalidad[] = ["SIN_PERFIL"];
+
+/** Hallazgos que el listado deja fuera por omisión: la página avisa cuántos son y cómo verlos. */
+export function hallazgosOcultos(hallazgos: Hallazgo[], consulta: ConsultaListado): Hallazgo[] {
+  if (consulta.filtros.regla) return [];
+  return hallazgos.filter((h) => REGLAS_OCULTAS_POR_OMISION.includes(h.regla));
+}
+
+/**
  * Filtra por regla y por texto libre (registro, problema y detalle, sin distinguir mayúsculas ni
  * acentos). Esta lista se calcula en memoria y es acotada (un hallazgo por registro afectado), por eso
  * se filtra aquí y no con `skip`/`take` en la base; se justifica en el issue 242.
+ *
+ * La pantalla deja fuera las reglas ocultas por omisión. La descarga pasa `{ ocultarPorOmision: false }`
+ * para que el archivo no quede incompleto sin decirlo (#348): ahí se filtra por la columna «Problema».
  */
-export function filtrarHallazgos(hallazgos: Hallazgo[], consulta: ConsultaListado): Hallazgo[] {
+export function filtrarHallazgos(
+  hallazgos: Hallazgo[],
+  consulta: ConsultaListado,
+  { ocultarPorOmision = true }: { ocultarPorOmision?: boolean } = {},
+): Hallazgo[] {
   const texto = normalizar(consulta.q.trim());
   return hallazgos.filter((h) => {
-    if (consulta.filtros.regla && h.regla !== consulta.filtros.regla) return false;
+    if (consulta.filtros.regla) {
+      if (h.regla !== consulta.filtros.regla) return false;
+    } else if (ocultarPorOmision && REGLAS_OCULTAS_POR_OMISION.includes(h.regla)) return false;
     if (!texto) return true;
     return normalizar(`${h.registro} ${REGLAS_CALIDAD[h.regla].texto} ${h.detalle}`).includes(texto);
   });
