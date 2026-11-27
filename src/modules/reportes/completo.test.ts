@@ -10,6 +10,7 @@ import {
   SIN_PUBLICACIONES,
 } from "./completo";
 import { SIN_SNII } from "./matriz";
+import { SIN_CVU } from "./vigencias";
 
 const hoy = new Date(Date.UTC(2026, 10, 15));
 const catalogo = { departamentos: [1, 2], programas: [10, 11] };
@@ -55,6 +56,8 @@ describe("reporte completo por profesor", () => {
       publicaciones: [],
     });
     expect(fila.genero).toBe("Femenino");
+    expect(profesor({ correo: "ada@demo.invalid", cvu: "100200" }).correo).toBe("ada@demo.invalid");
+    expect(profesor().cvu).toBe(SIN_CVU);
     expect(fila.snii).toBe("Candidato");
     expect(fila.sniiSemaforo).toBe("Vigente");
     expect(fila.prodep).toBe("Vigente");

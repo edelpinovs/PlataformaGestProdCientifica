@@ -177,7 +177,7 @@ describe("listado de calidad", () => {
 describe("vigencias vencidas (#278)", () => {
   const hoy = new Date(Date.UTC(2026, 10, 24));
   const fila = (id: string, fin: Date, extra: Partial<FilaVigencia> = {}): FilaVigencia => ({
-    id, tipo: "SNII", nombre: `Persona ${id}`, detalle: "Nivel I", departamento: "Ciencias", inicio: new Date(Date.UTC(2020, 0, 1)),
+    id, tipo: "SNII", nombre: `Persona ${id}`, correo: "persona@demo.invalid", cvu: "Sin CVU", detalle: "Nivel I", departamento: "Ciencias", inicio: new Date(Date.UTC(2020, 0, 1)),
     fin, semaforo: calcularSemaforo(fin, hoy), ...extra,
   });
 

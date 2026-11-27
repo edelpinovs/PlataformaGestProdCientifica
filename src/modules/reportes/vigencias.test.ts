@@ -10,6 +10,8 @@ import {
   filaCuerpo,
   filaProdep,
   filaSnii,
+  NO_APLICA,
+  SIN_CVU,
   finDeCuerpo,
   textoColumna,
   type FilaVigencia,
@@ -108,6 +110,15 @@ describe("estatus aplicado a cada distinción (RF-026)", () => {
     }, hoy);
     expect(fila.semaforo).toBe("AMARILLO");
     expect(textoColumna(fila, "semaforo")).toBe("Por vencer");
+    expect(fila.correo).toBe(NO_APLICA);
+    expect(fila.cvu).toBe(NO_APLICA);
+  });
+
+  it("lleva el correo y el CVU de la persona", () => {
+    const fila = snii({ correo: "ada@demo.invalid", cvu: "100200" });
+    expect(textoColumna(fila, "correo")).toBe("ada@demo.invalid");
+    expect(textoColumna(fila, "cvu")).toBe("100200");
+    expect(snii({ cvu: "  " }).cvu).toBe(SIN_CVU);
   });
 
   it("señala en el detalle una distinción que sigue en reconsideración", () => {

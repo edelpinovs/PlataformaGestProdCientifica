@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { analizarMatriz, consultarMatriz, enlaceMatriz, filaMatriz, SIN_PRODEP, SIN_SNII, type FilaMatriz } from "./matriz";
+import { SIN_CVU } from "./vigencias";
 
 const hoy = new Date(Date.UTC(2026, 10, 15));
 const catalogo = { departamentos: [1, 2], programas: [10, 11] };
@@ -23,6 +24,9 @@ function profesor(parcial: Partial<Parameters<typeof filaMatriz>[0]> = {}) {
 
 describe("matriz de acreditación (RF-029)", () => {
   it("muestra el SNII y el PRODEP solo cuando hoy están vigentes", () => {
+    expect(profesor({ correo: "ada@demo.invalid", cvu: "100200" }).correo).toBe("ada@demo.invalid");
+    expect(profesor({ correo: "ada@demo.invalid", cvu: "100200" }).cvu).toBe("100200");
+    expect(profesor().cvu).toBe(SIN_CVU);
     expect(profesor().snii).toBe("Nivel I");
     expect(profesor().prodep).toBe("Vigente");
     expect(profesor({

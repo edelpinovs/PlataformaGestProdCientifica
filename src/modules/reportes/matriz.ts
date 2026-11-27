@@ -11,7 +11,7 @@ import {
 } from "@/lib/listados/consulta";
 import { ETIQUETA_CONTRATACION, ETIQUETA_ESTATUS } from "@/modules/profesores/profesores";
 import { calcularSemaforo } from "./semaforo";
-import { SIN_DEPARTAMENTO } from "./vigencias";
+import { SIN_CORREO, SIN_CVU, SIN_DEPARTAMENTO } from "./vigencias";
 
 // Matriz de profesores para acreditación (RF-029).
 // Una fila por profesor. Se filtra por departamento o por programa educativo.
@@ -32,13 +32,15 @@ export const SIN_PROGRAMA = "Sin programa";
 export const SIN_GRADO = "Sin grado";
 
 export const COLUMNAS_MATRIZ = [
-  "codigo", "nombre", "departamento", "programas", "grado", "contratacion", "estatus", "snii", "prodep",
+  "codigo", "nombre", "correo", "cvu", "departamento", "programas", "grado", "contratacion", "estatus", "snii", "prodep",
 ] as const;
 export type ColumnaMatriz = (typeof COLUMNAS_MATRIZ)[number];
 
 export const ETIQUETA_COLUMNA_MATRIZ: Record<ColumnaMatriz, string> = {
   codigo: "Código",
   nombre: "Nombre",
+  correo: "Correo electrónico",
+  cvu: "CVU",
   departamento: "Departamento",
   programas: "Programa educativo",
   grado: "Grado",
@@ -59,6 +61,8 @@ export type FilaMatriz = {
   programaIds: number[];
   codigo: string;
   nombre: string;
+  correo: string;
+  cvu: string;
   departamento: string;
   programas: string;
   grado: string;
@@ -95,6 +99,8 @@ export function filaMatriz(datos: {
   codigo: string;
   nombres: string;
   apellidos: string;
+  correo?: string | null;
+  cvu?: string | null;
   tipoContratacion: keyof typeof ETIQUETA_CONTRATACION;
   estatusLaboral: keyof typeof ETIQUETA_ESTATUS;
   departamento: { id: number; nombre: string } | null;
@@ -111,6 +117,8 @@ export function filaMatriz(datos: {
     programaIds: programas.map((programa) => programa.id),
     codigo: datos.codigo,
     nombre: `${datos.nombres} ${datos.apellidos}`,
+    correo: datos.correo?.trim() || SIN_CORREO,
+    cvu: datos.cvu?.trim() || SIN_CVU,
     departamento: datos.departamento?.nombre ?? SIN_DEPARTAMENTO,
     programas: programas.map((programa) => programa.nombre).join(", ") || SIN_PROGRAMA,
     grado: datos.grado ?? SIN_GRADO,
