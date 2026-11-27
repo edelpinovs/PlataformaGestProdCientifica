@@ -3,6 +3,7 @@ import { iniciarSesion } from "./actions";
 
 const dobles = vi.hoisted(() => ({
   signInWithPassword: vi.fn(),
+  signOut: vi.fn(),
   findUnique: vi.fn(),
   poner: vi.fn(),
   redirect: vi.fn(),
@@ -10,7 +11,7 @@ const dobles = vi.hoisted(() => ({
 
 vi.mock("@/lib/prisma", () => ({ prisma: { perfil: { findUnique: dobles.findUnique } } }));
 vi.mock("@/lib/supabase/server", () => ({
-  createClient: async () => ({ auth: { signInWithPassword: dobles.signInWithPassword } }),
+  createClient: async () => ({ auth: { signInWithPassword: dobles.signInWithPassword, signOut: dobles.signOut } }),
 }));
 vi.mock("next/headers", () => ({ cookies: async () => ({ set: dobles.poner }) }));
 vi.mock("next/navigation", () => ({ redirect: dobles.redirect }));
@@ -32,9 +33,9 @@ describe("iniciarSesion y el tema guardado (issue 283)", () => {
   });
 
   it("con tema guardado escribe la cookie que lee layout.tsx y entra", async () => {
-    dobles.findUnique.mockResolvedValue({ tema: "oscuro" });
+    dobles.findUnique.mockResolvedValue({ tema: "oscuro", activo: true });
     await expect(iniciarSesion({}, formulario())).rejects.toThrow("NEXT_REDIRECT");
-    expect(dobles.findUnique).toHaveBeenCalledWith({ where: { id: "perfil-1" }, select: { tema: true } });
+    expect(dobles.findUnique).toHaveBeenCalledWith({ where: { id: "perfil-1" }, select: { tema: true, activo: true } });
     expect(dobles.poner).toHaveBeenCalledWith(
       "tema",
       "oscuro",
@@ -44,13 +45,13 @@ describe("iniciarSesion y el tema guardado (issue 283)", () => {
   });
 
   it("sin tema guardado no toca la cookie: queda el del navegador", async () => {
-    dobles.findUnique.mockResolvedValue({ tema: null });
+    dobles.findUnique.mockResolvedValue({ tema: null, activo: true });
     await expect(iniciarSesion({}, formulario())).rejects.toThrow("NEXT_REDIRECT");
     expect(dobles.poner).not.toHaveBeenCalled();
   });
 
   it("un valor no reconocido en el perfil se ignora", async () => {
-    dobles.findUnique.mockResolvedValue({ tema: "sistema" });
+    dobles.findUnique.mockResolvedValue({ tema: "sistema", activo: true });
     await expect(iniciarSesion({}, formulario())).rejects.toThrow("NEXT_REDIRECT");
     expect(dobles.poner).not.toHaveBeenCalled();
   });
@@ -67,6 +68,39 @@ describe("iniciarSesion y el tema guardado (issue 283)", () => {
     expect(estado.error).toBe("El correo o la contraseña no coinciden.");
     expect(dobles.findUnique).not.toHaveBeenCalled();
     expect(dobles.poner).not.toHaveBeenCalled();
+  });
+});
+
+describe("iniciarSesion con el acceso desactivado (#349)", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    dobles.signInWithPassword.mockResolvedValue({ data: { user: { id: "perfil-1" } }, error: null });
+    dobles.redirect.mockImplementation(() => {
+      throw new Error("NEXT_REDIRECT");
+    });
+  });
+
+  it("con la contraseña correcta y el perfil desactivado avisa, cierra la sesión y no entra", async () => {
+    dobles.findUnique.mockResolvedValue({ tema: "oscuro", activo: false });
+    const estado = await iniciarSesion({}, formulario());
+    expect(estado).toEqual({ error: "Tu acceso está desactivado. Pide a la Coordinación que lo reactive.", correo: "ana.demo@demo.invalid" });
+    expect(dobles.signOut).toHaveBeenCalledTimes(1);
+    expect(dobles.poner).not.toHaveBeenCalled();
+    expect(dobles.redirect).not.toHaveBeenCalled();
+  });
+
+  it("con contraseña incorrecta responde igual que para una cuenta que no existe: no revela el estado", async () => {
+    dobles.signInWithPassword.mockResolvedValue({ data: { user: null }, error: { message: "Invalid login credentials" } });
+    const estado = await iniciarSesion({}, formulario());
+    expect(estado.error).toBe("El correo o la contraseña no coinciden.");
+    expect(dobles.findUnique).not.toHaveBeenCalled();
+    expect(dobles.signOut).not.toHaveBeenCalled();
+  });
+
+  it("una cuenta sin perfil sigue el flujo de siempre (getPerfil la niega después), sin avisar de desactivación", async () => {
+    dobles.findUnique.mockResolvedValue(null);
+    await expect(iniciarSesion({}, formulario())).rejects.toThrow("NEXT_REDIRECT");
+    expect(dobles.signOut).not.toHaveBeenCalled();
   });
 });
 

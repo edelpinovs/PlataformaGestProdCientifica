@@ -30,16 +30,32 @@ export async function iniciarSesion(_: EstadoLogin, formData: FormData): Promise
   });
   if (error) return { error: "El correo o la contraseña no coinciden.", correo };
 
-  await aplicarTemaGuardado(data.user.id);
+  // Con la contraseña correcta ya se puede decir, sin filtrar nada a quien no la conoce, que el acceso
+  // fue desactivado desde el panel (#349). Sin perfil o con la base caída sigue el flujo de siempre:
+  // getPerfil() vuelve a negar el acceso en cada página.
+  const perfil = await leerPerfilDeAcceso(data.user.id);
+  if (perfil && !perfil.activo) {
+    await supabase.auth.signOut();
+    return { error: "Tu acceso está desactivado. Pide a la Coordinación que lo reactive.", correo };
+  }
+
+  await aplicarTemaGuardado(perfil?.tema);
   redirect("/");
+}
+
+async function leerPerfilDeAcceso(perfilId: string) {
+  try {
+    return await prisma.perfil.findUnique({ where: { id: perfilId }, select: { tema: true, activo: true } });
+  } catch {
+    return null; // El tema es secundario y getPerfil() decide el acceso: un fallo aquí no impide iniciar sesión.
+  }
 }
 
 // Si la persona ya eligió un tema (#283), se escribe en la cookie que lee src/app/layout.tsx para
 // que la siga a este navegador. Sin tema guardado o con un fallo, queda el del navegador.
-async function aplicarTemaGuardado(perfilId: string) {
+async function aplicarTemaGuardado(temaDelPerfil: string | null | undefined) {
   try {
-    const perfil = await prisma.perfil.findUnique({ where: { id: perfilId }, select: { tema: true } });
-    const tema = temaGuardado(perfil?.tema);
+    const tema = temaGuardado(temaDelPerfil);
     if (!tema) return;
     (await cookies()).set("tema", tema, {
       path: "/",
