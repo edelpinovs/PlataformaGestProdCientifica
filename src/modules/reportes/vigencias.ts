@@ -77,6 +77,7 @@ export type FilaVigencia = {
   nombre: string;
   detalle: string;
   departamento: string;
+  departamentoId?: number | null;
   inicio: Date;
   fin: Date;
   semaforo: Semaforo;
@@ -88,6 +89,8 @@ export type EstadoReporte = {
   columnas: ColumnaVigencia[];
   /** Año de la fecha de vencimiento. Null muestra todos los años. */
   anio: number | null;
+  /** Null muestra todos los departamentos. */
+  departamentoId: number | null;
   errores: ErroresListado;
 };
 
@@ -98,6 +101,7 @@ type DatosPersona = {
   nombres: string;
   apellidos: string;
   departamento: string | null;
+  departamentoId?: number | null;
   resultado: string;
 };
 
@@ -147,6 +151,7 @@ export function filaSnii(datos: DatosPersona & { nivel: string }, hoy: Date): Fi
     nombre: nombrePersona(datos.nombres, datos.apellidos),
     detalle: detalleConReconsideracion(nivel, datos.resultado),
     departamento: datos.departamento ?? SIN_DEPARTAMENTO,
+    departamentoId: datos.departamentoId ?? null,
     inicio: datos.inicio,
     fin: datos.fin,
     semaforo: calcularSemaforo(datos.fin, hoy),
@@ -161,6 +166,7 @@ export function filaProdep(datos: DatosPersona & { tipoSolicitud: string }, hoy:
     nombre: nombrePersona(datos.nombres, datos.apellidos),
     detalle: detalleConReconsideracion(solicitud, datos.resultado),
     departamento: datos.departamento ?? SIN_DEPARTAMENTO,
+    departamentoId: datos.departamentoId ?? null,
     inicio: datos.inicio,
     fin: datos.fin,
     semaforo: calcularSemaforo(datos.fin, hoy),
@@ -175,6 +181,7 @@ export function filaCuerpo(datos: {
   anioRegistro: number;
   anioVencimiento: number;
   departamento: string;
+  departamentoId?: number | null;
 }, hoy: Date): FilaVigencia {
   const nivel = datos.nivel in ETIQUETA_NIVEL
     ? ETIQUETA_NIVEL[datos.nivel as keyof typeof ETIQUETA_NIVEL]
@@ -185,6 +192,7 @@ export function filaCuerpo(datos: {
     nombre: `${datos.nombre} (${datos.clave})`,
     detalle: nivel,
     departamento: datos.departamento,
+    departamentoId: datos.departamentoId ?? null,
     inicio: inicioDeCuerpo(datos.anioRegistro),
     fin: finDeCuerpo(datos.anioVencimiento),
     semaforo: calcularSemaforo(finDeCuerpo(datos.anioVencimiento), hoy),
@@ -235,7 +243,10 @@ function leerSeleccion<T extends string>(
 }
 
 /** Lee la URL del reporte. Un valor inválido no rompe la pantalla: se avisa y se ignora. */
-export function analizarReporte(parametros: ParametrosListado): EstadoReporte {
+export function analizarReporte(
+  parametros: ParametrosListado,
+  catalogo: { departamentos: readonly number[] } = { departamentos: [] },
+): EstadoReporte {
   const { consulta, errores } = analizarListado(LISTADO_VIGENCIAS, parametros);
   const armado = esArmado(parametros.armado);
   const tipos = leerSeleccion(parametros.tipos, armado && parametros.tipos === undefined, TIPOS_DISTINCION, {
@@ -250,7 +261,31 @@ export function analizarReporte(parametros: ParametrosListado): EstadoReporte {
   if (columnas.error) errores.columnas = columnas.error;
   const anio = leerAnio(parametros.anio);
   if (anio.error) errores.anio = anio.error;
-  return { consulta, tipos: tipos.valores, columnas: columnas.valores, anio: anio.anio, errores };
+  const departamento = leerDepartamento(parametros.departamento, catalogo.departamentos);
+  if (departamento.error) errores.departamento = departamento.error;
+  return {
+    consulta,
+    tipos: tipos.valores,
+    columnas: columnas.valores,
+    anio: anio.anio,
+    departamentoId: departamento.id,
+    errores,
+  };
+}
+
+function leerDepartamento(crudo: string | string[] | undefined, permitidos: readonly number[]) {
+  if (crudo === undefined || crudo === "") return { id: null };
+  const resultado = z.string({ error: "Elige un solo departamento." })
+    .regex(/^\d+$/, "Elige un departamento que exista.")
+    .transform(Number)
+    .safeParse(crudo);
+  if (!resultado.success || !permitidos.includes(resultado.data)) {
+    return {
+      id: null,
+      error: resultado.success ? "Elige un departamento que exista." : resultado.error.issues[0]?.message ?? "Elige un departamento que exista.",
+    };
+  }
+  return { id: resultado.data };
 }
 
 function leerAnio(crudo: string | string[] | undefined) {
@@ -309,7 +344,8 @@ export function consultarVigencias(filas: FilaVigencia[], estado: EstadoReporte,
     estado.tipos.includes(fila.tipo)
     && coincide(fila, estado)
     && (!semaforo || fila.semaforo === semaforo)
-    && (estado.anio === null || fila.fin.getUTCFullYear() === estado.anio));
+    && (estado.anio === null || fila.fin.getUTCFullYear() === estado.anio)
+    && (estado.departamentoId === null || fila.departamentoId === estado.departamentoId));
   const orden = (estado.columnas as readonly string[]).includes(estado.consulta.orden)
     ? estado.consulta.orden
     : estado.columnas[0];
@@ -322,6 +358,7 @@ export function consultarVigencias(filas: FilaVigencia[], estado: EstadoReporte,
 }
 
 /** Conserva distinciones, columnas, año, búsqueda y estatus al ordenar o cambiar de página. */
+/** Conserva distinciones, columnas, año, departamento, búsqueda y semáforo al ordenar o cambiar de página. */
 export function enlaceReporte(
   base: string,
   estado: EstadoReporte,
@@ -340,6 +377,7 @@ export function enlaceReporte(
     parametros.set("columnas", estado.columnas.join(","));
   }
   if (estado.anio !== null) parametros.set("anio", String(estado.anio));
+  if (estado.departamentoId !== null) parametros.set("departamento", String(estado.departamentoId));
   if (estado.consulta.q) parametros.set("q", estado.consulta.q);
   if (estado.consulta.filtros.semaforo) parametros.set("semaforo", estado.consulta.filtros.semaforo);
   if (orden !== LISTADO_VIGENCIAS.ordenInicial.columna || dir !== LISTADO_VIGENCIAS.ordenInicial.dir) {

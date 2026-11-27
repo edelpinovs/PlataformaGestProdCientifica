@@ -238,6 +238,22 @@ describe("reporte armado por quien consulta", () => {
     expect(analizarReporte({ semaforo: "azul" }).errores.semaforo).toBe("Uno de los filtros tiene un valor que no existe.");
   });
 
+  it("filtra por departamento junto con la búsqueda y el año, y al cambiarlo vuelve a la página 1", () => {
+    const catalogo = { departamentos: [1, 2] };
+    const filas = [
+      snii({ id: 1, departamentoId: 1, departamento: "Computación", nombres: "Ada", fin: new Date(Date.UTC(2030, 0, 1)) }),
+      snii({ id: 2, departamentoId: 2, departamento: "Matemáticas", nombres: "Alan", fin: new Date(Date.UTC(2024, 0, 1)) }),
+    ];
+    const estado = analizarReporte({ departamento: "1", q: "ada", anio: "2030" }, catalogo);
+    expect(estado.consulta.pagina).toBe(1);
+    expect(estado.departamentoId).toBe(1);
+    expect(consultarVigencias(filas, estado, true).filas.map((fila) => fila.nombre)).toEqual(["Ada Lovelace"]);
+    expect(analizarReporte({ departamento: "9" }, catalogo).errores.departamento).toBe("Elige un departamento que exista.");
+    expect(analizarReporte({ departamento: ["1", "2"] }, catalogo).errores.departamento).toBe("Elige un solo departamento.");
+    expect(enlaceReporte("/reportes", analizarReporte({ departamento: "1" }, catalogo))).toBe("/reportes?departamento=1");
+    expect(enlaceReporte("/reportes", analizarReporte({ departamento: "1", pagina: "2" }, catalogo))).toBe("/reportes?departamento=1&pagina=2");
+  });
+
   it("conserva la selección al pasar de página", () => {
     const estado = analizarReporte({ tipos: ["SNII", "CA"], columnas: "nombre,fin", q: "ada", semaforo: "VERDE" });
     expect(enlaceReporte("/reportes", estado, { pagina: 2 })).toBe(
