@@ -22,7 +22,7 @@ export async function cargarDepartamentos() {
 }
 
 // Une SNII, PRODEP y cuerpos en filas de reporte. El corte de 10 ocurre después,
-// en consultarVigencias, porque el semáforo y las columnas las elige quien arma el reporte.
+// en consultarVigencias, porque el estatus y las columnas las elige quien arma el reporte.
 export async function cargarVigencias(tipos: TipoDistincion[]): Promise<FilaVigencia[]> {
   if (tipos.length === 0) return [];
   const hoy = inicioDelDiaUtc(new Date());
