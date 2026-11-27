@@ -11,7 +11,7 @@ Revisión del [PR #410](https://github.com/edelpinovs/PlataformaGestProdCientifi
 | Fecha de la revisión | 2026-11-26 |
 | Revisó | @edelpinovs (I1), con Claude Code |
 | Entorno | Local (Windows 10, Node 24), en una carpeta aparte (`git worktree`). Sin base de datos y sin `next dev` |
-| Resultado | **Aprobable con comentarios.** Aplica la opción 2 del issue y la prueba en las funciones puras. La tarjeta «Requiere atención» sigue coincidiendo con Calidad. El archivo descargado deja fuera esa regla sin decirlo (hallazgo 1). D-299 quedó antes de D-298 en la tabla y la decidió una sola persona (hallazgo 2). La aprobación tiene que darla otra persona (D-006) |
+| Resultado | **Aprobable con comentarios.** Aplica la opción 2 del issue y la prueba en las funciones puras. La tarjeta «Requiere atención» sigue coincidiendo con Calidad. El archivo descargado dejaba fuera esa regla sin decirlo (hallazgo 1, **corregido** en `1527af7` y `92f1285`). D-299 quedó antes de D-298 en la tabla (**corregido**) y la decidió una sola persona (hallazgo 2, abierto). La aprobación tiene que darla otra persona (D-006) |
 
 ## 1. Alcance
 
@@ -28,7 +28,7 @@ Sin cambios de esquema, migración ni dependencias. Todo queda dentro del módul
 
 | Verificación | Resultado |
 |---|---|
-| `npm test` | Correcto: 142 archivos, 1757 pruebas |
+| `npm test` | Correcto: 142 archivos, 1757 pruebas (1759 después de la corrección) |
 | `npm run lint` | Correcto |
 | `npm run typecheck` | Correcto |
 | `npm run build` | Correcto |
@@ -44,17 +44,25 @@ Sin cambios de esquema, migración ni dependencias. Todo queda dentro del módul
 
 ## 4. Hallazgos
 
-### Hallazgo 1 (medio): el archivo descargado omite la regla sin decirlo
+### Hallazgo 1 (medio, corregido): el archivo descargado omite la regla sin decirlo
 
 La exportación (`exportar/route.ts`) usa el mismo `filtrarHallazgos`, así que sin filtro también deja fuera «Sin perfil de acceso». Pero `descripcionFiltros` solo describe los filtros que pidió la persona: sin filtro, el archivo no dice nada. Quien recibe el CSV o el Excel cree que tiene todos los hallazgos, y le faltan 172 de 182. En pantalla la nota lo explica; en el archivo no hay nota.
 
 **Qué hacer:** en `descripcionFiltros`, cuando el listado es `calidad` y no hay filtro de regla, agregar algo como «sin «Sin perfil de acceso» (se ve con su filtro)», con su prueba. El cambio queda en el mismo módulo. La otra salida es que la descarga sin filtro incluya la regla. El PR deja ese punto abierto, y conviene decidirlo antes de integrar.
 
-### Hallazgo 2 (bajo): D-299 quedó antes de D-298 y la decidió una sola persona
+**Corrección (`1527af7` y `92f1285`).** El texto de `descripcionFiltros` solo llega a la bitácora. El Excel no tiene título donde ponerlo, y agregárselo es cambiar `src/modules/reportes/`, que es de otro módulo. Por eso, con el acuerdo de I1, se tomó la otra salida: la descarga sin filtro incluye la regla.
 
-- **Orden.** Al mezclar `main` (que ya trae D-298 del #409), D-299 quedó encima de D-298 en `docs/DECISIONES.md`. La tabla va en orden de número. Basta con mover la fila.
+- `filtrarHallazgos` acepta `{ ocultarPorOmision: false }` y `exportar/route.ts` lo usa. Con filtro de regla, la descarga coincide con la pantalla. Con solo una búsqueda, el archivo también trae los «Sin perfil» que coinciden.
+- La nota de la pantalla termina en «La descarga sí los incluye.».
+- D-299 lo dice («La descarga sin filtro sí la incluye: el archivo no tiene dónde avisar que falta algo»).
+- Pruebas nuevas: en `calidad.test.ts`, la descarga completa respeta el filtro y la búsqueda. En `route.test.ts`, sin filtro se exportan 2 filas y con filtro 1, según el resumen de la bitácora.
+- Después de la corrección: `npm test` (1759 pruebas), lint, typecheck y build correctos.
+
+### Hallazgo 2 (bajo, en parte corregido): D-299 quedó antes de D-298 y la decidió una sola persona
+
+- **Orden (corregido).** Al mezclar `main` (que ya trae D-298 del #409), D-299 quedó encima de D-298 en `docs/DECISIONES.md`. La tabla va en orden de número. En `1527af7`, D-299 pasa después de D-298. D-300 (del #412) también estaba antes de D-298 en `main` y quedó al final. Solo cambia el orden.
 - **Acuerdo.** El issue dice «El equipo elige una opción». D-299 dice «decidido por @edelpinovs (I1)» y quedó `vigente`, igual que D-297 y D-298. Hay que confirmarlo en el chat y anotar quién la aprobó, o dejarla `pendiente`.
-- La nota del PR sobre el conflicto con el #349 ya no aplica: el #409 se integró y la mezcla no dio conflicto.
+- La nota del PR sobre el conflicto con el #349 ya no aplica: el #409 se integró y la mezcla no dio conflicto. Se quitó de la descripción del PR.
 
 ### Detalles menores
 
