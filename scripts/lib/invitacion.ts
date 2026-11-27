@@ -39,6 +39,7 @@ export async function invitar(
   { supabase, prisma, redirectTo }: { supabase: SupabaseClient; prisma: PrismaClient; redirectTo: string },
   correo: string,
   rol: Rol,
+  profesorId?: number | null,
 ): Promise<ResultadoInvitacion> {
   let tipo: ResultadoInvitacion["tipo"] = "invitacion";
   let { data, error } = await supabase.auth.admin.generateLink({ type: "invite", email: correo, options: { redirectTo } });
@@ -48,10 +49,11 @@ export async function invitar(
   }
   if (error || !data.user) throw error ?? new Error("Supabase no devolvió el usuario.");
 
+  // `profesorId` solo viene de una invitación pendiente del panel (#275); sin él no se toca el vínculo.
   await prisma.perfil.upsert({
     where: { id: data.user.id },
-    update: { rol },
-    create: { id: data.user.id, correo, rol },
+    update: profesorId == null ? { rol } : { rol, profesorId },
+    create: { id: data.user.id, correo, rol, profesorId: profesorId ?? null },
   });
 
   // El enlace apunta a la aplicación (no a Supabase): abrirlo no gasta el token, solo el botón.
