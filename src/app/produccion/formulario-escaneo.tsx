@@ -72,6 +72,12 @@ export function FormularioEscaneo({
   const [profesorElegido, elegirProfesor] = useState(profesorTrabajo ?? "todos");
   const [desdeElegido, elegirDesde] = useState(rangoTrabajo?.desde ?? "");
   const [hastaElegido, elegirHasta] = useState(rangoTrabajo?.hasta ?? "");
+  // Al cambiar el formulario tras una búsqueda, su barra y su resultado se ocultan: ya no describen
+  // la búsqueda que se está armando. Se vuelven a mostrar con el siguiente envío (nuevo `intento`).
+  const [descartadoEn, descartar] = useState<number>();
+  const intento = estado.intento ?? 0;
+  const resultadoVigente = descartadoEn !== intento;
+  const descartarResultado = () => { if (!estado.pendiente && estado.resultado) descartar(intento); };
   const fuentesMostradas = estado.pendiente || estado.continuar ? estado.fuentes ?? fuentes : fuentes;
   const enriquecerMostrado = estado.pendiente || estado.continuar ? estado.enriquecerAutores ?? enriquecer : enriquecer;
   // Al continuar se muestra el rango guardado en el trabajo, no el que se haya escrito.
@@ -98,7 +104,7 @@ export function FormularioEscaneo({
 
   return (
     <div className="flex flex-col gap-4">
-      <form key={estado.intento ?? 0} action={formAction} noValidate className="flex flex-col gap-4">
+      <form key={estado.intento ?? 0} action={formAction} noValidate onChange={descartarResultado} className="flex flex-col gap-4">
         {(estado.pendiente || estado.continuar) && estado.jobId && <input type="hidden" name="jobId" value={estado.jobId} />}
         <fieldset disabled={estado.pendiente || estado.continuar} className="flex flex-col gap-3">
           <TituloPaso numero={1}>¿Dónde buscar?</TituloPaso>
@@ -107,7 +113,7 @@ export function FormularioEscaneo({
               <input type="checkbox" name="fuentes" value={fuente} checked={fuentesMostradas.includes(fuente)} onChange={evento => { const marcada=evento.target.checked; elegirFuentes(actual => marcada ? [...actual,fuente] : actual.filter(f => f !== fuente)); }} aria-invalid={Boolean(estado.erroresCampos?.fuentes)} />
               {NOMBRES_FUENTE[fuente]}
             </label>)}
-            {!bloqueado && <button type="button" className="rounded-xl px-1 py-2 text-sm font-medium text-marca underline-offset-4 hover:underline" onClick={() => elegirFuentes([...FUENTES_ESCANEO])}>Seleccionar todas</button>}
+            {!bloqueado && <button type="button" className="rounded-xl px-1 py-2 text-sm font-medium text-marca underline-offset-4 hover:underline" onClick={() => { elegirFuentes([...FUENTES_ESCANEO]); descartarResultado(); }}>Seleccionar todas</button>}
           </div>
           <p className="text-xs text-texto-3">{bloqueado ? "Se conservan las fuentes del trabajo pendiente." : "Crossref y Google Scholar son opcionales; Google Scholar tiene una cuota limitada de consultas."}</p>
           <div className="flex flex-col gap-1 rounded-xl bg-superficie-alt p-3">
@@ -130,7 +136,7 @@ export function FormularioEscaneo({
               (estado.pendiente || estado.continuar) && !profesores.some(profesor => String(profesor.id) === profesorElegido) ?
               <p className="text-sm text-texto-2">Profesor del trabajo #{profesorElegido}. Se conserva la selección original aunque ya no esté activo.</p> :
               <SelectorProfesor opciones={profesores} valorInicial={profesorElegido ? Number(profesorElegido) : undefined}
-                alSeleccionar={id => elegirProfesor(id === undefined ? "" : String(id))}
+                alSeleccionar={id => { elegirProfesor(id === undefined ? "" : String(id)); descartarResultado(); }}
                 deshabilitado={Boolean(estado.pendiente || estado.continuar)} error={estado.erroresCampos?.profesorId} />}
             {estado.erroresCampos?.profesorId && profesorElegido === "todos" && <Aviso tipo="error">{estado.erroresCampos.profesorId}</Aviso>}
           </fieldset>
@@ -177,10 +183,10 @@ export function FormularioEscaneo({
           <BotonEscanear enCurso={Boolean(estado.pendiente)} continuar={Boolean(estado.continuar)} periodo={Boolean(desdeMostrado)} />
         </div>
       </form>
-      <ProgresoEscaneo estado={estado} enviando={enviando} />
+      <ProgresoEscaneo estado={resultadoVigente ? estado : { ...estado, resultado: undefined }} enviando={enviando} />
       {(estado.pendiente || estado.continuar) && estado.jobId && <ControlBusqueda key={estado.jobId} jobId={estado.jobId} cancelar reintentar={false} />}
       {estado.error && !estado.resultado && <Aviso tipo="error">{estado.error}</Aviso>}
-      {!enviando && estado.resultado && <ResultadoEscaneo resultado={estado.resultado} />}
+      {!enviando && resultadoVigente && estado.resultado && <ResultadoEscaneo resultado={estado.resultado} />}
       {estado.pendiente && (
         <p className="text-sm text-texto-3">El avance se guarda por profesor. Puedes volver a esta pantalla para continuar.</p>
       )}

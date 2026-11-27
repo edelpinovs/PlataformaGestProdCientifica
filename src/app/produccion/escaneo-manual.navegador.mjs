@@ -32,7 +32,11 @@ const comprobar=(c,m)=>{if(!c)throw Error(m)};
  comprobar(window.solicitudes[2].profesorId==="todos","Falta el alcance nuevo");
  await esperar(()=>document.body.textContent.includes("Escaneo finalizado."));
  comprobar(document.documentElement.scrollWidth<=innerWidth,"El formulario desborda el ancho");
- document.getElementById("resultado").textContent="CORRECTO: inicio, fuente actual, progreso automático, resultado parcial y éxito";
+ // Al cambiar el formulario, la barra y el resultado de la búsqueda anterior se ocultan.
+ document.querySelector('input[name="fuentes"]').click();
+ await esperar(()=>!document.body.textContent.includes("Escaneo finalizado."));
+ comprobar(!document.querySelector("progress"),"La barra de la búsqueda anterior sigue a la vista");
+ document.getElementById("resultado").textContent="CORRECTO: inicio, fuente actual, progreso automático, resultado parcial, éxito y resultado anterior oculto";
 }catch(e){document.getElementById("resultado").textContent="FALLO: "+e.message}})();
 `, "escaneo-manual", [{name:"accion-simulada",setup(b){
   b.onResolve({filter:/^\.\/actions$/},args=>/(formulario-escaneo|control-busqueda)\.tsx$/.test(args.importer)?{path:"accion",namespace:"escaneo"}:undefined);

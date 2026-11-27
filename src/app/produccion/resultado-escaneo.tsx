@@ -2,9 +2,9 @@ import Link from "next/link";
 import { Aviso, claseBotonContorno, EtiquetaEstado } from "@/components/ui";
 import type { EstadoFuenteResultado, presentarResultadoEscaneo } from "@/modules/produccion/resultado-escaneo";
 
-/** Color de cada estado; «no seleccionada» es neutra porque no es un resultado. */
+/** Color de cada estado; «no seleccionada» y «sin identificador» son neutras porque no son fallas. */
 const TIPO_ESTADO: Record<EstadoFuenteResultado, "exito" | "aviso" | "error" | null> = {
-  consultada: "exito", "sin resultados": "aviso", "falló": "error", "no seleccionada": null,
+  consultada: "exito", "sin resultados": "aviso", "falló": "error", "sin identificador": null, "no seleccionada": null,
 };
 
 export function ResultadoEscaneo({ resultado }: { resultado: ReturnType<typeof presentarResultadoEscaneo> }) {

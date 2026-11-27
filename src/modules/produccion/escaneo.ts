@@ -208,7 +208,10 @@ export async function ejecutarEscaneo(
         }
         // Las fuentes responden por año: con un rango solo se guardan las obras con fecha dentro (#266).
         if (rango && !res.error) res = { ...res, publicaciones: res.publicaciones.filter(publicacion => dentroDelRango(publicacion, rango)) };
-        if (res.error) {
+        if (res.error === "FALTA_IDENTIFICADOR") {
+          // Al profesor le falta el identificador de esta fuente: no es una falla ni se reintenta.
+          resumen.consultasFuentes!.push({ profesorId: prof.id, fuente, estado: "SIN_IDENTIFICADOR", cantidad: 0 });
+        } else if (res.error) {
           huboErrorEnProfesor = true;
           resumen.errores.push(`${NOMBRES_FUENTE[fuente]} (Prof. ${prof.id}): ${res.error}`);
           resumen.consultasFuentes!.push({ profesorId: prof.id, fuente, estado: "INCIDENCIA", cantidad: 0 });

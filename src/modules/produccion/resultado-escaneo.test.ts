@@ -57,12 +57,51 @@ describe("Presentación segura del resultado del escaneo", () => {
     expect(resultado?.incidencias).toEqual([]);
   });
 
-  it("une los motivos distintos de una misma fuente sin repetirlos", () => {
-    const trabajo = datos(0, ["Scopus (Prof. 1): HTTP_429", "Scopus (Prof. 2): FALTA_IDENTIFICADOR", "Scopus (Prof. 3): HTTP_429"]);
-    trabajo.resumen = { ...trabajo.resumen, consultasFuentes: [1, 2, 3].map((profesorId) => ({ profesorId, fuente: "SCOPUS" as const, estado: "INCIDENCIA" as const, cantidad: 0 })) };
+  it("une los motivos distintos de una misma fuente sin repetirlos y deja al final quién no tiene identificador", () => {
+    const trabajo = datos(0, ["Scopus (Prof. 1): HTTP_429", "Scopus (Prof. 2): FALTA_IDENTIFICADOR", "Scopus (Prof. 3): HTTP_429", "Scopus (Prof. 4): NO_API_KEY"]);
+    trabajo.resumen = { ...trabajo.resumen, consultasFuentes: [1, 2, 3, 4].map((profesorId) => ({ profesorId, fuente: "SCOPUS" as const, estado: "INCIDENCIA" as const, cantidad: 0 })) };
     const scopus = presentarResultadoEscaneo("FALLIDO", trabajo)?.fuentes.find((linea) => linea.fuente === "Scopus");
     expect(scopus).toEqual({ fuente: "Scopus", estado: "falló",
-      detalle: "se alcanzó el límite del proveedor. Reintenta más tarde. · falta un identificador o perfil necesario para consultar." });
+      detalle: "se alcanzó el límite del proveedor. Reintenta más tarde. · falta configurar la clave de acceso en el servidor. · 1 profesor no tiene identificador para esta fuente." });
+  });
+
+  // Falta de identificador del profesor: no es una falla de la fuente.
+  const sinOrcid = (consultasFuentes: { profesorId: number; fuente: "ORCID" | "OPENALEX" | "SCOPUS"; estado: "SIN_IDENTIFICADOR" | "INCIDENCIA" | "COMPLETADA"; cantidad: number }[], errores: string[] = []) => {
+    const trabajo = datos(2, errores);
+    trabajo.resumen = { ...trabajo.resumen, consultasFuentes };
+    return trabajo;
+  };
+
+  it("una fuente sin identificador sale neutra, con qué hacer, y la búsqueda no cuenta como incidencia", () => {
+    const resultado = presentarResultadoEscaneo("COMPLETADO", sinOrcid([
+      { profesorId: 1, fuente: "ORCID", estado: "SIN_IDENTIFICADOR", cantidad: 0 },
+      { profesorId: 1, fuente: "SCOPUS", estado: "COMPLETADA", cantidad: 2 },
+    ]));
+    expect(resultado?.tipo).toBe("exito");
+    expect(resultado?.mensaje).toMatch(/^Escaneo finalizado./);
+    expect(resultado?.fuentes.find((f) => f.fuente === "ORCID")).toEqual({ fuente: "ORCID", estado: "sin identificador",
+      detalle: "falta el identificador del profesor para esta fuente. Regístralo en Profesores para consultarla." });
+    expect(resultado?.incidencias).toEqual([]);
+  });
+
+  it("con varios profesores, la fuente consultada cuenta cuántos no tienen identificador", () => {
+    const resultado = presentarResultadoEscaneo("COMPLETADO", sinOrcid([
+      { profesorId: 1, fuente: "ORCID", estado: "COMPLETADA", cantidad: 4 },
+      { profesorId: 2, fuente: "ORCID", estado: "SIN_IDENTIFICADOR", cantidad: 0 },
+      { profesorId: 3, fuente: "ORCID", estado: "SIN_IDENTIFICADOR", cantidad: 0 },
+    ]));
+    expect(resultado?.fuentes.find((f) => f.fuente === "ORCID")).toEqual({ fuente: "ORCID", estado: "consultada", obras: 4,
+      detalle: "2 profesores no tienen identificador para esta fuente." });
+  });
+
+  it("una búsqueda antigua que solo careció de identificador ya no se muestra como fallida", () => {
+    const resultado = presentarResultadoEscaneo("FALLIDO", sinOrcid([
+      { profesorId: 1, fuente: "ORCID", estado: "INCIDENCIA", cantidad: 0 },
+      { profesorId: 1, fuente: "SCOPUS", estado: "COMPLETADA", cantidad: 2 },
+    ], ["ORCID (Prof. 1): FALTA_IDENTIFICADOR"]));
+    expect(resultado?.tipo).toBe("exito");
+    expect(resultado?.fuentes.find((f) => f.fuente === "ORCID")?.estado).toBe("sin identificador");
+    expect(resultado?.incidencias).toEqual([]);
   });
 
   it("#279: explica una búsqueda cancelada y conserva lo guardado", () => {
