@@ -7,7 +7,11 @@ const dobles = vi.hoisted(() => ({
   update: vi.fn(),
   profesorFindUnique: vi.fn(),
   publicacionFindMany: vi.fn(),
+  publicacionFindUnique: vi.fn(),
   publicacionCreate: vi.fn(),
+  publicacionDelete: vi.fn(),
+  auditoriaCreate: vi.fn(),
+  $transaction: vi.fn(),
   revalidatePath: vi.fn(),
 }));
 
@@ -16,22 +20,37 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {
     autoria: { findUnique: dobles.findUnique, update: dobles.update },
     profesor: { findUnique: dobles.profesorFindUnique },
-    publicacion: { findMany: dobles.publicacionFindMany, create: dobles.publicacionCreate },
+    publicacion: {
+      findMany: dobles.publicacionFindMany,
+      findUnique: dobles.publicacionFindUnique,
+      create: dobles.publicacionCreate,
+      delete: dobles.publicacionDelete,
+    },
+    auditoria: { create: dobles.auditoriaCreate },
+    $transaction: dobles.$transaction,
   },
 }));
 vi.mock("next/cache", () => ({ revalidatePath: dobles.revalidatePath }));
 vi.mock("next/navigation", () => ({ redirect: (url: string) => { throw new Error(url); }, RedirectType: { replace: "replace" } }));
 
-import { confirmarAutoria, rechazarHomonimo, registrarPublicacionManual } from "./actions";
+import { confirmarAutoria, eliminarPublicacionManual, rechazarHomonimo, registrarPublicacionManual } from "./actions";
 
 beforeEach(() => {
   vi.clearAllMocks();
-  dobles.requireModulo.mockResolvedValue({ rol: "DOCENTE", profesorId: 7 });
+  dobles.requireModulo.mockResolvedValue({ id: "user-docente-7", correo: "docente@ejemplo.udg.mx", rol: "DOCENTE", profesorId: 7 });
   dobles.findUnique.mockResolvedValue({ profesorId: 7, publicacionId: 12, estado: "PENDIENTE" });
   dobles.update.mockResolvedValue({});
   dobles.profesorFindUnique.mockResolvedValue({ id: 7, nombres: "Ana", apellidos: "García", codigo: "123456" });
   dobles.publicacionFindMany.mockResolvedValue([]);
+  dobles.publicacionFindUnique.mockResolvedValue(null);
   dobles.publicacionCreate.mockResolvedValue({ id: 99 });
+  dobles.publicacionDelete.mockResolvedValue({});
+  dobles.auditoriaCreate.mockReturnValue(Promise.resolve({}));
+  dobles.$transaction.mockImplementation(async (arg: unknown) => {
+    if (Array.isArray(arg)) return Promise.all(arg);
+    if (typeof arg === "function") return arg(dobles);
+    return arg;
+  });
 });
 
 function formulario(profesor = "7", publicacion = "12") {
@@ -207,5 +226,122 @@ describe("registrarPublicacionManual (RF-023, D-214, D-215)", () => {
 
     expect(resultado.campo).toBe("doi");
     expect(resultado.error).toBe("Ya existe una publicación con el mismo identificador DOI.");
+  });
+});
+
+describe("bitácora de auditoría en Validación (RF-024, #381, D-294)", () => {
+  const actorDocente = { id: "user-docente-7", correo: "docente@ejemplo.udg.mx", rol: "DOCENTE", profesorId: 7 };
+
+  beforeEach(() => {
+    dobles.requireModulo.mockResolvedValue(actorDocente);
+    dobles.findUnique.mockResolvedValue({ profesorId: 7, publicacionId: 12, estado: "PENDIENTE" });
+  });
+
+  it("al confirmar autoría registra validacion.dictaminada en la misma transacción sin datos personales", async () => {
+    await expect(confirmarAutoria(formulario("7", "12"))).rejects.toThrow("accion=confirmada");
+    expect(dobles.$transaction).toHaveBeenCalledTimes(1);
+    expect(dobles.auditoriaCreate).toHaveBeenCalledWith({
+      data: {
+        actorId: actorDocente.id,
+        actorCorreo: actorDocente.correo,
+        modulo: "validacion",
+        accion: "validacion.dictaminada",
+        entidad: "Publicacion",
+        entidadId: "12",
+        resumen: "Dictaminó la publicación 12: confirmada.",
+      },
+    });
+    expect(JSON.stringify(dobles.auditoriaCreate.mock.calls)).not.toMatch(/García|Ana|123456/);
+  });
+
+  it("al rechazar por homónimo registra validacion.dictaminada en la misma transacción sin datos personales", async () => {
+    await expect(rechazarHomonimo(formulario("7", "12"))).rejects.toThrow("accion=rechazada");
+    expect(dobles.$transaction).toHaveBeenCalledTimes(1);
+    expect(dobles.auditoriaCreate).toHaveBeenCalledWith({
+      data: {
+        actorId: actorDocente.id,
+        actorCorreo: actorDocente.correo,
+        modulo: "validacion",
+        accion: "validacion.dictaminada",
+        entidad: "Publicacion",
+        entidadId: "12",
+        resumen: "Dictaminó la publicación 12: rechazada.",
+      },
+    });
+    expect(JSON.stringify(dobles.auditoriaCreate.mock.calls)).not.toMatch(/García|Ana|123456/);
+  });
+
+  it("si el dictamen falla o no tiene permiso, no escribe en la bitácora de auditoría", async () => {
+    await expect(confirmarAutoria(formulario("8", "12"))).rejects.toThrow("error=sin-permiso");
+    expect(dobles.auditoriaCreate).not.toHaveBeenCalled();
+    expect(dobles.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("si la auditoría falla en confirmar autoría, el cambio no se aplica y la acción lanza", async () => {
+    dobles.$transaction.mockRejectedValue(new Error("error en bitácora"));
+    await expect(confirmarAutoria(formulario("7", "12"))).rejects.toThrow("error en bitácora");
+  });
+
+  describe("eliminarPublicacionManual", () => {
+    const publicacionManual = {
+      id: 25,
+      titulo: "Publicación a borrar",
+      fuente: "MANUAL",
+      autorias: [{ profesorId: 7 }],
+    };
+
+    function formularioEliminar(id = "25") {
+      const d = new FormData();
+      d.set("id", id);
+      return d;
+    }
+
+    it("al eliminar una publicación manual guarda registro.eliminado en la misma transacción sin datos personales", async () => {
+      dobles.publicacionFindUnique.mockResolvedValue(publicacionManual);
+      dobles.publicacionDelete.mockResolvedValue(publicacionManual);
+
+      await expect(eliminarPublicacionManual("vista=manuales", {}, formularioEliminar("25"))).rejects.toThrow("accion=eliminado");
+
+      expect(dobles.$transaction).toHaveBeenCalledTimes(1);
+      expect(dobles.publicacionDelete).toHaveBeenCalledWith({ where: { id: 25 } });
+      expect(dobles.auditoriaCreate).toHaveBeenCalledWith({
+        data: {
+          actorId: actorDocente.id,
+          actorCorreo: actorDocente.correo,
+          modulo: "validacion",
+          accion: "registro.eliminado",
+          entidad: "Publicacion",
+          entidadId: "25",
+          resumen: "Eliminó la publicación manual 25.",
+        },
+      });
+      expect(JSON.stringify(dobles.auditoriaCreate.mock.calls)).not.toMatch(/García|Ana|123456/);
+    });
+
+    it("no escribe en la bitácora si la publicación no existe o no se puede eliminar", async () => {
+      dobles.publicacionFindUnique.mockResolvedValue(null);
+      const res = await eliminarPublicacionManual("vista=manuales", {}, formularioEliminar("99"));
+      expect(res.error).toBeDefined();
+      expect(dobles.$transaction).not.toHaveBeenCalled();
+      expect(dobles.auditoriaCreate).not.toHaveBeenCalled();
+    });
+
+    it("no escribe en la bitácora si no tiene permiso para eliminar la publicación", async () => {
+      dobles.publicacionFindUnique.mockResolvedValue({
+        ...publicacionManual,
+        autorias: [{ profesorId: 99 }],
+      });
+      const res = await eliminarPublicacionManual("vista=manuales", {}, formularioEliminar("25"));
+      expect(res.error).toContain("No tienes permiso");
+      expect(dobles.$transaction).not.toHaveBeenCalled();
+      expect(dobles.auditoriaCreate).not.toHaveBeenCalled();
+    });
+
+    it("si la auditoría falla al eliminar, la publicación no se borra y lanza el error", async () => {
+      dobles.publicacionFindUnique.mockResolvedValue(publicacionManual);
+      dobles.$transaction.mockRejectedValue(new Error("falla transacción"));
+
+      await expect(eliminarPublicacionManual("vista=manuales", {}, formularioEliminar("25"))).rejects.toThrow("falla transacción");
+    });
   });
 });
