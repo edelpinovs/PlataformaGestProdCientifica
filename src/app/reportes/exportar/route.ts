@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireModulo } from "@/lib/auth/session";
 import type { ParametrosListado } from "@/lib/listados/consulta";
 import { cargarCompleto } from "@/modules/reportes/cargar-completo";
+import { cargarResultados } from "@/modules/reportes/cargar-publicaciones";
 import { cargarConvocatoria } from "@/modules/reportes/cargar-convocatoria";
 import { cargarMatriz } from "@/modules/reportes/cargar-matriz";
 import { cargarDepartamentos, cargarVigencias } from "@/modules/reportes/cargar-vigencias";
@@ -15,10 +16,13 @@ import {
   tablaCompleto,
   tablaConvocatoria,
   tablaMatriz,
+  tablaResultados,
   tablaVigencias,
+  type ReporteExportable,
   type TablaExportable,
 } from "@/modules/reportes/exportar";
 import { analizarMatriz } from "@/modules/reportes/matriz";
+import { analizarResultados, filaResultados } from "@/modules/reportes/publicaciones";
 import { analizarReporte } from "@/modules/reportes/vigencias";
 
 function parametrosDe(url: URL): ParametrosListado {
@@ -34,7 +38,7 @@ function texto(mensaje: string, estado: number) {
   return new NextResponse(mensaje, { status: estado, headers: { "Content-Type": "text/plain; charset=utf-8" } });
 }
 
-async function armar(reporte: "vigencias" | "convocatoria" | "matriz" | "completo", parametros: ParametrosListado): Promise<TablaExportable> {
+async function armar(reporte: ReporteExportable, parametros: ParametrosListado): Promise<TablaExportable> {
   if (reporte === "vigencias") {
     const departamentos = await cargarDepartamentos();
     const estado = analizarReporte(parametros, { departamentos: departamentos.map((fila) => fila.id) });
@@ -45,6 +49,11 @@ async function armar(reporte: "vigencias" | "convocatoria" | "matriz" | "complet
     const estado = analizarConvocatoria(parametros, { departamentos: departamentos.map((fila) => fila.id) });
     const carga = await cargarConvocatoria();
     return tablaConvocatoria(carga.dictamenes, carga.participaciones, carga.historialSnii, estado);
+  }
+  if (reporte === "publicaciones") {
+    const carga = await cargarResultados();
+    const estado = analizarResultados(parametros, carga.catalogo);
+    return tablaResultados(carga.profesores.map((profesor) => filaResultados(profesor, estado)), estado);
   }
   if (reporte === "completo") {
     const carga = await cargarCompleto();
