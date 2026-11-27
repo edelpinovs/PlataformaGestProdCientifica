@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fechaEnMexico, formatoFechaAlta, inicioDelDiaMexico, rangoFechaBusqueda, rangoPeriodo } from "./fechas";
+import { fechaEnMexico, formatoFechaAlta, inicioDelDiaMexico, leerRangoFechas, rangoDesdeHasta, rangoFechaBusqueda, rangoPeriodo } from "./fechas";
 
 describe("fechas del panel en hora de Ciudad de México (#276)", () => {
   it("el día empieza a las 06:00 UTC (Ciudad de México no tiene horario de verano desde 2022)", () => {
@@ -74,5 +74,25 @@ describe("periodos relativos en hora de Ciudad de México (#277)", () => {
 
   it("«Este mes» empieza el día 1 y llega hasta el inicio de mañana, también el 31 de diciembre", () => {
     expect(iso(rangoPeriodo("MES", new Date("2026-12-31T20:00:00Z")))).toEqual(["2026-12-01T06:00:00.000Z", "2027-01-01T06:00:00.000Z"]);
+  });
+});
+
+describe("rango libre Desde / Hasta (#277)", () => {
+  it("lee fechas válidas y deja vacío lo que no viene", () => {
+    expect(leerRangoFechas({ desde: "2026-11-01" })).toEqual({ valores: { desde: "2026-11-01", hasta: "" }, errores: {} });
+    expect(leerRangoFechas({})).toEqual({ valores: { desde: "", hasta: "" }, errores: {} });
+  });
+
+  it("acepta un año bisiesto y rechaza el 29 de febrero de uno que no lo es", () => {
+    expect(leerRangoFechas({ desde: "2028-02-29" }).errores).toEqual({});
+    expect(leerRangoFechas({ desde: "2027-02-29" }).errores.desde).toBe("Indica una fecha válida.");
+  });
+
+  it("«Hasta» incluye el día completo y cruza el cambio de mes y de año", () => {
+    expect(rangoDesdeHasta("2026-11-30", "2026-11-30")).toEqual({
+      desde: new Date("2026-11-30T06:00:00Z"), hasta: new Date("2026-12-01T06:00:00Z"),
+    });
+    expect(rangoDesdeHasta("", "2026-12-31").hasta).toEqual(new Date("2027-01-01T06:00:00Z"));
+    expect(rangoDesdeHasta("", "")).toEqual({ desde: undefined, hasta: undefined });
   });
 });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { analizarListado } from "@/lib/listados/consulta";
-import { LISTADO_AUDITORIA } from "./auditoria-listado";
+import { analizarAuditoria, LISTADO_AUDITORIA } from "./auditoria-listado";
 import { LISTADO_CALIDAD } from "./calidad";
 import {
   descripcionFiltros,
@@ -152,6 +152,12 @@ describe("descripción de los filtros", () => {
     expect(descripcionFiltros("usuarios", consulta(LISTADO_USUARIOS, { rol: "COORDINADOR", estado: "DESACTIVADO" }))).toBe(
       "rol Coordinación de Investigación, estado Desactivado",
     );
+  });
+
+  it("auditoría: el rango Desde/Hasta se anota y viaja en el enlace de descarga (#277)", () => {
+    const c = analizarAuditoria({ desde: "2026-11-01", hasta: "2026-11-15" }).consulta;
+    expect(descripcionFiltros("auditoria", c)).toBe("desde 2026-11-01, hasta 2026-11-15");
+    expect(enlaceExportacion("auditoria", "xlsx", LISTADO_AUDITORIA, c)).toContain("desde=2026-11-01&hasta=2026-11-15");
   });
 
   it("auditoría: el periodo se anota con su texto (#277)", () => {
