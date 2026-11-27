@@ -51,7 +51,7 @@ export default async function CalidadPage({ searchParams }: PageProps<"/administ
             filtros={[{ clave: "regla", etiqueta: "Problema", opciones: CLAVES_REGLA.map((r) => ({ valor: r, texto: REGLAS_CALIDAD[r].texto })) }]} />
           {ocultos > 0 && (
             <p className="text-xs text-texto-3">
-              No se listan {numero.format(ocultos)} {ocultos === 1 ? "profesor activo sin perfil" : "profesores activos sin perfil"} de acceso: es lo normal hasta invitarlos.{" "}
+              No se listan {numero.format(ocultos)} {ocultos === 1 ? "profesor activo sin perfil" : "profesores activos sin perfil"} de acceso: es lo normal hasta invitarlos. La descarga sí los incluye.{" "}
               <Link href={`${BASE}?regla=SIN_PERFIL`} className="font-medium text-marca hover:underline">Ver cuáles</Link>
             </p>
           )}
