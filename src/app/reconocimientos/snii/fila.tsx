@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { Aviso, claseAccionIcono, claseBotonPeligro, claseBotonSecundario, EtiquetaEstado, Icono, ICONOS } from "@/components/ui";
 import type { NIVELES_SNII, TIPOS_PARTICIPACION_SNII } from "@/modules/reconocimientos/snii";
+import { ETIQUETAS_ESTATUS, SIN_VIGENCIA, TONO_ESTATUS, type Estatus } from "@/modules/reconocimientos/estatus";
 import { COLUMNAS_SNII, ETIQUETAS_NIVEL_SNII, ETIQUETAS_PARTICIPACION_SNII, ETIQUETAS_RESULTADO_SNII } from "@/modules/reconocimientos/snii-listado";
 import { eliminarReconocimientoSnii, type EstadoSnii } from "./actions";
 import { FormularioEdicionSnii } from "./formulario-edicion";
@@ -24,8 +25,10 @@ const mostrarFecha = (fecha: Date) => fecha.toISOString().slice(0, 10);
 
 // Issue 111: fila de la tabla de Reconocimientos SNII (como PRODEP). En celular las celdas se apilan
 // en dos columnas con su etiqueta; el orden se elige con el selector «Ordenar por» de la barra.
-export function FilaSnii({ reconocimiento, profesores }: {
+export function FilaSnii({ reconocimiento, estatus = null, profesores }: {
   reconocimiento: ReconocimientoListado;
+  /** Estatus de vigencia que calcula la página con la fecha del servidor (issue 248); null si no tiene vigencia. */
+  estatus?: Estatus | null;
   profesores: { id: number; codigo: string; nombres: string; apellidos: string; cvu: string | null }[];
 }) {
   const [modo, setModo] = useState<"ver" | "editar" | "eliminar">("ver");
@@ -37,6 +40,8 @@ export function FilaSnii({ reconocimiento, profesores }: {
   const tipoEstado = reconocimiento.resultado === "EN_RECONSIDERACION" ? "aviso"
     : reconocimiento.resultado === "NO_APROBADO" ? "error" : "exito";
   const celda = "min-w-0 break-words py-3 pr-2 text-sm sm:table-cell sm:pr-3";
+  // Fechas y etiquetas no se parten en escritorio; el nombre del profesor absorbe el espacio.
+  const celdaCorta = `${celda} sm:whitespace-nowrap`;
   const etiqueta = "mb-1 block text-xs text-texto-3 sm:hidden";
 
   return (
@@ -54,17 +59,22 @@ export function FilaSnii({ reconocimiento, profesores }: {
         <span className={etiqueta}>Participación</span>
         {ETIQUETAS_PARTICIPACION_SNII[reconocimiento.tipoParticipacion]}
       </td>
-      <td className={celda}>
+      <td className={celdaCorta}>
         <span className={etiqueta}>Resultado</span>
         <EtiquetaEstado tipo={tipoEstado}>{ETIQUETAS_RESULTADO_SNII[reconocimiento.resultado]}</EtiquetaEstado>
       </td>
-      <td className={celda}>
+      <td className={celdaCorta}>
         <span className={etiqueta}>Inicio</span>
         {mostrarFecha(reconocimiento.inicio)}
       </td>
-      <td className={celda}>
+      <td className={celdaCorta}>
         <span className={etiqueta}>Fin</span>
         {mostrarFecha(reconocimiento.fin)}
+      </td>
+      <td className={celdaCorta}>
+        <span className={etiqueta}>Estatus</span>
+        {estatus ? <EtiquetaEstado tipo={TONO_ESTATUS[estatus]}>{ETIQUETAS_ESTATUS[estatus]}</EtiquetaEstado>
+          : <span className="text-xs text-texto-3">{SIN_VIGENCIA}</span>}
       </td>
       <td className="col-span-2 flex gap-1 py-3 sm:table-cell sm:text-right sm:whitespace-nowrap">
         {reconocimiento.convocatoriaId === null && (

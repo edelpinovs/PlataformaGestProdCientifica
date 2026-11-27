@@ -10,7 +10,9 @@ import {
   Icono,
   ICONOS,
 } from "@/components/ui";
+import { ETIQUETAS_ESTATUS, SIN_VIGENCIA, TONO_ESTATUS, type Estatus } from "@/modules/reconocimientos/estatus";
 import {
+  COLUMNAS_PRODEP,
   ETIQUETAS_RESULTADO_PRODEP,
   ETIQUETAS_TIPO_SOLICITUD_PRODEP,
 } from "@/modules/reconocimientos/prodep";
@@ -22,8 +24,13 @@ function mostrarFecha(fecha: Date) {
   return fecha.toISOString().slice(0, 10);
 }
 
-export function FilaProdep({ reconocimiento, profesores }: {
+/** Columnas de la tabla, con la de acciones: la edición y el borrado ocupan la fila completa. */
+const COLUMNAS_FILA_PRODEP = COLUMNAS_PRODEP.length + 1;
+
+export function FilaProdep({ reconocimiento, estatus = null, profesores }: {
   reconocimiento: ReconocimientoProdepEdicion;
+  /** Estatus de vigencia que calcula la página con la fecha del servidor (issue 248); null si no tiene vigencia. */
+  estatus?: Estatus | null;
   profesores: ProfesorProdep[];
 }) {
   const [modo, setModo] = useState<"ver" | "editar" | "eliminar">("ver");
@@ -32,7 +39,7 @@ export function FilaProdep({ reconocimiento, profesores }: {
   if (modo === "editar") {
     return (
       <tr className="border-b border-linea">
-        <td colSpan={6} className="py-3">
+        <td colSpan={COLUMNAS_FILA_PRODEP} className="py-3">
           <FormularioEdicionProdep reconocimiento={reconocimiento} profesores={profesores} cerrar={() => setModo("ver")} />
         </td>
       </tr>
@@ -56,17 +63,22 @@ export function FilaProdep({ reconocimiento, profesores }: {
         <span className="mb-1 block text-xs text-texto-3 sm:hidden">Tipo de solicitud</span>
         {ETIQUETAS_TIPO_SOLICITUD_PRODEP[reconocimiento.tipoSolicitud]}
       </td>
-      <td className="min-w-0 py-3 pr-2 text-sm sm:table-cell sm:pr-3">
+      <td className="min-w-0 py-3 pr-2 text-sm sm:table-cell sm:pr-3 sm:whitespace-nowrap">
         <span className="mb-1 block text-xs text-texto-3 sm:hidden">Resultado</span>
         <EtiquetaEstado tipo={tipoEstado}>{ETIQUETAS_RESULTADO_PRODEP[reconocimiento.resultado]}</EtiquetaEstado>
       </td>
-      <td className="min-w-0 py-3 pr-2 text-sm sm:table-cell sm:pr-3">
+      <td className="min-w-0 py-3 pr-2 text-sm sm:table-cell sm:pr-3 sm:whitespace-nowrap">
         <span className="mb-1 block text-xs text-texto-3 sm:hidden">Inicio</span>
         {mostrarFecha(reconocimiento.inicio)}
       </td>
-      <td className="min-w-0 py-3 pr-2 text-sm sm:table-cell sm:pr-3">
+      <td className="min-w-0 py-3 pr-2 text-sm sm:table-cell sm:pr-3 sm:whitespace-nowrap">
         <span className="mb-1 block text-xs text-texto-3 sm:hidden">Fin</span>
         {mostrarFecha(reconocimiento.fin)}
+      </td>
+      <td className="min-w-0 py-3 pr-2 text-sm sm:table-cell sm:pr-3 sm:whitespace-nowrap">
+        <span className="mb-1 block text-xs text-texto-3 sm:hidden">Estatus</span>
+        {estatus ? <EtiquetaEstado tipo={TONO_ESTATUS[estatus]}>{ETIQUETAS_ESTATUS[estatus]}</EtiquetaEstado>
+          : <span className="text-xs text-texto-3">{SIN_VIGENCIA}</span>}
       </td>
       <td className="col-span-2 flex gap-1 py-3 sm:table-cell sm:text-right">
         {reconocimiento.convocatoriaId === null && (
@@ -93,7 +105,7 @@ function ConfirmarEliminacion({ reconocimiento, cerrar }: {
 
   return (
     <tr className="border-b border-linea">
-      <td colSpan={6} className="py-3">
+      <td colSpan={COLUMNAS_FILA_PRODEP} className="py-3">
         <form action={accion} className="flex flex-col gap-3 rounded-xl bg-peligro-suave p-4">
           <input type="hidden" name="id" value={reconocimiento.id} />
           {estado.error ? <Aviso tipo="error">{estado.error}</Aviso> : (
