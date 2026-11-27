@@ -11,7 +11,7 @@ createRoot(document.getElementById("raiz")).render(<>{pagina}<output id="resulta
 setTimeout(async()=>{try{
  if(!document.body.textContent.includes("Mostrando 11–20 de 23"))throw Error("Falta el resumen paginado");
  if(document.querySelectorAll("tbody tr").length!==10)throw Error("La página no tiene diez filas");
- if(window.vista==="historial"){if(!document.body.textContent.includes("Búsqueda #12"))throw Error("Falta el detalle");if(!document.body.textContent.includes("1 de 1 profesor revisado"))throw Error("Avance sin concordancia");if([...document.querySelectorAll("li")].filter(li=>li.textContent.includes("Scopus")).length!==1)throw Error("Scopus debe tener una sola línea en el detalle");if(!document.querySelector("tr[aria-current]"))throw Error("No resalta la búsqueda abierta");if(!document.body.textContent.includes("Publicaciones guardadas en esta búsqueda (2)"))throw Error("Faltan las publicaciones de la búsqueda");if(!document.body.textContent.includes("Nueva")||!document.body.textContent.includes("Ya existía, actualizada"))throw Error("No distingue nuevas de existentes");if(!document.body.textContent.includes("3 obras"))throw Error("Falta el conteo de obras por fuente");if(!document.body.textContent.includes("10 min"))throw Error("Falta la duración");if(![...document.querySelectorAll("button")].some(b=>b.textContent==="Reintentar lo que falló"))throw Error("Falta reintentar una búsqueda con incidencias");if([...document.querySelectorAll("button")].some(b=>b.textContent==="Cancelar búsqueda"))throw Error("No se cancela una búsqueda terminada");}
+ if(window.vista==="historial"){if(!document.body.textContent.includes("Búsqueda #12"))throw Error("Falta el detalle");if(!document.body.textContent.includes("1 de 1 profesor revisado"))throw Error("Avance sin concordancia");if([...document.querySelectorAll("li")].filter(li=>li.textContent.includes("Scopus")).length!==1)throw Error("Scopus debe tener una sola línea en el detalle");if(!document.querySelector("tr[aria-current]"))throw Error("No resalta la búsqueda abierta");if(!document.body.textContent.includes("Publicaciones guardadas en esta búsqueda (2)"))throw Error("Faltan las publicaciones de la búsqueda");if(!document.body.textContent.includes("Nueva")||!document.body.textContent.includes("Ya existía, actualizada"))throw Error("No distingue nuevas de existentes");if(!document.body.textContent.includes("3 obras"))throw Error("Falta el conteo de obras por fuente");if(!document.body.textContent.includes("10 min"))throw Error("Falta la duración");if([...document.querySelectorAll("button")].some(b=>b.textContent==="Reintentar lo que falló"))throw Error("Ofrece reintentar lo que solo falló por falta de clave");if(!document.body.textContent.includes("falta la clave de acceso de una fuente. Configúrala antes de reintentar."))throw Error("No explica por qué no se puede reintentar");if([...document.querySelectorAll("button")].some(b=>b.textContent==="Cancelar búsqueda"))throw Error("No se cancela una búsqueda terminada");}
  if(window.vista==="historial"){
   const dialogo=document.querySelector("dialog");
   if(!dialogo?.open)throw Error("El detalle no se abre en un modal");
@@ -19,6 +19,11 @@ setTimeout(async()=>{try{
   const icono=document.getElementById("ver-busqueda-12");
   if(!icono||icono.getAttribute("aria-label")!=="Ver detalle de la búsqueda 12"||!icono.querySelector("svg"))throw Error("Falta el icono con nombre accesible");
   if(document.body.textContent.includes("Ver detalle de"))throw Error("Queda el enlace de texto");
+  // Un clic en el margen interior del recuadro no debe cerrar el modal.
+  const caja=dialogo.firstElementChild.getBoundingClientRect();
+  dialogo.firstElementChild.dispatchEvent(new MouseEvent("click",{bubbles:true,clientX:caja.left+4,clientY:caja.top+4}));
+  await new Promise(r=>setTimeout(r,50));
+  if(!dialogo.open)throw Error("Un clic en el margen interior cierra el modal");
   window.solicitudTecla={key:"Escape"};
   for(let i=0;i<200&&dialogo.open;i++)await new Promise(r=>setTimeout(r,10));
   if(dialogo.open)throw Error("Escape no cierra el modal");

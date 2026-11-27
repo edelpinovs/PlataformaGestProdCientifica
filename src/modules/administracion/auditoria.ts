@@ -12,6 +12,8 @@ import { MODULOS } from "@/modules/registry";
  */
 export const ACCIONES_AUDITORIA = {
   "usuario.editado": { modulo: "administracion", texto: "Cambió rol o profesor de un usuario" },
+  "usuario.invitado": { modulo: "administracion", texto: "Dejó una invitación pendiente" },
+  "usuario.invitacion_cancelada": { modulo: "administracion", texto: "Canceló una invitación pendiente" },
   "usuario.desactivado": { modulo: "administracion", texto: "Desactivó el acceso de un usuario" },
   "usuario.reactivado": { modulo: "administracion", texto: "Reactivó el acceso de un usuario" },
   "listado.exportado": { modulo: "administracion", texto: "Exportó un listado" },
@@ -80,6 +82,16 @@ export function resumenEdicionUsuario(
   if (cambios.length === 0) return null;
   const texto = cambios.join(" y ");
   return `${texto.charAt(0).toUpperCase()}${texto.slice(1)} de ${correo}.`;
+}
+
+/** Invitación pendiente: correo, rol y, si hay, el código del profesor (nunca su nombre). */
+export function resumenInvitacion(correo: string, rol: Rol, codigoProfesor?: string): string {
+  const profesor = codigoProfesor ? ` para el profesor con código ${codigoProfesor}` : "";
+  return `Dejó una invitación pendiente${profesor}: ${correo} como ${ETIQUETA_ROL[rol]}.`;
+}
+
+export function resumenInvitacionCancelada(correo: string): string {
+  return `Canceló la invitación pendiente de ${correo}.`;
 }
 
 export function resumenCambioEstado(correo: string, activo: boolean): string {

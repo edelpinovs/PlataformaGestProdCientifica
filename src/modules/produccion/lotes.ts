@@ -76,6 +76,23 @@ export function avanzarLote(datos: DatosLote, resultado: ResumenEscaneo): DatosL
   return { ...datos, indice: datos.indice + 1, resumen };
 }
 
+const FALTA_IDENTIFICADOR = ": FALTA_IDENTIFICADOR";
+
+/**
+ * Consultas por fuente de una búsqueda. Las búsquedas anteriores a SIN_IDENTIFICADOR guardaban la falta
+ * de identificador del profesor como INCIDENCIA con su error; aquí se leen igual que las nuevas.
+ */
+export function consultasDeFuentes(resumen: DatosLote["resumen"]) {
+  const sinIdentificador = new Set(resumen.errores.filter((error) => error.endsWith(FALTA_IDENTIFICADOR)).map((error) => error.slice(0, -FALTA_IDENTIFICADOR.length)));
+  return (resumen.consultasFuentes ?? []).map((consulta) => consulta.estado === "INCIDENCIA" && sinIdentificador.has(`${NOMBRES_FUENTE[consulta.fuente]} (Prof. ${consulta.profesorId})`)
+    ? { ...consulta, estado: "SIN_IDENTIFICADOR" as const } : consulta);
+}
+
+/** Errores que sí son fallas: la falta de identificador del profesor no cuenta. */
+export function erroresDeConsulta(resumen: DatosLote["resumen"]) {
+  return resumen.errores.filter((error) => !error.endsWith(FALTA_IDENTIFICADOR));
+}
+
 export type SeleccionReintento =
   | { ok: true; profesoresIds: number[]; fuentes: FuenteEscaneo[] }
   | { ok: false; error: string };
@@ -83,7 +100,8 @@ export type SeleccionReintento =
 /**
  * A quién y con qué fuentes reintentar un escaneo terminado (#279): los profesores con alguna
  * fuente en INCIDENCIA, solo con esas fuentes, y los que quedaron sin revisar, con todas las
- * fuentes del trabajo. Se omite lo que falló solo por falta de clave: reintentarlo fallaría igual.
+ * fuentes del trabajo. Se omite lo que falló solo por falta de clave o de identificador del
+ * profesor: reintentarlo fallaría igual.
  */
 export function seleccionReintento(datos: DatosLote): SeleccionReintento {
   const fuentesTrabajo = datos.fuentes ?? [...FUENTES_ANTERIORES];
@@ -91,7 +109,9 @@ export function seleccionReintento(datos: DatosLote): SeleccionReintento {
   const profesores = new Set<number>();
   const fuentes = new Set<FuenteEscaneo>();
   let faltaClave = false;
-  for (const consulta of datos.resumen.consultasFuentes ?? []) {
+  let faltaIdentificador = false;
+  for (const consulta of consultasDeFuentes(datos.resumen)) {
+    if (consulta.estado === "SIN_IDENTIFICADOR") { faltaIdentificador = true; continue; }
     if (consulta.estado !== "INCIDENCIA") continue;
     if (sinClave.has(`${NOMBRES_FUENTE[consulta.fuente]} (Prof. ${consulta.profesorId})`)) { faltaClave = true; continue; }
     profesores.add(consulta.profesorId);
@@ -104,7 +124,9 @@ export function seleccionReintento(datos: DatosLote): SeleccionReintento {
   }
   if (!profesores.size) return { ok: false, error: faltaClave
     ? "Las consultas fallaron porque falta la clave de acceso de una fuente. Configúrala antes de reintentar."
-    : "Esta búsqueda no tiene consultas fallidas ni profesores pendientes que reintentar." };
+    : faltaIdentificador
+      ? "No hay nada que reintentar: a algunos profesores les falta el identificador de una fuente. Regístralo en Profesores y vuelve a buscar."
+      : "Esta búsqueda no tiene consultas fallidas ni profesores pendientes que reintentar." };
   return {
     ok: true,
     profesoresIds: datos.profesoresIds.filter((id) => profesores.has(id)),

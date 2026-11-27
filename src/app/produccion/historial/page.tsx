@@ -6,7 +6,7 @@ import { Marco } from "@/components/marco";
 import { BarraListado, EncabezadoOrdenable, PaginacionListado } from "@/components/listado";
 import { Aviso, claseAccionIcono, claseBotonContorno, claseBotonSecundario, claseCampo, claseEtiqueta, claseTabla, EstadoVacio, EtiquetaEstado, Icono, Panel } from "@/components/ui";
 import { COLUMNAS_HISTORIAL, ESTADOS_HISTORIAL, FilaHistorial, idRegistroHistorial, LISTADO_HISTORIAL, nombreProfesor, sqlHistorial, textoAvance, TIPO_ESTADO_HISTORIAL } from "@/modules/produccion/historial";
-import { datosLoteEsquema } from "@/modules/produccion/lotes";
+import { datosLoteEsquema, seleccionReintento } from "@/modules/produccion/lotes";
 import { rangoEfectivo, textoRango } from "@/modules/produccion/rango-escaneo";
 import { presentarResultadoEscaneo } from "@/modules/produccion/resultado-escaneo";
 import { fechaEscaneo } from "@/modules/produccion/fechas-escaneo";
@@ -43,7 +43,7 @@ export default async function HistorialPage({ searchParams }: { searchParams: Pr
   const siguienteId = datos.success ? datos.data.profesoresIds[datos.data.indice] : undefined;
   const seleccion = { apellidos: true, nombres: true, codigo: true } as const;
   const analisis = datos.success ? analizarBusqueda(datos.data) : null;
-  const filasProfesores = profesoresIds.length > 1 && analisis ? analisis.profesores.slice(0, LIMITE_DETALLE) : [];
+  const filasProfesores = profesoresIds.length > 1 && analisis?.consultasRegistradas ? analisis.profesores.slice(0, LIMITE_DETALLE) : [];
   const idsPublicaciones = analisis ? analisis.publicaciones.slice(0, LIMITE_DETALLE).map((p) => p.publicacionId) : [];
   const [unico, siguiente, nombres, publicaciones] = await Promise.all([
     profesoresIds.length === 1 ? prisma.profesor.findUnique({ where: { id: profesoresIds[0] }, select: seleccion }) : null,
@@ -55,15 +55,18 @@ export default async function HistorialPage({ searchParams }: { searchParams: Pr
   const publicacionesOrdenadas = idsPublicaciones.map((id) => publicaciones.find((p) => p.id === id)).filter((p) => p !== undefined);
   const rango = datos.success ? rangoEfectivo(datos.data) : undefined;
   const enlaceRegistro = (id: number) => `${enlaceListado(contexto.base, LISTADO_HISTORIAL, consulta)}${enlaceListado(contexto.base, LISTADO_HISTORIAL, consulta).includes("?") ? "&" : "?"}registro=${id}`;
+  // Las búsquedas antiguas no guardaban `finalizadoEn`: si ya terminaron, su última actualización es el cierre.
+  const terminada = registro && ["COMPLETADO", "FALLIDO", "CANCELADO"].includes(registro.estado);
+  const fin = registro && terminada ? (datos.success && datos.data.finalizadoEn) || registro.actualizadoEn : null;
+  const reintento = registro && datos.success && (registro.estado === "FALLIDO" || registro.estado === "CANCELADO") ? seleccionReintento(datos.data) : null;
   const datosDetalle: [string, string][] = registro ? [
     ["Inicio", fechaEscaneo(registro.creadoEn)],
     ["Profesores", !datos.success ? "No registrado" : profesoresIds.length === 1 ? (unico ? nombreProfesor(unico) : `Profesor #${profesoresIds[0]}`) : `${profesoresIds.length} profesores activos`],
     ["Fuentes", datos.success && datos.data.fuentes?.length ? datos.data.fuentes.map((fuente) => NOMBRES_FUENTE[fuente]).join(", ") : "No registradas"],
     ["Periodo", !datos.success ? "No registrado" : rango ? textoRango(rango) : "Novedades desde la búsqueda anterior"],
-    registro.estado === "CANCELADO" ? ["Cancelada", fechaEscaneo(registro.actualizadoEn)]
-      : ["Terminó", datos.success && datos.data.finalizadoEn ? fechaEscaneo(datos.data.finalizadoEn) : "Sin terminar"],
-    ["Duración", textoDuracion(registro.creadoEn, registro.estado === "CANCELADO" ? registro.actualizadoEn : datos.success ? datos.data.finalizadoEn : null) || "Sin terminar"],
-    ["Obras recibidas de las fuentes", analisis ? String(analisis.obrasRecibidas) : "No registradas"],
+    [registro.estado === "CANCELADO" ? "Cancelada" : "Terminó", fin ? fechaEscaneo(fin) : "Sin terminar"],
+    ["Duración", textoDuracion(registro.creadoEn, fin) || (fin ? "Menos de un minuto" : "Sin terminar")],
+    ["Obras recibidas de las fuentes", analisis?.consultasRegistradas ? String(analisis.obrasRecibidas) : "No registradas en esta búsqueda"],
   ] : [];
   return <Marco correo={perfil.correo} rol={perfil.rol} activo="produccion" titulo="Historial de búsquedas" subtitulo="Horas del centro de México. Cada búsqueda queda registrada y no se edita ni elimina." volver={{ href: "/produccion/escaneo", texto: "Escaneo de producción" }}>
     <NavegacionProduccion actual="historial" />
@@ -87,8 +90,9 @@ export default async function HistorialPage({ searchParams }: { searchParams: Pr
         {siguienteId !== undefined && <p className="text-sm text-texto-2">Siguiente profesor pendiente: {siguiente ? nombreProfesor(siguiente) : `#${siguienteId}`}.</p>}
         <ResultadoEscaneo resultado={presentarResultadoEscaneo(registro.estado, registro.datos)} />
         {analisis && <section aria-labelledby="publicaciones-busqueda" className="flex flex-col gap-3">
-          <h3 id="publicaciones-busqueda" className="text-sm font-semibold text-texto">Publicaciones guardadas en esta búsqueda ({analisis.publicaciones.length})</h3>
-          {publicacionesOrdenadas.length ? <ul className="flex flex-col gap-2">
+          <h3 id="publicaciones-busqueda" className="text-sm font-semibold text-texto">Publicaciones guardadas en esta búsqueda{analisis.publicacionesRegistradas ? ` (${analisis.publicaciones.length})` : ""}</h3>
+          {!analisis.publicacionesRegistradas ? <p className="text-sm text-texto-3">Esta búsqueda es anterior al registro del detalle y no guardó qué publicaciones trajo. Consúltalas en <Link href={RUTA_PUBLICACIONES} className="text-marca">Publicaciones</Link>.</p>
+          : publicacionesOrdenadas.length ? <ul className="flex flex-col gap-2">
             {publicacionesOrdenadas.map((publicacion) => {
               const nueva = publicacion.creadaEn.getTime() >= registro.creadoEn.getTime();
               const fuentes = analisis.publicaciones.find((p) => p.publicacionId === publicacion.id)?.fuentes ?? [];
@@ -126,7 +130,8 @@ export default async function HistorialPage({ searchParams }: { searchParams: Pr
         {puedeEscanear(perfil.rol) && ["PENDIENTE", "EN_PROCESO"].includes(registro.estado) && <Link href="/produccion/escaneo" className={`${claseBotonContorno} w-fit`}>Ir al escaneo para continuar la búsqueda pendiente</Link>}
         {puedeEscanear(perfil.rol) && <ControlBusqueda key={`${registro.id}-${registro.estado}`} jobId={registro.id}
           cancelar={registro.estado === "PENDIENTE" || registro.estado === "EN_PROCESO"}
-          reintentar={registro.estado === "FALLIDO" || registro.estado === "CANCELADO"} />}
+          reintentar={Boolean(reintento?.ok)} />}
+        {puedeEscanear(perfil.rol) && reintento && !reintento.ok && <p className="text-xs text-texto-3">{reintento.error}</p>}
       </div>
     </DialogoDetalle>}
     <Panel titulo="Búsquedas registradas">

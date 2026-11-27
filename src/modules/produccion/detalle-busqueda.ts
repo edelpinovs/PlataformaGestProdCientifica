@@ -1,4 +1,4 @@
-import type { DatosLote } from "./lotes";
+import { consultasDeFuentes, type DatosLote } from "./lotes";
 import { NOMBRES_FUENTE, type FuenteEscaneo } from "./fuentes";
 
 /** Cuántas filas muestra el detalle de una búsqueda antes de resumir «y N más». */
@@ -9,9 +9,11 @@ export type FilaProfesorBusqueda = { profesorId: number; obras: number; fuentesC
 /**
  * Lo que encontró una búsqueda, a partir de lo que guarda en `Job.datos` (issue 342):
  * total de obras recibidas, resultado por profesor y publicaciones guardadas.
+ * Las búsquedas anteriores al detalle no guardaban consultas ni procedencia: `consultasRegistradas`
+ * y `publicacionesRegistradas` lo indican para no mostrar «0» o «ninguna» donde no se sabe.
  */
 export function analizarBusqueda(datos: DatosLote) {
-  const consultas = datos.resumen.consultasFuentes ?? [];
+  const consultas = consultasDeFuentes(datos.resumen);
   const porProfesor = new Map<number, FilaProfesorBusqueda>();
   const revisados = new Set(datos.profesoresIds.slice(0, datos.indice));
   for (const id of datos.profesoresIds) porProfesor.set(id, { profesorId: id, obras: 0, fuentesConFallo: [], revisado: revisados.has(id) });
@@ -26,6 +28,8 @@ export function analizarBusqueda(datos: DatosLote) {
     Number(b.revisado) - Number(a.revisado) || b.fuentesConFallo.length - a.fuentesConFallo.length || b.obras - a.obras || a.profesorId - b.profesorId);
   const procedencia = datos.resumen.procedencia ?? [];
   return {
+    consultasRegistradas: datos.resumen.consultasFuentes !== undefined,
+    publicacionesRegistradas: datos.resumen.procedencia !== undefined,
     obrasRecibidas: consultas.reduce((suma, consulta) => suma + consulta.cantidad, 0),
     profesores,
     publicaciones: procedencia.map(({ publicacionId, fuentes }) => ({ publicacionId, fuentes: fuentes.map((fuente) => NOMBRES_FUENTE[fuente as FuenteEscaneo] ?? fuente) })),
