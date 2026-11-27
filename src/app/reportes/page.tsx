@@ -43,7 +43,7 @@ export default async function ReportesPage({ searchParams }: { searchParams: Pro
 
   return (
     <Marco correo={perfil.correo} rol={perfil.rol} activo="reportes" titulo="Vigencias y reportes">
-      <Panel titulo="Armar reporte" descripcion="Elige las distinciones, las columnas y el año de vencimiento. El semáforo se calcula al abrir el reporte: vigente, por vencer en 12 meses o menos, o vencido.">
+      <Panel titulo="Armar reporte" descripcion="Elige las distinciones, las columnas y el año de vencimiento. El estatus se calcula al abrir el reporte: vigente, por vencer en 12 meses o menos, o vencido.">
         <EnlacesReportes actual="vigencias" />
         <Constructor estado={vista} anios={opcionesAnio(cargadas, vista.anio)} />
       </Panel>
@@ -142,7 +142,7 @@ function Constructor({ estado, anios }: { estado: EstadoReporte; anios: number[]
         <label className={claseEtiqueta}>
           Buscar
           <input name="q" type="search" defaultValue={estado.consulta.q} maxLength={200}
-            placeholder="Nombre, departamento o estado" aria-invalid={Boolean(estado.errores.q)}
+            placeholder="Nombre, departamento o estatus" aria-invalid={Boolean(estado.errores.q)}
             className={claseCampo(Boolean(estado.errores.q))} />
         </label>
         <label className={claseEtiqueta}>
@@ -154,7 +154,7 @@ function Constructor({ estado, anios }: { estado: EstadoReporte; anios: number[]
           </select>
         </label>
         <label className={claseEtiqueta}>
-          Semáforo
+          Estatus
           <select name="semaforo" defaultValue={estado.consulta.filtros.semaforo ?? ""}
             aria-invalid={Boolean(estado.errores.semaforo)} className={claseCampo(Boolean(estado.errores.semaforo))}>
             <option value="">Todos</option>

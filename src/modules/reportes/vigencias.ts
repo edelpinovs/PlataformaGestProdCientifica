@@ -13,9 +13,9 @@ import {
 import { calcularSemaforo, type Semaforo } from "./semaforo";
 
 // Reporte de vigencias que arma la coordinación (RF-026, RF-027).
-// Elige distinciones, columnas y el año de vencimiento. El semáforo no se guarda:
+// Elige distinciones, columnas y el año de vencimiento. El estatus no se guarda:
 // se calcula al consultar, con la fecha de hoy. Un cuerpo académico solo tiene año
-// de vencimiento: el día que usa el semáforo es el 31 de diciembre de ese año.
+// de vencimiento: el día que usa el estatus es el 31 de diciembre de ese año.
 
 const ANIO_MINIMO = 1990;
 const ANIO_MAXIMO = 2100;
@@ -40,7 +40,7 @@ export const ETIQUETA_COLUMNA: Record<ColumnaVigencia, string> = {
   departamento: "Departamento",
   inicio: "Inicio",
   fin: "Vencimiento",
-  semaforo: "Semáforo",
+  semaforo: "Estatus",
 };
 
 export const ETIQUETA_SEMAFORO: Record<Semaforo, string> = {
@@ -101,7 +101,7 @@ type DatosPersona = {
   resultado: string;
 };
 
-/** Un no aprobado no es una distinción vigente: no entra al semáforo. */
+/** Un no aprobado no es una distinción vigente: no entra al estatus. */
 export function cuentaParaSemaforo(resultado: string) {
   return resultado === "APROBADO" || resultado === "EN_RECONSIDERACION";
 }
@@ -321,7 +321,7 @@ export function consultarVigencias(filas: FilaVigencia[], estado: EstadoReporte,
   };
 }
 
-/** Conserva distinciones, columnas, año, búsqueda y semáforo al ordenar o cambiar de página. */
+/** Conserva distinciones, columnas, año, búsqueda y estatus al ordenar o cambiar de página. */
 export function enlaceReporte(
   base: string,
   estado: EstadoReporte,

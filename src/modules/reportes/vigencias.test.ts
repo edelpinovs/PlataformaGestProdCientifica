@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   analizarReporte,
   COLUMNAS_VIGENCIA,
+  ETIQUETA_COLUMNA,
   consultarVigencias,
   opcionesAnio,
   cuentaParaSemaforo,
@@ -34,7 +35,11 @@ function estadoBase() {
   return analizarReporte({});
 }
 
-describe("semáforo aplicado a cada distinción (RF-026)", () => {
+describe("estatus aplicado a cada distinción (RF-026)", () => {
+  it("el nombre visible de la columna es estatus", () => {
+    expect(ETIQUETA_COLUMNA.semaforo).toBe("Estatus");
+  });
+
   it("no toma un resultado no aprobado como distinción", () => {
     expect(cuentaParaSemaforo("NO_APROBADO")).toBe(false);
     expect(cuentaParaSemaforo("APROBADO")).toBe(true);

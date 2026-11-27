@@ -106,7 +106,7 @@ export function Aviso({ tipo, children }: { tipo: keyof typeof CLASE_AVISO; chil
   );
 }
 
-/** Etiqueta pequeña de estado (semáforo): vigente, por vencer, vencido. */
+/** Etiqueta pequeña de estatus: vigente, por vencer, vencido. */
 export function EtiquetaEstado({ tipo, children }: { tipo: keyof typeof CLASE_AVISO; children: React.ReactNode }) {
   return (
     <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${CLASE_AVISO[tipo]}`}>{children}</span>
