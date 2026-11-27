@@ -98,6 +98,23 @@ model Division {
   departamentos Departamento[]
 }
 
+// Issue 264: áreas del conocimiento y sus subáreas. Catálogos aparte, sin enlazar todavía a otra entidad
+// (CuerpoAcademico.areaProdep sigue siendo texto libre hasta acordar el enlace).
+model Area {
+  id       Int       @id @default(autoincrement())
+  nombre   String    @unique
+  subareas Subarea[]
+}
+
+model Subarea {
+  id     Int    @id @default(autoincrement())
+  nombre String
+  areaId Int
+  area   Area   @relation(fields: [areaId], references: [id])
+
+  @@unique([areaId, nombre])
+}
+
 model Departamento {
   id                Int                 @id @default(autoincrement())
   nombre            String
