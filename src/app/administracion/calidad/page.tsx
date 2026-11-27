@@ -8,6 +8,7 @@ import {
   CLAVES_REGLA,
   COLUMNAS_CALIDAD,
   filtrarHallazgos,
+  hallazgosOcultos,
   LISTADO_CALIDAD,
   ordenarHallazgos,
   REGLAS_CALIDAD,
@@ -27,6 +28,7 @@ export default async function CalidadPage({ searchParams }: PageProps<"/administ
   // pagina aquí. Búsqueda, filtro, orden y página vienen de la URL y se validan igual que en los demás listados.
   const { consulta, errores } = analizarListado(LISTADO_CALIDAD, await searchParams);
   const filtrados = ordenarHallazgos(filtrarHallazgos(todos, consulta), consulta);
+  const ocultos = hallazgosOcultos(todos, consulta).length;
   const paginacion = paginar(filtrados.length, consulta);
   const pagina = filtrados.slice(paginacion.salto, paginacion.salto + paginacion.tamanio);
   const contexto = { base: BASE, definicion: LISTADO_CALIDAD, consulta: { ...consulta, pagina: paginacion.pagina } };
@@ -37,7 +39,7 @@ export default async function CalidadPage({ searchParams }: PageProps<"/administ
       volver={{ href: "/administracion", texto: "Administración" }}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <span className="rounded-full bg-marca-suave px-3 py-1 text-xs font-medium text-marca">
-          {numero.format(filtrados.length)} {hayFiltrosActivos(consulta) ? "coinciden" : todos.length === 1 ? "hallazgo" : "hallazgos"}
+          {numero.format(filtrados.length)} {hayFiltrosActivos(consulta) ? "coinciden" : filtrados.length === 1 ? "hallazgo" : "hallazgos"}
         </span>
         <Descargas listado="calidad" definicion={LISTADO_CALIDAD} consulta={consulta} />
       </div>
@@ -47,6 +49,12 @@ export default async function CalidadPage({ searchParams }: PageProps<"/administ
           <BarraListado {...contexto} columnas={COLUMNAS_CALIDAD} errores={errores}
             etiquetaBusqueda="Buscar hallazgos" placeholder="Registro, problema o detalle"
             filtros={[{ clave: "regla", etiqueta: "Problema", opciones: CLAVES_REGLA.map((r) => ({ valor: r, texto: REGLAS_CALIDAD[r].texto })) }]} />
+          {ocultos > 0 && (
+            <p className="text-xs text-texto-3">
+              No se listan {numero.format(ocultos)} {ocultos === 1 ? "profesor activo sin perfil" : "profesores activos sin perfil"} de acceso: es lo normal hasta invitarlos.{" "}
+              <Link href={`${BASE}?regla=SIN_PERFIL`} className="font-medium text-marca hover:underline">Ver cuáles</Link>
+            </p>
+          )}
           {pagina.length === 0 ? (
             <EstadoVacio>
               {hayFiltrosActivos(consulta)

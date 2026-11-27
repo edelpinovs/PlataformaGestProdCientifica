@@ -4,6 +4,7 @@ import {
   analizarCalidad,
   COLUMNAS_CALIDAD,
   filtrarHallazgos,
+  hallazgosOcultos,
   hallazgosVigenciasVencidas,
   LISTADO_CALIDAD,
   ordenarHallazgos,
@@ -116,6 +117,20 @@ describe("listado de calidad", () => {
 
   it("filtra por regla", () => {
     expect(reglas(filtrarHallazgos(hallazgos, consulta({ regla: "SIN_PERFIL" })))).toEqual(["SIN_PERFIL"]);
+  });
+
+  it("por omisión no lista «Sin perfil de acceso» (#348), pero sí con su filtro", () => {
+    expect(reglas(filtrarHallazgos(hallazgos, consulta()))).not.toContain("SIN_PERFIL");
+    expect(reglas(filtrarHallazgos(hallazgos, consulta({ regla: "SIN_PERFIL" })))).toEqual(["SIN_PERFIL"]);
+    // Con otro filtro tampoco aparece, y la búsqueda libre no la trae de vuelta.
+    expect(reglas(filtrarHallazgos(hallazgos, consulta({ regla: "CA_SIN_LIDER" })))).toEqual(["CA_SIN_LIDER"]);
+    expect(filtrarHallazgos(hallazgos, consulta({ q: "perfil para entrar" }))).toEqual([]);
+  });
+
+  it("dice cuáles quedaron fuera por omisión y ninguno cuando se filtra por regla", () => {
+    expect(reglas(hallazgosOcultos(hallazgos, consulta()))).toEqual(["SIN_PERFIL"]);
+    expect(hallazgosOcultos(hallazgos, consulta({ regla: "SIN_PERFIL" }))).toEqual([]);
+    expect(hallazgosOcultos(hallazgos, consulta({ regla: "CA_SIN_LIDER" }))).toEqual([]);
   });
 
   it("busca sin distinguir mayúsculas ni acentos, en registro, problema y detalle", () => {
