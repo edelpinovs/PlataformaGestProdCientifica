@@ -12,7 +12,6 @@ import {
   cargaResultados,
   formatoDeArchivo,
   motivoNoEliminable,
-  NO_SE_GUARDO,
   nombreDeRuta,
   puedeVolverALeer,
   registroCarga,
@@ -22,6 +21,7 @@ import {
   tipoMime,
 } from "@/modules/convocatorias/carga";
 import { eventoAuditoria, resumenEliminacion } from "@/modules/administracion/auditoria";
+import { NO_SE_GUARDO } from "@/modules/convocatorias/mensajes";
 import { procesarCarga } from "./procesamiento";
 
 // RF-016 (CU-010) en tres pasos, porque Vercel no acepta más de 4.5 MB por petición:

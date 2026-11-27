@@ -164,7 +164,8 @@ export function leerVigencia(texto: string | { inicio: string; fin: string }): {
 const espacios = (texto: string) => texto.replace(/\s+/g, " ").trim();
 const esPie = (fila: string[]) => /^p[aá]gina \d+ de \d+$/i.test(espacios(fila.join(" ")));
 // Las listas de la Coordinación pueden cerrar con filas de totales («TOTAL SNII», «Total de candidatos»).
-const esTotal = (texto: string) => /^total\b/i.test(texto);
+// «Total» seguido de algo que no es una letra; con \b, una «á» cortaba la palabra y «Totalán» se descartaba.
+const esTotal = (texto: string) => /^total(?!\p{L})/iu.test(texto);
 
 export function interpretarListado(filas: string[][], programa: Programa): ResultadoLectura {
   const sinColumnas = programa === "SNII" ? SIN_COLUMNAS_SNII : SIN_COLUMNAS_PRODEP;

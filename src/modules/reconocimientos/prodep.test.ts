@@ -109,6 +109,18 @@ describe("tieneProdepActivo", () => {
 });
 
 describe("listado PRODEP", () => {
+  it("busca por nombre completo: cada palabra en algún dato del profesor (revisión del PR 433)", () => {
+    const contiene = (texto: string) => ({ contains: texto, mode: "insensitive" });
+    const campos = (texto: string) => [
+      { profesor: { is: { nombres: contiene(texto) } } },
+      { profesor: { is: { apellidos: contiene(texto) } } },
+      { profesor: { is: { codigo: contiene(texto) } } },
+    ];
+    expect(filtroProdep(analizarListado(LISTADO_PRODEP, { q: "Ana Prueba" }).consulta).OR).toContainEqual({
+      AND: [{ OR: campos("Ana") }, { OR: campos("Prueba") }],
+    });
+  });
+
   it("filtra por estatus para ver los próximos a vencer (issue 248) y ordena por él con la fecha de fin", () => {
     const hoy = new Date("2026-11-27T00:00:00.000Z");
     const { consulta } = analizarListado(LISTADO_PRODEP, { estatus: "ROJO" });

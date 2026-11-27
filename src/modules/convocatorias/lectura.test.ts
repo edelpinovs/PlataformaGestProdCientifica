@@ -403,6 +403,17 @@ describe("interpretarListado: hallazgos de la revisión del #368", () => {
     ]);
   });
 
+  it("lee como persona un apellido que solo empieza con «Total» (revisión del PR 436)", () => {
+    const { renglones, resumen } = leer([
+      ["APELLIDOS", "NOMBRE", "Resultado 2026", "CÓDIGO UdeG"],
+      ["TOTALÁN FICTICIO", "ANA", "I", "9990001"],
+      ["Totalidad Prueba", "LUIS", "C", "9990002"],
+      ["TOTAL", "", "33", ""],
+    ]);
+    expect(renglones.map((r) => r.apellidoPaterno)).toEqual(["TOTALÁN FICTICIO", "Totalidad Prueba"]);
+    expect(resumen.totalAvisos).toBe(1);
+  });
+
   it("el resultado no reemplaza un «NIVEL OTORGADO» explícito (hallazgo 2)", () => {
     const { renglones } = leer([
       ["CVU", "NOMBRES", "NIVEL OTORGADO", "RESULTADO"],
