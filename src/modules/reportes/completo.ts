@@ -13,7 +13,7 @@ import { ETIQUETA_CONTRATACION, ETIQUETA_ESTATUS } from "@/modules/profesores/pr
 import { ETIQUETA_GENERO, type Genero } from "./convocatoria";
 import { distincionVigente, SIN_GRADO, SIN_PROGRAMA, SIN_PRODEP, SIN_SNII } from "./matriz";
 import { calcularSemaforo } from "./semaforo";
-import { ETIQUETA_SEMAFORO, finDeCuerpo, formatoFecha, SIN_DEPARTAMENTO } from "./vigencias";
+import { ETIQUETA_SEMAFORO, finDeCuerpo, formatoFecha, SIN_CORREO, SIN_CVU, SIN_DEPARTAMENTO } from "./vigencias";
 
 // Reporte completo, adicional a vigencias, convocatoria y matriz.
 // Una fila por profesor. La persona elige qué datos entran en esa fila.
@@ -25,7 +25,7 @@ export const SIN_CONVOCATORIA = "Sin convocatoria";
 export const SIN_PUBLICACIONES = "Sin publicaciones";
 
 export const COLUMNAS_COMPLETO = [
-  "codigo", "nombre", "genero", "departamento", "programas", "grado", "contratacion", "estatus",
+  "codigo", "nombre", "correo", "cvu", "genero", "departamento", "programas", "grado", "contratacion", "estatus",
   "snii", "sniiFin", "sniiSemaforo",
   "prodep", "prodepFin", "prodepSemaforo",
   "cuerpos", "caFin", "caSemaforo",
@@ -36,6 +36,8 @@ export type ColumnaCompleto = (typeof COLUMNAS_COMPLETO)[number];
 export const ETIQUETA_COLUMNA_COMPLETO: Record<ColumnaCompleto, string> = {
   codigo: "Código",
   nombre: "Nombre",
+  correo: "Correo electrónico",
+  cvu: "CVU",
   genero: "Género",
   departamento: "Departamento",
   programas: "Programa educativo",
@@ -56,7 +58,7 @@ export const ETIQUETA_COLUMNA_COMPLETO: Record<ColumnaCompleto, string> = {
 };
 
 export const GRUPOS_COMPLETO: { titulo: string; columnas: ColumnaCompleto[] }[] = [
-  { titulo: "Directorio", columnas: ["codigo", "nombre", "genero", "departamento", "programas", "grado", "contratacion", "estatus"] },
+  { titulo: "Directorio", columnas: ["codigo", "nombre", "correo", "cvu", "genero", "departamento", "programas", "grado", "contratacion", "estatus"] },
   { titulo: "SNII", columnas: ["snii", "sniiFin", "sniiSemaforo"] },
   { titulo: "PRODEP", columnas: ["prodep", "prodepFin", "prodepSemaforo"] },
   { titulo: "Cuerpo académico", columnas: ["cuerpos", "caFin", "caSemaforo"] },
@@ -123,6 +125,8 @@ export function filaCompleto(datos: {
   codigo: string;
   nombres: string;
   apellidos: string;
+  correo?: string | null;
+  cvu?: string | null;
   genero: Genero;
   tipoContratacion: keyof typeof ETIQUETA_CONTRATACION;
   estatusLaboral: keyof typeof ETIQUETA_ESTATUS;
@@ -157,6 +161,8 @@ export function filaCompleto(datos: {
     caFinOrden: finCuerpo?.getTime() ?? 0,
     codigo: datos.codigo,
     nombre: `${datos.nombres} ${datos.apellidos}`,
+    correo: datos.correo?.trim() || SIN_CORREO,
+    cvu: datos.cvu?.trim() || SIN_CVU,
     genero: ETIQUETA_GENERO[datos.genero],
     departamento: datos.departamento?.nombre ?? SIN_DEPARTAMENTO,
     programas: programas.map((programa) => programa.nombre).join(", ") || SIN_PROGRAMA,

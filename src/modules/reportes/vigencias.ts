@@ -24,7 +24,7 @@ const MENSAJE_ANIO = "El año debe tener cuatro dígitos, entre 1990 y 2100.";
 export const TIPOS_DISTINCION = ["SNII", "PRODEP", "CA"] as const;
 export type TipoDistincion = (typeof TIPOS_DISTINCION)[number];
 
-export const COLUMNAS_VIGENCIA = ["tipo", "nombre", "detalle", "departamento", "inicio", "fin", "semaforo"] as const;
+export const COLUMNAS_VIGENCIA = ["tipo", "nombre", "correo", "cvu", "detalle", "departamento", "inicio", "fin", "semaforo"] as const;
 export type ColumnaVigencia = (typeof COLUMNAS_VIGENCIA)[number];
 
 export const ETIQUETA_TIPO: Record<TipoDistincion, string> = {
@@ -36,6 +36,8 @@ export const ETIQUETA_TIPO: Record<TipoDistincion, string> = {
 export const ETIQUETA_COLUMNA: Record<ColumnaVigencia, string> = {
   tipo: "Distinción",
   nombre: "Nombre",
+  correo: "Correo electrónico",
+  cvu: "CVU",
   detalle: "Detalle",
   departamento: "Departamento",
   inicio: "Inicio",
@@ -64,6 +66,9 @@ const ETIQUETA_PRODEP: Record<string, string> = {
 };
 
 export const SIN_DEPARTAMENTO = "Sin departamento";
+export const SIN_CVU = "Sin CVU";
+export const SIN_CORREO = "Sin correo";
+export const NO_APLICA = "No aplica";
 
 export const LISTADO_VIGENCIAS: DefinicionListado = {
   columnas: COLUMNAS_VIGENCIA,
@@ -75,6 +80,8 @@ export type FilaVigencia = {
   id: string;
   tipo: TipoDistincion;
   nombre: string;
+  correo: string;
+  cvu: string;
   detalle: string;
   departamento: string;
   departamentoId?: number | null;
@@ -102,6 +109,8 @@ type DatosPersona = {
   apellidos: string;
   departamento: string | null;
   departamentoId?: number | null;
+  correo?: string | null;
+  cvu?: string | null;
   resultado: string;
 };
 
@@ -139,6 +148,16 @@ function nombrePersona(nombres: string, apellidos: string) {
   return `${nombres} ${apellidos}`;
 }
 
+function textoCorreo(correo: string | null | undefined) {
+  const limpio = correo?.trim();
+  return limpio ? limpio : SIN_CORREO;
+}
+
+function textoCvu(cvu: string | null | undefined) {
+  const limpio = cvu?.trim();
+  return limpio ? limpio : SIN_CVU;
+}
+
 function detalleConReconsideracion(texto: string, resultado: string) {
   return resultado === "EN_RECONSIDERACION" ? `${texto} · En reconsideración` : texto;
 }
@@ -149,6 +168,8 @@ export function filaSnii(datos: DatosPersona & { nivel: string }, hoy: Date): Fi
     id: identificador("SNII", datos.id),
     tipo: "SNII",
     nombre: nombrePersona(datos.nombres, datos.apellidos),
+    correo: textoCorreo(datos.correo),
+    cvu: textoCvu(datos.cvu),
     detalle: detalleConReconsideracion(nivel, datos.resultado),
     departamento: datos.departamento ?? SIN_DEPARTAMENTO,
     departamentoId: datos.departamentoId ?? null,
@@ -164,6 +185,8 @@ export function filaProdep(datos: DatosPersona & { tipoSolicitud: string }, hoy:
     id: identificador("PRODEP", datos.id),
     tipo: "PRODEP",
     nombre: nombrePersona(datos.nombres, datos.apellidos),
+    correo: textoCorreo(datos.correo),
+    cvu: textoCvu(datos.cvu),
     detalle: detalleConReconsideracion(solicitud, datos.resultado),
     departamento: datos.departamento ?? SIN_DEPARTAMENTO,
     departamentoId: datos.departamentoId ?? null,
@@ -190,6 +213,8 @@ export function filaCuerpo(datos: {
     id: identificador("CA", datos.id),
     tipo: "CA",
     nombre: `${datos.nombre} (${datos.clave})`,
+    correo: NO_APLICA,
+    cvu: NO_APLICA,
     detalle: nivel,
     departamento: datos.departamento,
     departamentoId: datos.departamentoId ?? null,
@@ -205,6 +230,10 @@ export function textoColumna(fila: FilaVigencia, columna: ColumnaVigencia) {
       return ETIQUETA_TIPO[fila.tipo];
     case "nombre":
       return fila.nombre;
+    case "correo":
+      return fila.correo;
+    case "cvu":
+      return fila.cvu;
     case "detalle":
       return fila.detalle;
     case "departamento":
@@ -312,7 +341,7 @@ export function opcionesAnio(filas: FilaVigencia[], anio: number | null) {
 
 function valorOrdenable(fila: FilaVigencia, columna: string) {
   if (columna === "inicio" || columna === "fin") return fila[columna].getTime();
-  if (columna === "tipo" || columna === "nombre" || columna === "detalle" || columna === "departamento" || columna === "semaforo") {
+  if (columna === "tipo" || columna === "nombre" || columna === "correo" || columna === "cvu" || columna === "detalle" || columna === "departamento" || columna === "semaforo") {
     return textoColumna(fila, columna);
   }
   return fila.id;

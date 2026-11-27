@@ -11,7 +11,7 @@ import {
   tablaVigencias,
 } from "./exportar";
 import { analizarMatriz, filaMatriz } from "./matriz";
-import { analizarReporte, filaSnii } from "./vigencias";
+import { analizarReporte, filaCuerpo, filaSnii, NO_APLICA } from "./vigencias";
 
 const hoy = new Date(Date.UTC(2026, 10, 15));
 
@@ -46,6 +46,22 @@ describe("exportación del reporte armado (RF-030)", () => {
     expect(hoja?.getRow(1).getCell(1).value).toBe("Nombre");
     expect(hoja?.rowCount).toBe(13);
     expect(hoja?.getRow(2).getCell(1).value).toBe("Nombre1 López");
+  });
+
+  it("exporta correo y CVU de la persona y no los inventa en un cuerpo académico", () => {
+    const persona = snii(1, "Ada", 2030);
+    persona.correo = "ada@demo.invalid";
+    persona.cvu = "100200";
+    const cuerpo = filaCuerpo({
+      id: 3, clave: "CA-003", nombre: "Redes", nivel: "EN_CONSOLIDACION",
+      anioRegistro: 2023, anioVencimiento: 2026, departamento: "Computación",
+    }, hoy);
+    const tabla = tablaVigencias([persona, cuerpo], analizarReporte({ columnas: "nombre,correo,cvu" }));
+    expect(tabla.columnas).toEqual(["Nombre", "Correo electrónico", "CVU"]);
+    expect(tabla.filas).toEqual([
+      ["Ada López", "ada@demo.invalid", "100200"],
+      ["Redes (CA-003)", NO_APLICA, NO_APLICA],
+    ]);
   });
 
   it("escribe un PDF con el texto del reporte y más de una página", () => {

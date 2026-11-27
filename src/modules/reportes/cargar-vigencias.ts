@@ -13,6 +13,8 @@ const persona = {
   select: {
     nombres: true,
     apellidos: true,
+    correo: true,
+    cvu: true,
     departamento: { select: { id: true, nombre: true } },
   },
 } as const;
@@ -63,6 +65,8 @@ export async function cargarVigencias(tipos: TipoDistincion[]): Promise<FilaVige
       fin: fila.fin,
       nombres: fila.profesor.nombres,
       apellidos: fila.profesor.apellidos,
+      correo: fila.profesor.correo,
+      cvu: fila.profesor.cvu,
       departamento: fila.profesor.departamento?.nombre ?? null,
       departamentoId: fila.profesor.departamento?.id ?? null,
     }, hoy)),
@@ -74,6 +78,8 @@ export async function cargarVigencias(tipos: TipoDistincion[]): Promise<FilaVige
       fin: fila.fin,
       nombres: fila.profesor.nombres,
       apellidos: fila.profesor.apellidos,
+      correo: fila.profesor.correo,
+      cvu: fila.profesor.cvu,
       departamento: fila.profesor.departamento?.nombre ?? null,
       departamentoId: fila.profesor.departamento?.id ?? null,
     }, hoy)),
