@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import type { DictamenConvocatoria, Genero, HistorialSnii, ParticipacionReporte, ProgramaConvocatoria } from "./convocatoria";
 
-const persona = { select: { genero: true, departamento: { select: { nombre: true } } } } as const;
+const persona = { select: { genero: true, departamento: { select: { id: true, nombre: true } } } } as const;
 
 function dia(fecha: Date) {
   return fecha.toISOString().slice(0, 10);
@@ -45,6 +45,7 @@ export async function cargarConvocatoria() {
         programa,
         anio: convocatoria.anio,
         departamento: fila.profesor.departamento?.nombre ?? null,
+        departamentoId: fila.profesor.departamento?.id ?? null,
         genero: fila.profesor.genero as Genero,
         resultado: fila.resultado,
         tipo: fila.tipoParticipacion,
@@ -59,6 +60,7 @@ export async function cargarConvocatoria() {
         programa,
         anio: convocatoria.anio,
         departamento: fila.profesor.departamento?.nombre ?? null,
+        departamentoId: fila.profesor.departamento?.id ?? null,
         genero: fila.profesor.genero as Genero,
         resultado: fila.resultado,
         tipo: fila.tipoSolicitud,
@@ -72,6 +74,7 @@ export async function cargarConvocatoria() {
         programa,
         anio: convocatoria.anio,
         departamento: fila.profesor.departamento?.nombre ?? null,
+        departamentoId: fila.profesor.departamento?.id ?? null,
         genero: fila.profesor.genero as Genero,
         resultado: fila.resultado,
       });

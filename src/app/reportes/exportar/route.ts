@@ -4,7 +4,7 @@ import type { ParametrosListado } from "@/lib/listados/consulta";
 import { cargarCompleto } from "@/modules/reportes/cargar-completo";
 import { cargarConvocatoria } from "@/modules/reportes/cargar-convocatoria";
 import { cargarMatriz } from "@/modules/reportes/cargar-matriz";
-import { cargarVigencias } from "@/modules/reportes/cargar-vigencias";
+import { cargarDepartamentos, cargarVigencias } from "@/modules/reportes/cargar-vigencias";
 import { analizarCompleto } from "@/modules/reportes/completo";
 import { analizarConvocatoria } from "@/modules/reportes/convocatoria";
 import {
@@ -36,11 +36,13 @@ function texto(mensaje: string, estado: number) {
 
 async function armar(reporte: "vigencias" | "convocatoria" | "matriz" | "completo", parametros: ParametrosListado): Promise<TablaExportable> {
   if (reporte === "vigencias") {
-    const estado = analizarReporte(parametros);
+    const departamentos = await cargarDepartamentos();
+    const estado = analizarReporte(parametros, { departamentos: departamentos.map((fila) => fila.id) });
     return tablaVigencias(await cargarVigencias(estado.tipos), estado);
   }
   if (reporte === "convocatoria") {
-    const estado = analizarConvocatoria(parametros);
+    const departamentos = await cargarDepartamentos();
+    const estado = analizarConvocatoria(parametros, { departamentos: departamentos.map((fila) => fila.id) });
     const carga = await cargarConvocatoria();
     return tablaConvocatoria(carga.dictamenes, carga.participaciones, carga.historialSnii, estado);
   }

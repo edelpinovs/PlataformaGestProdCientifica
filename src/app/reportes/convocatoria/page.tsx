@@ -4,6 +4,7 @@ import { Aviso, claseBoton, claseBotonSecundario, claseCampo, claseEtiqueta, cla
 import { requireModulo } from "@/lib/auth/session";
 import { siguienteOrden, type ParametrosListado } from "@/lib/listados/consulta";
 import { cargarConvocatoria } from "@/modules/reportes/cargar-convocatoria";
+import { cargarDepartamentos } from "@/modules/reportes/cargar-vigencias";
 import { enlaceDescarga } from "@/modules/reportes/exportar";
 import {
   analizarConvocatoria,
@@ -24,12 +25,13 @@ const BASE = "/reportes/convocatoria";
 
 export default async function ConvocatoriaPage({ searchParams }: { searchParams: Promise<ParametrosListado> }) {
   const perfil = await requireModulo("reportes");
-  const estado = analizarConvocatoria(await searchParams);
+  const departamentos = await cargarDepartamentos();
+  const estado = analizarConvocatoria(await searchParams, { departamentos: departamentos.map((fila) => fila.id) });
   const carga = await cargarConvocatoria();
   const { filas, paginacion } = consultarConvocatoria(carga.dictamenes, carga.participaciones, carga.historialSnii, estado);
   const vista: EstadoConvocatoria = { ...estado, consulta: { ...estado.consulta, pagina: paginacion.pagina } };
   const mensajes = Object.values(vista.errores);
-  const acotado = Boolean(vista.consulta.q) || Boolean(vista.consulta.filtros.programa) || Boolean(vista.consulta.filtros.genero) || vista.anio !== null;
+  const acotado = Boolean(vista.consulta.q) || Boolean(vista.consulta.filtros.programa) || Boolean(vista.consulta.filtros.genero) || vista.anio !== null || vista.departamentoId !== null;
   const columnas = COLUMNAS_CONVOCATORIA.filter((columna) => vista.columnas.includes(columna));
   const hayDatos = carga.dictamenes.length > 0 || carga.participaciones.length > 0;
 
@@ -38,7 +40,7 @@ export default async function ConvocatoriaPage({ searchParams }: { searchParams:
       volver={{ href: "/reportes", texto: "Reportes" }}>
       <Panel titulo="Armar reporte" descripcion="Elige el programa, el año y las columnas. Una renovación SNII que sube de nivel cuenta como promoción; si no sube, sigue vigente. PRODEP no tiene promoción. Un dictamen en reconsideración no entra.">
         <EnlacesReportes actual="convocatoria" />
-        <Constructor estado={vista} anios={aniosConvocatoria(carga.dictamenes, carga.participaciones, vista.anio)} />
+        <Constructor estado={vista} anios={aniosConvocatoria(carga.dictamenes, carga.participaciones, vista.anio)} departamentos={departamentos} />
       </Panel>
       <Panel titulo="Resultado" descripcion="Cada dictamen ligado a una convocatoria cuenta una vez. El desglose es por departamento y género.">
         <div className="flex flex-col gap-4">
@@ -56,7 +58,7 @@ export default async function ConvocatoriaPage({ searchParams }: { searchParams:
               {vista.columnas.length === 0
                 ? "Elige al menos una columna para ver el reporte."
                 : acotado || hayDatos
-                  ? "No hay dictámenes con este reporte. Prueba con otro año, otro programa o limpia la búsqueda."
+                  ? "No hay dictámenes con este reporte. Prueba con otro año, otro departamento, otro programa o limpia la búsqueda."
                   : "Aún no hay convocatorias con dictámenes."}
             </EstadoVacio>
           ) : (
@@ -87,8 +89,12 @@ export default async function ConvocatoriaPage({ searchParams }: { searchParams:
   );
 }
 
-function Constructor({ estado, anios }: { estado: EstadoConvocatoria; anios: number[] }) {
-  const clave = [estado.columnas.join(","), estado.anio ?? "", estado.consulta.filtros.programa, estado.consulta.filtros.genero, estado.consulta.q, estado.consulta.orden, estado.consulta.dir].join("|");
+function Constructor({ estado, anios, departamentos }: {
+  estado: EstadoConvocatoria;
+  anios: number[];
+  departamentos: { id: number; nombre: string }[];
+}) {
+  const clave = [estado.columnas.join(","), estado.anio ?? "", estado.departamentoId ?? "", estado.consulta.filtros.programa, estado.consulta.filtros.genero, estado.consulta.q, estado.consulta.orden, estado.consulta.dir].join("|");
   const ordenVisible = estado.columnas.includes(estado.consulta.orden as ColumnaConvocatoria)
     ? estado.consulta.orden
     : estado.columnas[0] ?? estado.consulta.orden;
@@ -140,6 +146,14 @@ function Constructor({ estado, anios }: { estado: EstadoConvocatoria; anios: num
           <input name="q" type="search" defaultValue={estado.consulta.q} maxLength={200}
             placeholder="Departamento, género o cantidad" aria-invalid={Boolean(estado.errores.q)}
             className={claseCampo(Boolean(estado.errores.q))} />
+        </label>
+        <label className={claseEtiqueta}>
+          Departamento
+          <select name="departamento" defaultValue={estado.departamentoId ?? ""}
+            aria-invalid={Boolean(estado.errores.departamento)} className={claseCampo(Boolean(estado.errores.departamento))}>
+            <option value="">Todos</option>
+            {departamentos.map((fila) => <option key={fila.id} value={fila.id}>{fila.nombre}</option>)}
+          </select>
         </label>
         {estado.columnas.length > 0 && <div className="grid grid-cols-2 gap-4 sm:hidden">
           <label className={claseEtiqueta}>

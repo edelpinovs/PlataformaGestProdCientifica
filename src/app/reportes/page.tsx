@@ -3,7 +3,7 @@ import { Marco } from "@/components/marco";
 import { Aviso, claseBoton, claseBotonSecundario, claseCampo, claseEtiqueta, claseTabla, EstadoVacio, EtiquetaEstado, Panel } from "@/components/ui";
 import { requireModulo } from "@/lib/auth/session";
 import { siguienteOrden, type ParametrosListado } from "@/lib/listados/consulta";
-import { cargarVigencias } from "@/modules/reportes/cargar-vigencias";
+import { cargarDepartamentos, cargarVigencias } from "@/modules/reportes/cargar-vigencias";
 import { enlaceDescarga } from "@/modules/reportes/exportar";
 import {
   COLUMNAS_VIGENCIA,
@@ -33,19 +33,20 @@ const TIPO_ETIQUETA = {
 
 export default async function ReportesPage({ searchParams }: { searchParams: Promise<ParametrosListado> }) {
   const perfil = await requireModulo("reportes");
-  const estado = analizarReporte(await searchParams);
+  const departamentos = await cargarDepartamentos();
+  const estado = analizarReporte(await searchParams, { departamentos: departamentos.map((fila) => fila.id) });
   const cargadas = await cargarVigencias(estado.tipos);
   const { filas, paginacion } = consultarVigencias(cargadas, estado);
   const vista: EstadoReporte = { ...estado, consulta: { ...estado.consulta, pagina: paginacion.pagina } };
   const mensajes = Object.values(vista.errores);
-  const acotado = Boolean(vista.consulta.q) || Boolean(vista.consulta.filtros.semaforo) || vista.anio !== null || vista.tipos.length !== TIPOS_DISTINCION.length;
+  const acotado = Boolean(vista.consulta.q) || Boolean(vista.consulta.filtros.semaforo) || vista.anio !== null || vista.departamentoId !== null || vista.tipos.length !== TIPOS_DISTINCION.length;
   const columnas = COLUMNAS_VIGENCIA.filter((columna) => vista.columnas.includes(columna));
 
   return (
     <Marco correo={perfil.correo} rol={perfil.rol} activo="reportes" titulo="Vigencias y reportes">
       <Panel titulo="Armar reporte" descripcion="Elige las distinciones, las columnas y el año de vencimiento. El semáforo se calcula al abrir el reporte: vigente, por vencer en 12 meses o menos, o vencido.">
         <EnlacesReportes actual="vigencias" />
-        <Constructor estado={vista} anios={opcionesAnio(cargadas, vista.anio)} />
+        <Constructor estado={vista} anios={opcionesAnio(cargadas, vista.anio)} departamentos={departamentos} />
       </Panel>
 
       <Panel titulo="Resultado" descripcion="Reconocimientos aprobados o en reconsideración, y cuerpos académicos. El vencimiento de un cuerpo es el 31 de diciembre de su año de vencimiento.">
@@ -66,7 +67,7 @@ export default async function ReportesPage({ searchParams }: { searchParams: Pro
               {vista.columnas.length === 0
                 ? "Elige al menos una columna para ver el reporte."
                 : acotado
-                  ? "No hay distinciones con este reporte. Prueba con otro año, otra búsqueda o incluye más distinciones."
+                  ? "No hay distinciones con este reporte. Prueba con otro año, otro departamento, otra búsqueda o incluye más distinciones."
                   : "Aún no hay distinciones SNII, PRODEP ni cuerpos académicos."}
             </EstadoVacio>
           ) : (
@@ -99,11 +100,16 @@ export default async function ReportesPage({ searchParams }: { searchParams: Pro
   );
 }
 
-function Constructor({ estado, anios }: { estado: EstadoReporte; anios: number[] }) {
+function Constructor({ estado, anios, departamentos }: {
+  estado: EstadoReporte;
+  anios: number[];
+  departamentos: { id: number; nombre: string }[];
+}) {
   const clave = [
     estado.tipos.join(","),
     estado.columnas.join(","),
     estado.anio ?? "",
+    estado.departamentoId ?? "",
     estado.consulta.q,
     estado.consulta.filtros.semaforo,
     estado.consulta.orden,
@@ -144,6 +150,14 @@ function Constructor({ estado, anios }: { estado: EstadoReporte; anios: number[]
           <input name="q" type="search" defaultValue={estado.consulta.q} maxLength={200}
             placeholder="Nombre, departamento o estado" aria-invalid={Boolean(estado.errores.q)}
             className={claseCampo(Boolean(estado.errores.q))} />
+        </label>
+        <label className={claseEtiqueta}>
+          Departamento
+          <select name="departamento" defaultValue={estado.departamentoId ?? ""}
+            aria-invalid={Boolean(estado.errores.departamento)} className={claseCampo(Boolean(estado.errores.departamento))}>
+            <option value="">Todos</option>
+            {departamentos.map((fila) => <option key={fila.id} value={fila.id}>{fila.nombre}</option>)}
+          </select>
         </label>
         <label className={claseEtiqueta}>
           Año de vencimiento
