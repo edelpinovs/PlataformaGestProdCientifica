@@ -76,7 +76,8 @@ async function armar(listado: ListadoExportable, parametros: ParametrosListado, 
 
   const { consulta, errores } = analizarListado(LISTADO_CALIDAD, parametros);
   if (Object.keys(errores).length) return { error: `No se pudo exportar: ${Object.values(errores).join(" ")}` };
-  const hallazgos = ordenarHallazgos(filtrarHallazgos(await cargarHallazgos(), consulta), consulta);
+  // A diferencia de la pantalla, el archivo trae también «Sin perfil de acceso» sin filtro (D-299).
+  const hallazgos = ordenarHallazgos(filtrarHallazgos(await cargarHallazgos(), consulta, { ocultarPorOmision: false }), consulta);
   const demasiadas = motivoDemasiadasFilas(hallazgos.length, formato);
   if (demasiadas) return { error: demasiadas };
   return { tabla: tablaCalidad(hallazgos), filtros: descripcionFiltros(listado, consulta) };
