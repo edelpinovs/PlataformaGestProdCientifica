@@ -9,7 +9,7 @@ import { requireModulo } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { revalidarProfesorSeleccionado } from "@/lib/selectores/profesor";
 import { eventoAuditoria, resumenEliminacion } from "@/modules/administracion/auditoria";
-import { NO_SE_GUARDO } from "@/modules/convocatorias/carga";
+import { NO_SE_GUARDO } from "@/modules/convocatorias/mensajes";
 import { motivoConvocatoriaConfirmada, participante } from "@/modules/convocatorias/participantes";
 
 // RF-018: registro de quienes participaron en una convocatoria. El resultado se muestra como
