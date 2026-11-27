@@ -1,10 +1,10 @@
-# Revisión del PR: bitácora de dictámenes y borrados de Validación (#381, RF-024, #277)
+# Revisión del PR #415: bitácora de dictámenes y borrados de Validación (#381, RF-024, #277)
 
-Implementación del issue [#381](https://github.com/edelpinovs/PlataformaGestProdCientifica/issues/381) por `yanetzijimeno8297` (I7, responsable de Validación), rama `feat/M7-381-auditoria-validacion` → `main`. Lleva `Closes #381`. Es un sub-issue de la bitácora de auditoría (#277): usa la pieza compartida `registrarAuditoria` (PR #374) para que *confirmarAutoria*, *rechazarHomonimo* y *eliminarPublicacionManual* dejen constancia en la misma transacción que el cambio en la base de datos (`prisma.$transaction`).
+Revisión del [PR #415](https://github.com/edelpinovs/PlataformaGestProdCientifica/pull/415) de `yanetzijimeno8297` (I7, responsable de Validación), rama `feat/M7-381-auditoria-validacion` → `main`. Lleva `Closes #381`. Es un sub-issue de la bitácora de auditoría (#277): usa la pieza compartida `registrarAuditoria` (PR #374) para que *confirmarAutoria*, *rechazarHomonimo* y *eliminarPublicacionManual* dejen constancia en la misma transacción que el cambio en la base de datos (`prisma.$transaction`).
 
 | Campo | Valor |
 |---|---|
-| PR | issue #381 (`Closes`) |
+| PR | #415 · issue #381 (`Closes`) |
 | Autor | @yanetzijimeno8297 (I7) |
 | Rama | `feat/M7-381-auditoria-validacion` |
 | Fecha | 2026-11-26 |
