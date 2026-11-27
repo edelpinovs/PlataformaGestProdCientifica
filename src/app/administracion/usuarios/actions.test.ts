@@ -91,6 +91,8 @@ describe("editar usuario", () => {
     });
     dobles.profesor.findFirst.mockResolvedValue({ ...profesorLibre, id: 5 });
     await expect(editarUsuario({}, formulario({ id: DOCENTE, rol: "DOCENTE", profesorId: "5" }))).rejects.toThrow("redirige");
+    // El aviso no dice que se guardó algo (#347): la página muestra «No había cambios que guardar».
+    expect(dobles.redirect).toHaveBeenCalledWith("/administracion/usuarios?sinCambios=docente%40ejemplo.mx", "replace");
     expect(dobles.$transaction).not.toHaveBeenCalled();
     expect(dobles.perfil.update).not.toHaveBeenCalled();
     expect(dobles.auditoria.create).not.toHaveBeenCalled();

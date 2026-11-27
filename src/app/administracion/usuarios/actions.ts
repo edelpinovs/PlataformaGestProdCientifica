@@ -79,7 +79,7 @@ export async function editarUsuario(_: EstadoFila, formData: FormData): Promise<
     { rol: perfil.rol, profesorId: perfil.profesorId },
     { rol: datos.data.rol, profesorId, codigoProfesor },
   );
-  if (resumen === null) redirect(`${BASE}?editado=${encodeURIComponent(perfil.correo)}`, RedirectType.replace);
+  if (resumen === null) redirect(`${BASE}?sinCambios=${encodeURIComponent(perfil.correo)}`, RedirectType.replace);
 
   try {
     // El cambio y su constancia en la bitácora se guardan juntos o no se guarda ninguno.

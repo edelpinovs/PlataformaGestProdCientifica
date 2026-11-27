@@ -26,9 +26,10 @@ export default async function UsuariosPage({ searchParams }: PageProps<"/adminis
 
   // Editar y cambiar el estado redirigen aquí con el resultado.
   const parametros = await searchParams;
-  const { editado, desactivado, reactivado } = parametros;
+  const { editado, sinCambios, desactivado, reactivado } = parametros;
   const resultado =
     typeof editado === "string" ? `Se guardaron los cambios de «${editado}».`
+    : typeof sinCambios === "string" ? `No había cambios que guardar en «${sinCambios}».`
     : typeof desactivado === "string" ? `Se desactivó el acceso de «${desactivado}».`
     : typeof reactivado === "string" ? `Se reactivó el acceso de «${reactivado}».`
     : null;
@@ -69,7 +70,7 @@ export default async function UsuariosPage({ searchParams }: PageProps<"/adminis
       </div>
 
       <Panel titulo="Personas con acceso" descripcion="Cada profesor puede tener un solo perfil de acceso. Al desactivar a alguien se conservan sus registros.">
-        {resultado && <div className="mb-4"><Aviso tipo="exito">{resultado}</Aviso></div>}
+        {resultado && <div className="mb-4"><Aviso tipo={typeof sinCambios === "string" && typeof editado !== "string" ? "aviso" : "exito"}>{resultado}</Aviso></div>}
         <div className="flex flex-col gap-4">
           <BarraListado {...contexto} columnas={COLUMNAS_USUARIOS} errores={errores}
             etiquetaBusqueda="Buscar usuarios" placeholder="Correo, rol, profesor, estado o alta (2026-11-24)"
