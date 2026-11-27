@@ -25,7 +25,7 @@ export function debeEnriquecerAutores(datos: { fuentes?: FuenteEscaneo[]; enriqu
 export const consultaFuenteEsquema = z.object({
   profesorId: z.number({ error: "El profesor de la consulta no es válido." }).int().positive(),
   fuente: z.enum(FUENTES_ESCANEO, { error: "La fuente de la consulta no es válida." }),
-  estado: z.enum(["NO_SELECCIONADA", "SIN_RESULTADOS", "COMPLETADA", "INCIDENCIA"], { error: "El estado de la consulta no es válido." }),
+  estado: z.enum(["NO_SELECCIONADA", "SIN_RESULTADOS", "COMPLETADA", "INCIDENCIA", "SIN_IDENTIFICADOR"], { error: "El estado de la consulta no es válido." }),
   cantidad: z.number({ error: "La cantidad no es válida." }).int().nonnegative(),
 });
 export type ConsultaFuente = z.infer<typeof consultaFuenteEsquema>;

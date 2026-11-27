@@ -38,7 +38,7 @@ export default async function EscaneoPage() {
       {puedeEscanear(perfil.rol) ? <FormularioEscaneo profesores={profesores} trabajoPendiente={pendiente?.id} fuentesTrabajo={datosPendientes.data?.fuentes} enriquecerTrabajo={datosPendientes.success ? debeEnriquecerAutores(datosPendientes.data) : undefined} profesorTrabajo={datosPendientes.data?.profesoresIds.length === 1 ? String(datosPendientes.data.profesoresIds[0]) : "todos"} rangoTrabajo={datosPendientes.success ? rangoEfectivo(datosPendientes.data) : undefined} /> : <Aviso tipo="aviso">{AVISO_SIN_PERMISO_ESCANEO}</Aviso>}
     </Panel>
     <Panel titulo="Último escaneo registrado">
-      {ultimoJob && <ResultadoEscaneo resultado={presentarResultadoEscaneo(ultimoJob.estado, ultimoJob.datos)} />}
+      {ultimoJob && <ResultadoEscaneo resultado={presentarResultadoEscaneo(ultimoJob.estado, ultimoJob.datos)} jobId={ultimoJob.id} />}
       {ultimoJob && <div className="flex flex-col gap-4 text-sm text-texto-3">
         <p>Inicio: {fechaEscaneo(ultimoJob.creadoEn)}.</p>
         <p>Última actualización de avance: {fechaEscaneo(ultimoJob.actualizadoEn)} (hora del centro de México).</p>

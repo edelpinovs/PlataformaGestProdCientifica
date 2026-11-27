@@ -40,6 +40,7 @@
     "crear-admin": "tsx scripts/crear-admin.ts",
     "invitar": "tsx scripts/invitar.ts",
     "invitar:lote": "tsx scripts/invitar-lote.ts",
+    "invitar:pendientes": "tsx scripts/invitar-pendientes.ts",
     "db:nueva-migracion": "tsx scripts/nueva-migracion.ts"
   },
   "dependencies": {

@@ -47,8 +47,9 @@ export function DialogoDetalle({ titulo, urlCerrar, focoAlCerrar, children }: {
   return <dialog ref={dialogo} aria-modal="true" aria-labelledby={`${id}-titulo`}
     onCancel={(evento) => { evento.preventDefault(); cerrar(); }}
     onClick={(evento) => { if (evento.target === evento.currentTarget) cerrar(); }}
-    className="m-auto max-h-[calc(100dvh_-_2rem)] w-[calc(100%_-_2rem)] max-w-4xl overflow-y-auto rounded-2xl border-0 bg-superficie p-5 text-texto backdrop:bg-texto/40">
-    <div className="flex flex-col gap-4">
+    className="m-auto max-h-[calc(100dvh_-_2rem)] w-[calc(100%_-_2rem)] max-w-4xl overflow-y-auto rounded-2xl border-0 bg-superficie p-0 text-texto backdrop:bg-texto/40">
+    {/* El relleno va en este contenedor: así un clic en el margen interior no llega al <dialog> ni lo cierra. */}
+    <div className="flex flex-col gap-4 p-5">
       <div className="flex items-start justify-between gap-4">
         <h2 id={`${id}-titulo`} className="text-base font-semibold">{titulo}</h2>
         <button type="button" onClick={cerrar} aria-label="Cerrar el detalle" title="Cerrar"
