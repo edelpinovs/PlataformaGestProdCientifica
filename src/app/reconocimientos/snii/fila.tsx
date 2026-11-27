@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { Aviso, claseAccionIcono, claseBotonPeligro, claseBotonSecundario, EtiquetaEstado, Icono, ICONOS } from "@/components/ui";
 import type { NIVELES_SNII, TIPOS_PARTICIPACION_SNII } from "@/modules/reconocimientos/snii";
+import { COLUMNAS_SNII, ETIQUETAS_NIVEL_SNII, ETIQUETAS_PARTICIPACION_SNII, ETIQUETAS_RESULTADO_SNII } from "@/modules/reconocimientos/snii-listado";
 import { eliminarReconocimientoSnii, type EstadoSnii } from "./actions";
 import { FormularioEdicionSnii } from "./formulario-edicion";
 
@@ -17,13 +18,12 @@ type ReconocimientoListado = {
   profesor: { id: number; codigo: string; nombres: string; apellidos: string; cvu: string | null };
 };
 
-const ETIQUETAS_NIVEL: Record<ReconocimientoListado["nivel"], string> = {
-  CANDIDATO: "Candidato", NIVEL_1: "Nivel 1", NIVEL_2: "Nivel 2", NIVEL_3: "Nivel 3", EMERITO: "Emérito", NO_APROBADO: "No aprobado",
-};
-const ETIQUETAS_PARTICIPACION: Record<ReconocimientoListado["tipoParticipacion"], string> = {
-  NUEVO_INGRESO: "Nuevo ingreso", RENOVACION: "Renovación", REINGRESO_NO_VIGENTE: "Reingreso no vigente",
-};
+/** Columnas de la tabla, con la de acciones: la edición y el borrado ocupan la fila completa. */
+const COLUMNAS_FILA_SNII = COLUMNAS_SNII.length + 1;
+const mostrarFecha = (fecha: Date) => fecha.toISOString().slice(0, 10);
 
+// Issue 111: fila de la tabla de Reconocimientos SNII (como PRODEP). En celular las celdas se apilan
+// en dos columnas con su etiqueta; el orden se elige con el selector «Ordenar por» de la barra.
 export function FilaSnii({ reconocimiento, profesores }: {
   reconocimiento: ReconocimientoListado;
   profesores: { id: number; codigo: string; nombres: string; apellidos: string; cvu: string | null }[];
@@ -36,21 +36,37 @@ export function FilaSnii({ reconocimiento, profesores }: {
 
   const tipoEstado = reconocimiento.resultado === "EN_RECONSIDERACION" ? "aviso"
     : reconocimiento.resultado === "NO_APROBADO" ? "error" : "exito";
-  const etiquetaResultado = reconocimiento.resultado === "EN_RECONSIDERACION" ? "En reconsideración"
-    : reconocimiento.resultado === "NO_APROBADO" ? "No aprobado" : "Aprobado";
+  const celda = "min-w-0 break-words py-3 pr-2 text-sm sm:table-cell sm:pr-3";
+  const etiqueta = "mb-1 block text-xs text-texto-3 sm:hidden";
 
   return (
-    <li className="grid min-w-0 gap-3 border-b border-linea py-4 last:border-0 sm:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1.2fr)_auto] sm:items-center">
-      <div className="min-w-0">
-        <p className="break-words text-sm font-medium">{persona}</p>
-        <p className="text-xs text-texto-3">{reconocimiento.profesor.codigo} · CVU {reconocimiento.profesor.cvu ?? "Sin CVU"}</p>
-      </div>
-      <div className="text-sm">
-        <p>{ETIQUETAS_NIVEL[reconocimiento.nivel]} · {ETIQUETAS_PARTICIPACION[reconocimiento.tipoParticipacion]}</p>
-        <p className="text-xs text-texto-3">{reconocimiento.inicio.toISOString().slice(0, 10)} al {reconocimiento.fin.toISOString().slice(0, 10)}</p>
-      </div>
-      <div><EtiquetaEstado tipo={tipoEstado}>{etiquetaResultado}</EtiquetaEstado></div>
-      <div className="flex gap-1 sm:justify-end">
+    <tr className="grid grid-cols-2 gap-x-3 border-b border-linea last:border-0 hover:bg-marca-tenue sm:table-row">
+      <td className={`${celda} col-span-2`}>
+        <span className={etiqueta}>Profesor</span>
+        <span className="font-medium">{persona}</span>
+        <span className="block text-xs text-texto-3">{reconocimiento.profesor.codigo} · CVU {reconocimiento.profesor.cvu ?? "Sin CVU"}</span>
+      </td>
+      <td className={celda}>
+        <span className={etiqueta}>Nivel</span>
+        {ETIQUETAS_NIVEL_SNII[reconocimiento.nivel]}
+      </td>
+      <td className={celda}>
+        <span className={etiqueta}>Participación</span>
+        {ETIQUETAS_PARTICIPACION_SNII[reconocimiento.tipoParticipacion]}
+      </td>
+      <td className={celda}>
+        <span className={etiqueta}>Resultado</span>
+        <EtiquetaEstado tipo={tipoEstado}>{ETIQUETAS_RESULTADO_SNII[reconocimiento.resultado]}</EtiquetaEstado>
+      </td>
+      <td className={celda}>
+        <span className={etiqueta}>Inicio</span>
+        {mostrarFecha(reconocimiento.inicio)}
+      </td>
+      <td className={celda}>
+        <span className={etiqueta}>Fin</span>
+        {mostrarFecha(reconocimiento.fin)}
+      </td>
+      <td className="col-span-2 flex gap-1 py-3 sm:table-cell sm:text-right sm:whitespace-nowrap">
         {reconocimiento.convocatoriaId === null && (
           <button type="button" onClick={() => setModo("editar")} className={claseAccionIcono()}
             aria-label={`Editar reconocimiento de ${persona}`} title="Editar">
@@ -61,8 +77,8 @@ export function FilaSnii({ reconocimiento, profesores }: {
           aria-label={`Eliminar reconocimiento de ${persona}`} title="Eliminar">
           <Icono d={ICONOS.eliminar} />
         </button>
-      </div>
-    </li>
+      </td>
+    </tr>
   );
 }
 
@@ -71,7 +87,8 @@ function ConfirmarEliminacion({ reconocimiento, cerrar }: { reconocimiento: Reco
   const persona = `${reconocimiento.profesor.nombres} ${reconocimiento.profesor.apellidos}`;
 
   return (
-    <li className="border-b border-linea py-3 last:border-0">
+    <tr className="border-b border-linea">
+      <td colSpan={COLUMNAS_FILA_SNII} className="py-3">
       <form action={accion} className="flex flex-col gap-3 rounded-xl bg-peligro-suave p-4">
         <input type="hidden" name="id" value={reconocimiento.id} />
         {estado.error ? <Aviso tipo="error">{estado.error}</Aviso> : (
@@ -82,6 +99,7 @@ function ConfirmarEliminacion({ reconocimiento, cerrar }: { reconocimiento: Reco
           <button type="button" onClick={cerrar} className={claseBotonSecundario}>{estado.error ? "Cerrar" : "Cancelar"}</button>
         </div>
       </form>
-    </li>
+      </td>
+    </tr>
   );
 }

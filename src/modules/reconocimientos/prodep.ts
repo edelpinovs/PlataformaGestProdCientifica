@@ -242,7 +242,8 @@ export const ETIQUETAS_RESULTADO_PRODEP: Record<(typeof RESULTADOS_PRODEP)[numbe
   EN_RECONSIDERACION: "En reconsideración",
 };
 
-function rangoFechaBusqueda(texto: string): { desde: Date; hasta: Date } | null {
+/** Año («2026»), mes («2026-01») o día buscado, como rango de fechas; null si el texto no es una fecha. También lo usa SNII. */
+export function rangoFechaBusqueda(texto: string): { desde: Date; hasta: Date } | null {
   if (/^\d{4}$/.test(texto)) {
     const anio = Number(texto);
     if (anio < 1 || anio > 9999) return null;

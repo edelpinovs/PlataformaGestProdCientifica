@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { Aviso, claseBoton, claseBotonSecundario } from "@/components/ui";
+import { COLUMNAS_SNII } from "@/modules/reconocimientos/snii-listado";
 import { editarReconocimientoSnii, type EstadoSnii } from "./actions";
 import { FormularioSniiCampos, type ProfesorOpcion, type ValoresSnii } from "./formulario-campos";
 
@@ -32,7 +33,8 @@ export function FormularioEdicionSnii({ reconocimiento, profesores, cerrar }: {
   };
 
   return (
-    <li className="border-b border-linea py-3 last:border-0">
+    <tr className="border-b border-linea">
+      <td colSpan={COLUMNAS_SNII.length + 1} className="py-3">
       <form action={accion} noValidate className="flex flex-col gap-4 rounded-xl bg-superficie-alt p-4">
         <input type="hidden" name="id" value={reconocimiento.id} />
         <FormularioSniiCampos profesores={profesores} valores={valores} estado={estado} />
@@ -42,6 +44,7 @@ export function FormularioEdicionSnii({ reconocimiento, profesores, cerrar }: {
           <button type="button" onClick={cerrar} className={claseBotonSecundario}>Cancelar</button>
         </div>
       </form>
-    </li>
+      </td>
+    </tr>
   );
 }
