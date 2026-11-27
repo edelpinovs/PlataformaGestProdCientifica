@@ -36,10 +36,11 @@ createRoot(document.getElementById("raiz")).render(<Ejemplo/>);
  comprobar(document.querySelector('input[name="profesorId"]').value==="1","Buscar borró la selección");await teclear("Escape");
  document.querySelector('[aria-label="Quitar profesor seleccionado"]').click();await esperar(()=>document.querySelector('input[name="profesorId"]').value==="");
  document.querySelector("form").requestSubmit();await esperar(()=>document.querySelector('[role="combobox"]').getAttribute("aria-invalid")==="true");
- comprobar(window.solicitudes.length===1,"Envió una selección individual vacía como todos");
+ comprobar(window.solicitudes.length===2 && window.solicitudes[1].profesorId==="","Envió una selección individual vacía como todos");
+ comprobar(document.body.textContent.includes("Selecciona un profesor válido."),"No muestra el error del servidor en español");
  await escribir("DEMO-002");await esperar(()=>document.querySelectorAll('[role="option"]').length===1);await teclear("Enter");
- document.querySelector("form").requestSubmit();await esperar(()=>window.solicitudes.length===2);
- comprobar(window.solicitudes[1].profesorId==="2","No envió la segunda selección");
+ document.querySelector("form").requestSubmit();await esperar(()=>window.solicitudes.length===3);
+ comprobar(window.solicitudes[2].profesorId==="2","No envió la segunda selección");
  [...document.querySelectorAll("button")].find(b=>b.textContent==="Ver trabajo pendiente ficticio").click();
  await esperar(()=>document.querySelector('[role="combobox"]')?.disabled);
  comprobar(document.querySelector('input[type="checkbox"]:not([name])').matches(":disabled"),"Permite cambiar el alcance pendiente");
@@ -50,7 +51,7 @@ createRoot(document.getElementById("raiz")).render(<Ejemplo/>);
  comprobar(document.documentElement.scrollWidth<=innerWidth,"Desbordamiento horizontal");
  document.getElementById("resultado").textContent="CORRECTO: búsqueda, teclado, validación, rango de fechas, selección conservada y trabajo pendiente bloqueado";
 }catch(e){document.getElementById("resultado").textContent="FALLO: "+e.message}})();
-`, "selector-escaneo", [{name:"accion-ficticia",setup(b){b.onResolve({filter:/^\.\/actions$/},args=>/(formulario-escaneo|control-busqueda)\.tsx$/.test(args.importer)?{path:"accion",namespace:"seleccion"}:undefined);b.onLoad({filter:/.*/,namespace:"seleccion"},()=>({contents:'export async function cancelarEscaneoAction(){window.cancelada=true;return {mensaje:"Búsqueda cancelada."}}export async function reintentarEscaneoAction(){return {}}export async function iniciarEscaneoAction(_,datos){window.solicitudes=window.solicitudes||[];window.solicitudes.push(Object.fromEntries(datos));return window.solicitudes.length===1?{error:"El rango puede abarcar como máximo 10 años calendario.",erroresCampos:{hasta:"El rango puede abarcar como máximo 10 años calendario."}}:{exito:true}}'}));}}]);
+`, "selector-escaneo", [{name:"accion-ficticia",setup(b){b.onResolve({filter:/^\.\/actions$/},args=>/(formulario-escaneo|control-busqueda)\.tsx$/.test(args.importer)?{path:"accion",namespace:"seleccion"}:undefined);b.onLoad({filter:/.*/,namespace:"seleccion"},()=>({contents:'export async function cancelarEscaneoAction(){window.cancelada=true;return {mensaje:"Búsqueda cancelada."}}export async function reintentarEscaneoAction(){return {}}export async function iniciarEscaneoAction(_,datos){window.solicitudes=window.solicitudes||[];window.solicitudes.push(Object.fromEntries(datos));return window.solicitudes.length===1?{error:"El rango puede abarcar como máximo 10 años calendario.",erroresCampos:{hasta:"El rango puede abarcar como máximo 10 años calendario."}}:datos.get("profesorId")===""?{error:"Selecciona un profesor válido.",erroresCampos:{profesorId:"Selecciona un profesor válido."}}:{exito:true}}'}));}}]);
 
 await probarEnChrome(`
 import React from "react";import {createRoot} from "react-dom/client";

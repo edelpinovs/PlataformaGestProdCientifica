@@ -62,6 +62,14 @@ describe("orquestación de las cinco fuentes (#167)",()=>{
     expect(repo.registrarCorte).toHaveBeenCalledExactlyOnceWith(1,"ORCID",expect.any(Date));
     expect(resultado.consultasFuentes).toEqual(expect.arrayContaining([{profesorId:1,fuente:"GOOGLE_SCHOLAR",estado:"INCIDENCIA",cantidad:0},{profesorId:1,fuente:"SCOPUS",estado:"NO_SELECCIONADA",cantidad:0}]));
   });
+  it("un profesor sin identificador queda SIN_IDENTIFICADOR, sin error ni incidencia, y no mueve su corte",async()=>{
+    conectores.CROSSREF.mockResolvedValue({publicaciones:[],error:"FALTA_IDENTIFICADOR"});const repo=repositorio();
+    const resultado=await ejecutarEscaneo({fuentes:["CROSSREF"],enriquecerAutores:false},repo);
+    expect(resultado.consultasFuentes).toContainEqual({profesorId:1,fuente:"CROSSREF",estado:"SIN_IDENTIFICADOR",cantidad:0});
+    expect(resultado.errores).toEqual([]);
+    expect(resultado.profesoresProcesados).toBe(1);
+    expect(repo.registrarCorte).not.toHaveBeenCalled();
+  });
   it("un resultado vacío es éxito sin resultados y avanza solo el corte de esa fuente",async()=>{
     conectores.CROSSREF.mockResolvedValue({publicaciones:[]});const repo=repositorio();
     const resultado=await ejecutarEscaneo({fuentes:["CROSSREF"],enriquecerAutores:false},repo);

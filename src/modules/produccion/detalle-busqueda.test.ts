@@ -38,7 +38,15 @@ describe("detalle de una búsqueda", () => {
   it("tolera búsquedas antiguas sin consultas ni procedencia", () => {
     const antiguo = trabajo([]);
     antiguo.resumen = resumenVacio();
-    expect(analizarBusqueda(antiguo)).toMatchObject({ obrasRecibidas: 0, publicaciones: [] });
+    expect(analizarBusqueda(antiguo)).toMatchObject({ obrasRecibidas: 0, publicaciones: [], consultasRegistradas: false, publicacionesRegistradas: false });
+    expect(analizarBusqueda(trabajo([]))).toMatchObject({ consultasRegistradas: true, publicacionesRegistradas: true });
+  });
+
+  it("la falta de identificador no cuenta como fuente que falló, tampoco en búsquedas antiguas", () => {
+    const datos = trabajo([consulta(3, "ORCID", "SIN_IDENTIFICADOR"), consulta(5, "ORCID", "INCIDENCIA"), consulta(8, "SCOPUS", "INCIDENCIA")]);
+    datos.resumen.errores = ["ORCID (Prof. 5): FALTA_IDENTIFICADOR", "Scopus (Prof. 8): HTTP_429"];
+    const porId = Object.fromEntries(analizarBusqueda(datos).profesores.map((p) => [p.profesorId, p.fuentesConFallo]));
+    expect(porId).toEqual({ 3: [], 5: [], 8: ["Scopus"] });
   });
 
   it("expresa la duración en español y no inventa una si falta el fin", () => {

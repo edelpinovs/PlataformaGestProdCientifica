@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { avanzarLote, datosLoteEsquema, resumenVacio, seleccionReintento, solicitudEscaneoEsquema, TIEMPO_RESERVA_MS, type DatosLote } from "./lotes";
+import { avanzarLote, datosLoteEsquema, resumenVacio, seleccionReintento, solicitudEscaneoEsquema, TIEMPO_RESERVA_MS, type DatosLote, consultasDeFuentes, erroresDeConsulta } from "./lotes";
 
 describe("RF-020: reglas de lotes", () => {
   it.each(["abc", "0", "-1", "1.5", "2147483648", "9007199254740992"])("rechaza el profesor manipulado %s", (profesorId) => {
@@ -88,6 +88,19 @@ describe("#279: reintentar un escaneo terminado", () => {
   it("incluye con todas sus fuentes a los profesores que quedaron sin revisar", () => {
     expect(seleccionReintento(trabajo([consulta(3, "ORCID", "INCIDENCIA")], ["ORCID (Prof. 3): HTTP_429"], { indice: 1 })))
       .toEqual({ ok: true, profesoresIds: [3, 5, 8], fuentes: ["ORCID", "OPENALEX", "SCOPUS"] });
+  });
+
+  it("no reintenta la falta de identificador, nueva o de búsquedas antiguas, y lo explica si no queda nada", () => {
+    const nueva = trabajo([consulta(3, "ORCID", "SIN_IDENTIFICADOR"), consulta(3, "SCOPUS", "COMPLETADA")]);
+    expect(seleccionReintento(nueva)).toEqual({ ok: false, error: "No hay nada que reintentar: a algunos profesores les falta el identificador de una fuente. Regístralo en Profesores y vuelve a buscar." });
+    const antigua = trabajo([consulta(3, "ORCID", "INCIDENCIA"), consulta(5, "OPENALEX", "INCIDENCIA")], ["ORCID (Prof. 3): FALTA_IDENTIFICADOR", "OpenAlex (Prof. 5): HTTP_429"]);
+    expect(seleccionReintento(antigua)).toEqual({ ok: true, profesoresIds: [5], fuentes: ["OPENALEX"] });
+  });
+
+  it("lee como SIN_IDENTIFICADOR las incidencias antiguas por falta de identificador y separa los errores reales", () => {
+    const antigua = trabajo([consulta(3, "ORCID", "INCIDENCIA"), consulta(5, "ORCID", "INCIDENCIA")], ["ORCID (Prof. 3): FALTA_IDENTIFICADOR", "ORCID (Prof. 5): HTTP_429"]);
+    expect(consultasDeFuentes(antigua.resumen).map((c) => c.estado)).toEqual(["SIN_IDENTIFICADOR", "INCIDENCIA"]);
+    expect(erroresDeConsulta(antigua.resumen)).toEqual(["ORCID (Prof. 5): HTTP_429"]);
   });
 
   it("no propone un reintento vacío", () => {
