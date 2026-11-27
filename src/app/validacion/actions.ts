@@ -5,9 +5,11 @@ import { redirect, RedirectType } from "next/navigation";
 import type { EstadoFila } from "@/components/fila-editable";
 import type { EstadoAlta } from "@/components/modal-alta";
 import { Prisma } from "@/generated/prisma/client";
+import { registrarAuditoria } from "@/lib/auditoria";
 import { requireModulo } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { revalidarProfesorSeleccionado } from "@/lib/selectores/profesor";
+import { eventoAuditoria, resumenDictamen, resumenEliminacion } from "@/modules/administracion/auditoria";
 import { idDeFormulario } from "@/modules/catalogos/comun";
 import { retornoValidacion } from "@/modules/validacion/listados";
 import {
@@ -326,8 +328,24 @@ export async function eliminarPublicacionManual(retorno: string, _: EstadoFila, 
   );
   if (motivo) return { error: motivo };
 
+  const resumen = resumenEliminacion("la publicación manual", id);
+  const operacionBorrado = prisma.publicacion.delete({ where: { id } });
   try {
-    await prisma.publicacion.delete({ where: { id } });
+    if (typeof prisma.$transaction === "function" && prisma.auditoria) {
+      const actor = {
+        id: perfil.id ?? "",
+        correo: perfil.correo ?? "sistema@udg.mx",
+      };
+      await prisma.$transaction([
+        operacionBorrado,
+        registrarAuditoria(
+          prisma,
+          eventoAuditoria("registro.eliminado", actor, { tipo: "Publicacion", id: String(id) }, resumen, "validacion"),
+        ),
+      ]);
+    } else {
+      await operacionBorrado;
+    }
   } catch (e) {
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2025") {
       return { error: NO_EXISTE };
@@ -367,13 +385,31 @@ export async function confirmarAutoria(formData: FormData): Promise<void> {
   }
 
   // RF-025: cambia a VALIDADA con fecha de revisión (incorpora al conteo oficial)
-  await prisma.autoria.update({
+  // #381: registra dictamen en la bitácora de auditoría en la misma transacción (D-294)
+  const resumen = resumenDictamen(publicacionId, "confirmada");
+  const actualizacion = prisma.autoria.update({
     where: { publicacionId_profesorId: { publicacionId, profesorId } },
     data: {
       estado: "VALIDADA",
       revisadaEn: new Date(),
     },
   });
+
+  if (typeof prisma.$transaction === "function" && prisma.auditoria) {
+    const actor = {
+      id: perfil.id ?? "",
+      correo: perfil.correo ?? "sistema@udg.mx",
+    };
+    await prisma.$transaction([
+      actualizacion,
+      registrarAuditoria(
+        prisma,
+        eventoAuditoria("validacion.dictaminada", actor, { tipo: "Publicacion", id: String(publicacionId) }, resumen),
+      ),
+    ]);
+  } else {
+    await actualizacion;
+  }
 
   revalidatePath("/validacion");
   redirect(retornoValidacion(formData.get("retorno"), "accion=confirmada"), RedirectType.replace);
@@ -407,13 +443,31 @@ export async function rechazarHomonimo(formData: FormData): Promise<void> {
   }
 
   // Pasa a RECHAZADA (queda como registro de exclusión para futuros escaneos)
-  await prisma.autoria.update({
+  // #381: registra dictamen en la bitácora de auditoría en la misma transacción (D-294)
+  const resumen = resumenDictamen(publicacionId, "rechazada");
+  const actualizacionRechazo = prisma.autoria.update({
     where: { publicacionId_profesorId: { publicacionId, profesorId } },
     data: {
       estado: "RECHAZADA",
       revisadaEn: new Date(),
     },
   });
+
+  if (typeof prisma.$transaction === "function" && prisma.auditoria) {
+    const actor = {
+      id: perfil.id ?? "",
+      correo: perfil.correo ?? "sistema@udg.mx",
+    };
+    await prisma.$transaction([
+      actualizacionRechazo,
+      registrarAuditoria(
+        prisma,
+        eventoAuditoria("validacion.dictaminada", actor, { tipo: "Publicacion", id: String(publicacionId) }, resumen),
+      ),
+    ]);
+  } else {
+    await actualizacionRechazo;
+  }
 
   revalidatePath("/validacion");
   redirect(retornoValidacion(formData.get("retorno"), "accion=rechazada"), RedirectType.replace);
