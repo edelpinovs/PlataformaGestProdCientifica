@@ -53,15 +53,25 @@ export function FilaUsuario(props: Props) {
   const { correo, rol, activo, profesor, alta } = props;
   return (
     <tr className={claseTabla.fila}>
-      <td className={`${claseTabla.celda} break-all text-texto`}>{correo}</td>
-      <td className={claseTabla.celda}>{ETIQUETA_ROL[rol]}</td>
       <td className={claseTabla.celda}>
+        <span className="block break-all text-texto">{correo}</span>
+        {/* En celular las columnas se apilan bajo el correo. */}
+        <span className="mt-1 flex flex-col items-start gap-1 text-xs text-texto-3 md:hidden">
+          <span>{ETIQUETA_ROL[rol]} · {profesor ? `${profesor.nombres} ${profesor.apellidos}` : "Sin vincular"}</span>
+          <span className="flex flex-wrap items-center gap-2">
+            <EtiquetaEstado tipo={activo ? "exito" : "aviso"}>{activo ? "Activo" : "Desactivado"}</EtiquetaEstado>
+            <span>Alta {alta}</span>
+          </span>
+        </span>
+      </td>
+      <td className={`${claseTabla.celda} hidden md:table-cell`}>{ETIQUETA_ROL[rol]}</td>
+      <td className={`${claseTabla.celda} hidden md:table-cell`}>
         {profesor ? `${profesor.nombres} ${profesor.apellidos}` : <span className="text-texto-3">Sin vincular</span>}
       </td>
-      <td className={claseTabla.celda}>
+      <td className={`${claseTabla.celda} hidden md:table-cell`}>
         <EtiquetaEstado tipo={activo ? "exito" : "aviso"}>{activo ? "Activo" : "Desactivado"}</EtiquetaEstado>
       </td>
-      <td className={`${claseTabla.celda} whitespace-nowrap`}>{alta}</td>
+      <td className={`${claseTabla.celda} whitespace-nowrap hidden md:table-cell`}>{alta}</td>
       <td className={`${claseTabla.celda} pr-0 text-right whitespace-nowrap`}>
         <button type="button" onClick={() => setModo("editar")} className={claseAccionIcono()}
           aria-label={`Editar ${correo}`} title="Editar">

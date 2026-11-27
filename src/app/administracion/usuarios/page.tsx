@@ -122,10 +122,10 @@ export default async function UsuariosPage({ searchParams }: PageProps<"/adminis
               <thead className={claseTabla.encabezado}>
                 <tr>
                   <EncabezadoOrdenable {...contexto} columna="correo" className={claseTabla.celdaEncabezado}>Correo</EncabezadoOrdenable>
-                  <EncabezadoOrdenable {...contexto} columna="rol" className={claseTabla.celdaEncabezado}>Rol</EncabezadoOrdenable>
-                  <EncabezadoOrdenable {...contexto} columna="profesor" className={claseTabla.celdaEncabezado}>Profesor vinculado</EncabezadoOrdenable>
-                  <EncabezadoOrdenable {...contexto} columna="estado" className={claseTabla.celdaEncabezado}>Estado</EncabezadoOrdenable>
-                  <EncabezadoOrdenable {...contexto} columna="alta" className={claseTabla.celdaEncabezado}>Alta</EncabezadoOrdenable>
+                  <EncabezadoOrdenable {...contexto} columna="rol" className={`${claseTabla.celdaEncabezado} hidden md:table-cell`}>Rol</EncabezadoOrdenable>
+                  <EncabezadoOrdenable {...contexto} columna="profesor" className={`${claseTabla.celdaEncabezado} hidden md:table-cell`}>Profesor vinculado</EncabezadoOrdenable>
+                  <EncabezadoOrdenable {...contexto} columna="estado" className={`${claseTabla.celdaEncabezado} hidden md:table-cell`}>Estado</EncabezadoOrdenable>
+                  <EncabezadoOrdenable {...contexto} columna="alta" className={`${claseTabla.celdaEncabezado} hidden md:table-cell`}>Alta</EncabezadoOrdenable>
                   <th className={`${claseTabla.celdaEncabezado} pr-0 text-right`}><span className="sr-only">Acciones</span></th>
                 </tr>
               </thead>
@@ -145,7 +145,9 @@ export default async function UsuariosPage({ searchParams }: PageProps<"/adminis
       </Panel>
 
       <Panel titulo="Qué puede hacer cada rol" descripcion="Solo lectura. Sale del registro de módulos.">
-        <div className="overflow-x-auto">
+        {/* `relative`: los textos «Sí»/«No» para lector de pantalla son absolutos y, sin él, se salen del
+            contenedor y hacen desplazar toda la página en celular (issue 425). */}
+        <div className="relative overflow-x-auto">
           <table className={claseTabla.tabla}>
             <thead className={claseTabla.encabezado}>
               <tr>
