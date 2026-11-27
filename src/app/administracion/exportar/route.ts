@@ -4,7 +4,7 @@ import { analizarListado, type ParametrosListado } from "@/lib/listados/consulta
 import { prisma } from "@/lib/prisma";
 import { registrarAuditoria } from "@/lib/auditoria";
 import { eventoAuditoria } from "@/modules/administracion/auditoria";
-import { filtroAuditoria, LISTADO_AUDITORIA, ordenAuditoria } from "@/modules/administracion/auditoria-listado";
+import { analizarAuditoria, filtroAuditoria, ordenAuditoria } from "@/modules/administracion/auditoria-listado";
 import { filtrarHallazgos, LISTADO_CALIDAD, ordenarHallazgos } from "@/modules/administracion/calidad";
 import {
   descripcionFiltros,
@@ -61,7 +61,7 @@ async function armar(listado: ListadoExportable, parametros: ParametrosListado, 
   }
 
   if (listado === "auditoria") {
-    const { consulta, errores } = analizarListado(LISTADO_AUDITORIA, parametros);
+    const { consulta, errores } = analizarAuditoria(parametros);
     if (Object.keys(errores).length) return { error: `No se pudo exportar: ${Object.values(errores).join(" ")}` };
     const where = filtroAuditoria(consulta);
     const demasiadas = motivoDemasiadasFilas(await prisma.auditoria.count({ where }), formato);

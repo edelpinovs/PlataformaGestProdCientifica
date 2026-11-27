@@ -160,6 +160,8 @@ export function descripcionFiltros(listado: ListadoExportable, consulta: Consult
     if (f.modulo) partes.push(`módulo ${MODULOS_AUDITORIA.find((m) => m.valor === f.modulo)?.texto ?? f.modulo}`);
     if (f.accion) partes.push(`acción «${ACCIONES_AUDITORIA[f.accion as AccionAuditoria]?.texto ?? f.accion}»`);
     if (f.periodo) partes.push(`periodo «${PERIODOS.find((p) => p.valor === f.periodo)?.texto ?? f.periodo}»`);
+    if (f.desde) partes.push(`desde ${f.desde}`);
+    if (f.hasta) partes.push(`hasta ${f.hasta}`);
   } else if (f.regla) {
     partes.push(`problema «${REGLAS_CALIDAD[f.regla as ReglaCalidad]?.texto ?? f.regla}»`);
   }

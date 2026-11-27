@@ -3,11 +3,11 @@ import { Marco } from "@/components/marco";
 import { claseTabla, EstadoVacio, Panel } from "@/components/ui";
 import { requireModulo } from "@/lib/auth/session";
 import { Descargas } from "../descargas";
-import { analizarListado, hayFiltrosActivos, paginar } from "@/lib/listados/consulta";
+import { hayFiltrosActivos, paginar } from "@/lib/listados/consulta";
 import { prisma } from "@/lib/prisma";
 import { PERIODOS } from "@/modules/administracion/fechas";
 import { ACCIONES_AUDITORIA, CLAVES_ACCION, MODULOS_AUDITORIA, type AccionAuditoria } from "@/modules/administracion/auditoria";
-import { COLUMNAS_AUDITORIA, filtroAuditoria, LISTADO_AUDITORIA, ordenAuditoria } from "@/modules/administracion/auditoria-listado";
+import { analizarAuditoria, COLUMNAS_AUDITORIA, filtroAuditoria, LISTADO_AUDITORIA, ordenAuditoria } from "@/modules/administracion/auditoria-listado";
 
 const BASE = "/administracion/auditoria";
 const formatoFecha = new Intl.DateTimeFormat("es-MX", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Mexico_City" });
@@ -20,7 +20,7 @@ export default async function AuditoriaPage({ searchParams }: PageProps<"/admini
   const perfil = await requireModulo("administracion");
 
   // Búsqueda, filtros, orden y página vienen de la URL (D-009); lo inválido se ignora y se avisa.
-  const { consulta, errores } = analizarListado(LISTADO_AUDITORIA, await searchParams);
+  const { consulta, errores } = analizarAuditoria(await searchParams);
   const where = filtroAuditoria(consulta);
   const total = await prisma.auditoria.count({ where });
   const paginacion = paginar(total, consulta);
@@ -51,6 +51,20 @@ export default async function AuditoriaPage({ searchParams }: PageProps<"/admini
                 : []),
               { clave: "accion", etiqueta: "Acción", opciones: CLAVES_ACCION.map((a) => ({ valor: a, texto: ACCIONES_AUDITORIA[a].texto })) },
               { clave: "periodo", etiqueta: "Periodo", opciones: PERIODOS.map((p) => ({ valor: p.valor, texto: p.texto })) },
+              // Rango libre; Desde y Hasta forman un grupo para que no se separen al acomodarse la fila.
+              { clave: "desde", etiqueta: "Fecha", opciones: [], contenido: (
+                <div role="group" aria-label="Rango de fechas" className="flex flex-wrap gap-3">
+                  {([{ clave: "desde", etiqueta: "Desde" }, { clave: "hasta", etiqueta: "Hasta" }] as const).map(({ clave, etiqueta }) => (
+                    <label key={clave}
+                      className={`flex min-w-0 items-center gap-2 rounded-xl border bg-superficie px-3 text-sm text-texto-3 ${errores[clave] ? "border-peligro" : "border-linea"}`}>
+                      {etiqueta}
+                      <span className="sr-only"> (fecha del registro)</span>
+                      <input type="date" name={clave} defaultValue={consulta.filtros[clave]} aria-invalid={Boolean(errores[clave])}
+                        className={`min-w-0 bg-transparent py-2.5 text-sm font-medium focus:outline-2 focus:outline-marca ${errores[clave] ? "text-peligro" : "text-texto"}`} />
+                    </label>
+                  ))}
+                </div>
+              ) },
             ]} />
           {registros.length === 0 ? (
             <EstadoVacio>

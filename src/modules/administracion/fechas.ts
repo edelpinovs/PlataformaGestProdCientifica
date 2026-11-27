@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 // Fechas del panel de administración. Las fechas con hora (alta de usuarios, bitácora) se muestran
 // y se buscan en hora de Ciudad de México, como el resto del panel.
 
@@ -83,4 +85,42 @@ export function rangoPeriodo(periodo: Periodo, ahora: Date = new Date()): { desd
   const atras = periodo === "HOY" ? 0 : periodo === "7_DIAS" ? 6 : 29;
   const inicio = new Date(Date.UTC(anio, mes - 1, dia - atras));
   return { desde: inicioDelDiaMexico(inicio.getUTCFullYear(), inicio.getUTCMonth() + 1, inicio.getUTCDate()), hasta };
+}
+
+const MENSAJE_FECHA = "Indica una fecha válida.";
+const fechaIso = z.union(
+  [z.literal(""), z.iso.date({ error: MENSAJE_FECHA }).refine((f) => !f.startsWith("0000"), MENSAJE_FECHA)],
+  { error: MENSAJE_FECHA },
+);
+
+/**
+ * Valida el rango libre «Desde / Hasta» (`2026-11-24`). Una fecha inválida se descarta y queda su mensaje;
+ * si «Hasta» es anterior a «Desde» se descarta «Hasta». Sirve a los listados que lo ofrecen (issue 277).
+ */
+export function leerRangoFechas(parametros: Record<string, string | string[] | undefined>) {
+  const errores: Record<string, string> = {};
+  const valores = { desde: "", hasta: "" };
+  for (const clave of ["desde", "hasta"] as const) {
+    const resultado = fechaIso.safeParse(parametros[clave] ?? "");
+    if (resultado.success) valores[clave] = resultado.data;
+    else errores[clave] = MENSAJE_FECHA;
+  }
+  if (valores.desde && valores.hasta && valores.desde > valores.hasta) {
+    valores.hasta = "";
+    errores.hasta = "La fecha final debe ser igual o posterior a la fecha inicial.";
+  }
+  return { valores, errores };
+}
+
+/** Límites del rango «Desde / Hasta» con los días de Ciudad de México: ambos días se incluyen completos. */
+export function rangoDesdeHasta(desde: string, hasta: string): { desde?: Date; hasta?: Date } {
+  const dia = (iso: string) => iso.split("-").map(Number) as [number, number, number];
+  const inicio = desde ? inicioDelDiaMexico(...dia(desde)) : undefined;
+  let fin: Date | undefined;
+  if (hasta) {
+    const [a, m, d] = dia(hasta);
+    const siguiente = new Date(Date.UTC(a, m - 1, d + 1));
+    fin = inicioDelDiaMexico(siguiente.getUTCFullYear(), siguiente.getUTCMonth() + 1, siguiente.getUTCDate());
+  }
+  return { desde: inicio, hasta: fin };
 }
