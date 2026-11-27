@@ -220,6 +220,12 @@ describe("confirmarCarga (RF-019)", () => {
     );
   });
 
+  it("si falla el registro de la bitácora, explica en español y no sigue (revisión del #393)", async () => {
+    dobles.prisma.$transaction.mockRejectedValue(new Error("conexión perdida"));
+    expect(await confirmar()).toEqual({ error: "No se pudo guardar el cambio. Inténtalo de nuevo; no se modificó nada." });
+    expect(dobles.redirect).not.toHaveBeenCalled();
+  });
+
   it("no registra nada si otra persona confirmó la carga en el mismo instante", async () => {
     dobles.tx.cargaResultados.updateMany.mockResolvedValue({ count: 0 });
     expect((await confirmar()).error).toBe("Esta carga ya no está en revisión.");

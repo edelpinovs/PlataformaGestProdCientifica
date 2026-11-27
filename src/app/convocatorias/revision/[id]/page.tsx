@@ -7,7 +7,7 @@ import { analizarListado, hayFiltrosActivos, paginar } from "@/lib/listados/cons
 import { prisma } from "@/lib/prisma";
 import { clasificarCarga, type Clasificacion } from "@/modules/convocatorias/balance";
 import { cargarConfirmacion } from "@/modules/convocatorias/cargar-confirmacion";
-import { planearConfirmacion, VIGENCIA_SNII_CONFIRMADA } from "@/modules/convocatorias/confirmacion";
+import { esperanVigencia, planearConfirmacion, VIGENCIA_SNII_CONFIRMADA } from "@/modules/convocatorias/confirmacion";
 import { nombreDeRuta } from "@/modules/convocatorias/carga";
 import {
   COLUMNAS_REVISION,
@@ -120,6 +120,7 @@ export default async function RevisionPage({ params, searchParams }: PageProps<"
     : [];
   const nombreConvocatoria = `${convocatoria.programa} ${convocatoria.anio}`;
   const plan = enRevision ? planearConfirmacion(await cargarConfirmacion(prisma, carga.id, convocatoria)) : null;
+  const sinVigencia = plan ? esperanVigencia(plan) : 0;
   const creados = plan ? plan.snii.length + plan.prodep.length : 0;
   const resumenConfirmacion = `Se registrarán ${cifra.format(creados)} ${creados === 1 ? "reconocimiento" : "reconocimientos"} ${programa} con resultado Aprobado y se guardará el resultado oficial de los participantes.`;
 
@@ -140,6 +141,13 @@ export default async function RevisionPage({ params, searchParams }: PageProps<"
           </article>
         ))}
       </section>
+
+      {/* Revisión del PR 390: el balance cuenta como aprobados a quienes Confirmar no registrará todavía. */}
+      {sinVigencia > 0 && (
+        <Aviso tipo="aviso">
+          {sinVigencia === 1 ? "1 persona del balance no se registrará" : `${cifra.format(sinVigencia)} personas del balance no se registrarán`} en SNII al confirmar: el listado no trae su vigencia y la regla sigue pendiente con la Coordinación (D-292). Aparecen al final, en «Confirmar la carga», para registrarlas a mano.
+        </Aviso>
+      )}
 
       <Panel titulo="Detalle de la carga"
         descripcion={`${cifra.format(balance.DUDOSO)} ${balance.DUDOSO === 1 ? "dudoso" : "dudosos"} y ${cifra.format(balance.SIN_COINCIDENCIA)} sin coincidencia no cuentan en el balance${enRevision ? "; asígnales su profesor para que cuenten" : ""}.`}>

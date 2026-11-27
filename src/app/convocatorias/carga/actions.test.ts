@@ -20,6 +20,7 @@ const dobles = vi.hoisted(() => ({
     convocatoria: { upsert: vi.fn() },
     job: { create: vi.fn(), findFirst: vi.fn(), updateMany: vi.fn(), count: vi.fn(), deleteMany: vi.fn() },
     auditoria: { create: vi.fn() },
+    renglonResultado: { count: vi.fn() },
     $transaction: vi.fn(),
   },
 }));
@@ -142,6 +143,7 @@ describe("eliminarCarga deja constancia en la bitácora (#380)", () => {
     });
     dobles.prisma.job.count.mockResolvedValue(0);
     dobles.prisma.cargaResultados.deleteMany.mockResolvedValue({ count: 1 });
+    dobles.prisma.renglonResultado.count.mockResolvedValue(12);
     dobles.prisma.$transaction.mockImplementation(async (fn) => fn(dobles.prisma));
   });
 
@@ -150,7 +152,7 @@ describe("eliminarCarga deja constancia en la bitácora (#380)", () => {
     expect(dobles.prisma.auditoria.create).toHaveBeenCalledWith({
       data: {
         actorId: actor.id, actorCorreo: actor.correo, modulo: "convocatorias", accion: "registro.eliminado",
-        entidad: "CargaResultados", entidadId: "9", resumen: "Eliminó la carga 9 de SNII 2026.",
+        entidad: "CargaResultados", entidadId: "9", resumen: "Eliminó la carga 9 de SNII 2026 con 12 renglones.",
       },
     });
     expect(dobles.redirect).toHaveBeenCalled();
@@ -167,5 +169,17 @@ describe("eliminarCarga deja constancia en la bitácora (#380)", () => {
     dobles.prisma.cargaResultados.deleteMany.mockResolvedValue({ count: 0 });
     await eliminarCarga({}, formulario("9"));
     expect(dobles.prisma.auditoria.create).not.toHaveBeenCalled();
+  });
+
+  it("si falla el registro de la bitácora, explica en español y no sigue (revisión del #393)", async () => {
+    dobles.prisma.$transaction.mockRejectedValue(new Error("conexión perdida"));
+    expect(await eliminarCarga({}, formulario("9"))).toEqual({ error: "No se pudo guardar el cambio. Inténtalo de nuevo; no se modificó nada." });
+    expect(dobles.redirect).not.toHaveBeenCalled();
+  });
+
+  it("el resumen dice «1 renglón» en singular", async () => {
+    dobles.prisma.renglonResultado.count.mockResolvedValue(1);
+    await eliminarCarga({}, formulario("9"));
+    expect(dobles.prisma.auditoria.create.mock.calls[0][0].data.resumen).toBe("Eliminó la carga 9 de SNII 2026 con 1 renglón.");
   });
 });

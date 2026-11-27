@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { MENSAJE_PRODEP_CONTRATACION_PENDIENTE, MENSAJE_PRODEP_REQUIERE_TIEMPO_COMPLETO } from "@/modules/reconocimientos/prodep";
-import { planearConfirmacion, VIGENCIA_SNII_CONFIRMADA, vigenciaSnii, type EntradaConfirmacion, type RenglonConfirmacion } from "./confirmacion";
+import { esperanVigencia, MOTIVO_VIGENCIA_PENDIENTE, planearConfirmacion, VIGENCIA_SNII_CONFIRMADA, vigenciaSnii, type EntradaConfirmacion, type RenglonConfirmacion } from "./confirmacion";
 
 // RF-019: qué crea en M3 la confirmación de una carga. Personas y fechas inventadas.
 const renglon = (id: number, datos: Partial<RenglonConfirmacion> = {}): RenglonConfirmacion => ({
@@ -35,6 +35,9 @@ describe("planearConfirmacion: SNII (RF-019)", () => {
     }));
     expect(plan.snii.map((s) => s.renglonId)).toEqual([2]);
     expect(motivos(plan)).toEqual(["El listado no trae la vigencia y falta confirmar la regla de la Coordinación (D-292)."]);
+    expect(MOTIVO_VIGENCIA_PENDIENTE).toBe(motivos(plan)[0]);
+    // La pantalla los cuenta para avisar junto al balance (comentario 1 de la revisión del #390).
+    expect(esperanVigencia(plan)).toBe(1);
   });
 
   it("sin periodo anterior es nuevo ingreso; con uno, renovación", () => {

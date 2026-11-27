@@ -388,7 +388,7 @@ describe("interpretarListado: hallazgos de la revisión del #368", () => {
     expect(renglones[1]).toMatchObject({ codigo: null, vigenciaInicio: fecha("2024-08-01"), vigenciaFin: fecha("2027-07-31") });
   });
 
-  it("no toma por persona una fila de totales (hallazgo 1)", () => {
+  it("no toma por persona una fila de totales y lo avisa (hallazgo 1 del #368 y comentario 4 del #390)", () => {
     const { renglones, resumen } = leer([
       ["APELLIDOS", "NOMBRE", "NIVEL SNII 2026", "Resultado 2026", "CÓDIGO UdeG"],
       ["PRUEBA FICTICIA", "ANA", "C", "I", "9990001"],
@@ -396,7 +396,11 @@ describe("interpretarListado: hallazgos de la revisión del #368", () => {
       ["Total de candidatos", "", "", "33", ""],
     ]);
     expect(renglones.map((r) => r.apellidoPaterno)).toEqual(["PRUEBA FICTICIA"]);
-    expect(resumen.totalAvisos).toBe(0);
+    // Se descarta con aviso: si alguna vez es un apellido real, la persona lo ve en el resumen.
+    expect(resumen.avisos).toEqual([
+      { renglon: 3, mensaje: "Renglón 3: no se leyó porque parece una fila de totales («TOTAL SNII»)." },
+      { renglon: 4, mensaje: "Renglón 4: no se leyó porque parece una fila de totales («Total de candidatos»)." },
+    ]);
   });
 
   it("el resultado no reemplaza un «NIVEL OTORGADO» explícito (hallazgo 2)", () => {

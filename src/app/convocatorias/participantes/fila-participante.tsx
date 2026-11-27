@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { Aviso, claseAccionFila, claseBotonPeligro, claseBotonSecundario, claseTabla, EtiquetaEstado } from "@/components/ui";
+import { Aviso, claseAccionIcono, claseBotonPeligro, claseBotonSecundario, claseTabla, EtiquetaEstado, Icono, ICONOS } from "@/components/ui";
 import { eliminarParticipante, type EstadoFila } from "./actions";
 
 export type Participante = {
@@ -35,9 +35,9 @@ export function FilaParticipante({ p }: { p: Participante }) {
       </td>
       <td className={`${claseTabla.celda} hidden text-xs text-texto-3 sm:table-cell`}>{p.origen}</td>
       <td className={`${claseTabla.celda} pr-0 text-right whitespace-nowrap`}>
-        <button type="button" onClick={() => setConfirmando(true)} className={claseAccionFila(true)}
-          aria-label={`Eliminar a ${p.profesor} de ${p.convocatoria}`}>
-          Eliminar
+        <button type="button" onClick={() => setConfirmando(true)} className={claseAccionIcono(true)}
+          aria-label={`Eliminar a ${p.profesor} de ${p.convocatoria}`} title="Eliminar">
+          <Icono d={ICONOS.eliminar} />
         </button>
       </td>
     </tr>
