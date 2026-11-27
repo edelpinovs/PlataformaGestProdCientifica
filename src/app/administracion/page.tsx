@@ -102,7 +102,7 @@ export default async function AdministracionPage() {
       <Panel titulo="Reportes" descripcion="Se descargan en Excel o PDF desde cada reporte. Los listados de este panel también se descargan desde su pantalla.">
         <ul className="grid gap-3 text-sm sm:grid-cols-2">
           {[
-            { href: "/reportes", texto: "Vigencias y semáforo" },
+            { href: "/reportes", texto: "Vigencias y estatus" },
             { href: "/reportes/matriz", texto: "Matriz de acreditación" },
             { href: "/reportes/convocatoria", texto: "Convocatoria anual" },
             { href: "/reportes/completo", texto: "Reporte completo" },

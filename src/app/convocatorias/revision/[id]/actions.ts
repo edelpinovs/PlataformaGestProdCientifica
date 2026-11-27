@@ -7,7 +7,7 @@ import { requireModulo } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { revalidarProfesorSeleccionado } from "@/lib/selectores/profesor";
 import { eventoAuditoria, resumenCargaConfirmada } from "@/modules/administracion/auditoria";
-import { NO_SE_GUARDO } from "@/modules/convocatorias/carga";
+import { NO_SE_GUARDO } from "@/modules/convocatorias/mensajes";
 import { cargarConfirmacion } from "@/modules/convocatorias/cargar-confirmacion";
 import { planearConfirmacion } from "@/modules/convocatorias/confirmacion";
 import { recalcularConvocatoria } from "@/modules/convocatorias/recalcular";

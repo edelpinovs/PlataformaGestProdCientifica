@@ -67,6 +67,7 @@ describe("exportación del reporte armado (RF-030)", () => {
       programa: "SNII",
       anio: 2026,
       departamento: "Computación",
+      departamentoId: 1,
       genero: "M",
       resultado: "APROBADO",
       tipo: "NUEVO_INGRESO",

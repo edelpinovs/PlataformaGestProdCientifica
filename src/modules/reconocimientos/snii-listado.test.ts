@@ -74,3 +74,25 @@ describe("listado SNII: estatus", () => {
   });
 });
 
+// Revisión del PR 433: la búsqueda por nombre completo («Ana Prueba») no encontraba nada.
+describe("listado SNII: nombre completo", () => {
+  const contiene = (texto: string) => ({ contains: texto, mode: "insensitive" });
+  const campos = (texto: string) => [
+    { profesor: { is: { nombres: contiene(texto) } } },
+    { profesor: { is: { apellidos: contiene(texto) } } },
+    { profesor: { is: { codigo: contiene(texto) } } },
+    { profesor: { is: { cvu: contiene(texto) } } },
+  ];
+
+  it("con varias palabras, cada una debe aparecer en algún dato del profesor", () => {
+    expect(filtroSnii(consulta({ q: "ana  prueba" }).consulta).OR).toContainEqual({
+      AND: [{ OR: campos("ana") }, { OR: campos("prueba") }],
+    });
+  });
+
+  it("con una sola palabra no agrega la condición por palabras", () => {
+    const or = filtroSnii(consulta({ q: "ana" }).consulta).OR ?? [];
+    expect(or.some((c) => "AND" in c)).toBe(false);
+  });
+});
+

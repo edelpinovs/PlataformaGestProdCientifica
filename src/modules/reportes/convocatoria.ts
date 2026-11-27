@@ -64,6 +64,7 @@ export type DictamenConvocatoria = {
   programa: ProgramaConvocatoria;
   anio: number;
   departamento: string | null;
+  departamentoId?: number | null;
   genero: Genero;
   resultado: string;
   tipo: string;
@@ -76,6 +77,7 @@ export type ParticipacionReporte = {
   programa: ProgramaConvocatoria;
   anio: number;
   departamento: string | null;
+  departamentoId?: number | null;
   genero: Genero;
   resultado: string | null;
 };
@@ -96,6 +98,8 @@ export type EstadoConvocatoria = {
   consulta: ConsultaListado;
   columnas: ColumnaConvocatoria[];
   anio: number | null;
+  /** Null muestra todos los departamentos. */
+  departamentoId: number | null;
   errores: ErroresListado;
 };
 
@@ -134,17 +138,22 @@ export function hechosConvocatoria(
 ) {
   const entran = dictamenes.filter((fila) => programas.includes(fila.programa) && (anio === null || fila.anio === anio));
   const conDictamen = new Set(entran.map((fila) => clavePersona(fila.profesorId, fila.programa, fila.anio)));
-  const hechos: { departamento: string | null; genero: Genero; clase: ClaseConvocatoria }[] = [];
+  const hechos: { departamento: string | null; departamentoId?: number | null; genero: Genero; clase: ClaseConvocatoria }[] = [];
 
   for (const dictamen of entran) {
     const clase = clasificarDictamen(dictamen, historial);
-    if (clase) hechos.push({ departamento: dictamen.departamento, genero: dictamen.genero, clase });
+    if (clase) hechos.push({ departamento: dictamen.departamento, departamentoId: dictamen.departamentoId, genero: dictamen.genero, clase });
   }
   for (const participacion of participaciones) {
     if (participacion.resultado !== "NO_APROBADO") continue;
     if (!programas.includes(participacion.programa) || (anio !== null && participacion.anio !== anio)) continue;
     if (conDictamen.has(clavePersona(participacion.profesorId, participacion.programa, participacion.anio))) continue;
-    hechos.push({ departamento: participacion.departamento, genero: participacion.genero, clase: "no-aprobado" });
+    hechos.push({
+      departamento: participacion.departamento,
+      departamentoId: participacion.departamentoId,
+      genero: participacion.genero,
+      clase: "no-aprobado",
+    });
   }
   return hechos;
 }
@@ -208,13 +217,33 @@ function leerAnio(crudo: string | string[] | undefined) {
   return { anio: resultado.data };
 }
 
-export function analizarConvocatoria(parametros: ParametrosListado): EstadoConvocatoria {
+export function analizarConvocatoria(
+  parametros: ParametrosListado,
+  catalogo: { departamentos: readonly number[] } = { departamentos: [] },
+): EstadoConvocatoria {
   const { consulta, errores } = analizarListado(LISTADO_CONVOCATORIA, parametros);
   const columnas = leerColumnas(parametros.columnas, esArmado(parametros.armado) && parametros.columnas === undefined);
   const anio = leerAnio(parametros.anio);
+  const departamento = leerDepartamento(parametros.departamento, catalogo.departamentos);
   if (columnas.error) errores.columnas = columnas.error;
   if (anio.error) errores.anio = anio.error;
-  return { consulta, columnas: columnas.valores, anio: anio.anio, errores };
+  if (departamento.error) errores.departamento = departamento.error;
+  return { consulta, columnas: columnas.valores, anio: anio.anio, departamentoId: departamento.id, errores };
+}
+
+function leerDepartamento(crudo: string | string[] | undefined, permitidos: readonly number[]) {
+  if (crudo === undefined || crudo === "") return { id: null };
+  const resultado = z.string({ error: "Elige un solo departamento." })
+    .regex(/^\d+$/, "Elige un departamento que exista.")
+    .transform(Number)
+    .safeParse(crudo);
+  if (!resultado.success || !permitidos.includes(resultado.data)) {
+    return {
+      id: null,
+      error: resultado.success ? "Elige un departamento que exista." : resultado.error.issues[0]?.message ?? "Elige un departamento que exista.",
+    };
+  }
+  return { id: resultado.data };
 }
 
 function programasElegidos(estado: EstadoConvocatoria): ProgramaConvocatoria[] {
@@ -231,7 +260,8 @@ export function consultarConvocatoria(
 ) {
   if (estado.columnas.length === 0) return { filas: [] as FilaConvocatoria[], paginacion: paginar(0, estado.consulta) };
   const genero = estado.consulta.filtros.genero;
-  const hechos = hechosConvocatoria(dictamenes, participaciones, historial, programasElegidos(estado), estado.anio);
+  const hechos = hechosConvocatoria(dictamenes, participaciones, historial, programasElegidos(estado), estado.anio)
+    .filter((hecho) => estado.departamentoId === null || hecho.departamentoId === estado.departamentoId);
   const texto = estado.consulta.q.trim().toLocaleLowerCase("es-MX");
   const filas = agruparConvocatoria(hechos).filter((fila) => {
     if (genero && fila.genero !== genero) return false;
@@ -269,6 +299,7 @@ export function enlaceConvocatoria(
   if (estado.columnas.length === 0) parametros.set("armado", "1");
   else if (estado.columnas.length !== COLUMNAS_CONVOCATORIA.length) parametros.set("columnas", estado.columnas.join(","));
   if (estado.anio !== null) parametros.set("anio", String(estado.anio));
+  if (estado.departamentoId !== null) parametros.set("departamento", String(estado.departamentoId));
   if (estado.consulta.filtros.programa) parametros.set("programa", estado.consulta.filtros.programa);
   if (estado.consulta.filtros.genero) parametros.set("genero", estado.consulta.filtros.genero);
   if (estado.consulta.q) parametros.set("q", estado.consulta.q);
