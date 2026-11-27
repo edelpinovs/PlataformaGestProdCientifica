@@ -17,6 +17,7 @@ function snii(parcial: Partial<DictamenConvocatoria> = {}): DictamenConvocatoria
     programa: "SNII",
     anio: 2026,
     departamento: "Computación",
+    departamentoId: 1,
     genero: "F",
     resultado: "APROBADO",
     tipo: "NUEVO_INGRESO",
@@ -58,9 +59,9 @@ describe("clasificación de la convocatoria anual (RF-028)", () => {
       snii({ id: 3, profesorId: 3, genero: "M", departamento: "Matemáticas", resultado: "NO_APROBADO" }),
     ];
     const participaciones: ParticipacionReporte[] = [
-      { profesorId: 3, programa: "SNII", anio: 2026, departamento: "Matemáticas", genero: "M", resultado: "NO_APROBADO" },
-      { profesorId: 4, programa: "SNII", anio: 2026, departamento: null, genero: "F", resultado: "NO_APROBADO" },
-      { profesorId: 5, programa: "SNII", anio: 2026, departamento: "Computación", genero: "M", resultado: "APROBADO" },
+      { profesorId: 3, programa: "SNII", anio: 2026, departamento: "Matemáticas", departamentoId: 2, genero: "M", resultado: "NO_APROBADO" },
+      { profesorId: 4, programa: "SNII", anio: 2026, departamento: null, departamentoId: null, genero: "F", resultado: "NO_APROBADO" },
+      { profesorId: 5, programa: "SNII", anio: 2026, departamento: "Computación", departamentoId: 1, genero: "M", resultado: "APROBADO" },
     ];
     const { filas } = consultarConvocatoria(dictamenes, participaciones, [], analizarConvocatoria({}));
     expect(filas).toEqual([
@@ -104,6 +105,22 @@ describe("clasificación de la convocatoria anual (RF-028)", () => {
     expect(analizarConvocatoria({ anio: "siglo" }).errores.anio).toBe("El año debe tener cuatro dígitos, entre 1990 y 2100.");
     expect(analizarConvocatoria({ anio: ["2025", "2026"] }).errores.anio).toBe("Elige un solo año.");
     expect(analizarConvocatoria({ programa: "CA" }).errores.programa).toBe("Uno de los filtros tiene un valor que no existe.");
+  });
+
+  it("filtra por departamento junto con la búsqueda y, al cambiarlo, vuelve a la página 1", () => {
+    const catalogo = { departamentos: [1, 2] };
+    const dictamenes = [
+      snii({ id: 1, profesorId: 1, departamentoId: 1, departamento: "Computación" }),
+      snii({ id: 2, profesorId: 2, departamentoId: 2, departamento: "Matemáticas" }),
+    ];
+    const estado = analizarConvocatoria({ departamento: "2", q: "matemáticas", genero: "F" }, catalogo);
+    expect(estado.consulta.pagina).toBe(1);
+    expect(estado.departamentoId).toBe(2);
+    expect(consultarConvocatoria(dictamenes, [], [], estado, true).filas.map((fila) => fila.departamento)).toEqual(["Matemáticas"]);
+    expect(analizarConvocatoria({ departamento: "9" }, catalogo).errores.departamento).toBe("Elige un departamento que exista.");
+    expect(analizarConvocatoria({ departamento: ["1", "2"] }, catalogo).errores.departamento).toBe("Elige un solo departamento.");
+    expect(enlaceConvocatoria("/reportes/convocatoria", analizarConvocatoria({ departamento: "1", pagina: "3" }, catalogo))).toContain("departamento=1");
+    expect(enlaceConvocatoria("/reportes/convocatoria", analizarConvocatoria({ departamento: "1" }, catalogo))).not.toContain("pagina=");
   });
 
   it("conserva año, programa y género al pasar de página", () => {

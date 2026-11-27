@@ -13,9 +13,13 @@ const persona = {
   select: {
     nombres: true,
     apellidos: true,
-    departamento: { select: { nombre: true } },
+    departamento: { select: { id: true, nombre: true } },
   },
 } as const;
+
+export async function cargarDepartamentos() {
+  return prisma.departamento.findMany({ orderBy: { nombre: "asc" }, select: { id: true, nombre: true } });
+}
 
 // Une SNII, PRODEP y cuerpos en filas de reporte. El corte de 10 ocurre después,
 // en consultarVigencias, porque el semáforo y las columnas las elige quien arma el reporte.
@@ -44,7 +48,7 @@ export async function cargarVigencias(tipos: TipoDistincion[]): Promise<FilaVige
             nivel: true,
             anioRegistro: true,
             anioVencimiento: true,
-            departamento: { select: { nombre: true } },
+            departamento: { select: { id: true, nombre: true } },
           },
         })
       : [],
@@ -60,6 +64,7 @@ export async function cargarVigencias(tipos: TipoDistincion[]): Promise<FilaVige
       nombres: fila.profesor.nombres,
       apellidos: fila.profesor.apellidos,
       departamento: fila.profesor.departamento?.nombre ?? null,
+      departamentoId: fila.profesor.departamento?.id ?? null,
     }, hoy)),
     ...prodep.filter((fila) => cuentaParaSemaforo(fila.resultado)).map((fila) => filaProdep({
       id: fila.id,
@@ -70,6 +75,7 @@ export async function cargarVigencias(tipos: TipoDistincion[]): Promise<FilaVige
       nombres: fila.profesor.nombres,
       apellidos: fila.profesor.apellidos,
       departamento: fila.profesor.departamento?.nombre ?? null,
+      departamentoId: fila.profesor.departamento?.id ?? null,
     }, hoy)),
     ...cuerpos.map((fila) => filaCuerpo({
       id: fila.id,
@@ -79,6 +85,7 @@ export async function cargarVigencias(tipos: TipoDistincion[]): Promise<FilaVige
       anioRegistro: fila.anioRegistro,
       anioVencimiento: fila.anioVencimiento,
       departamento: fila.departamento.nombre,
+      departamentoId: fila.departamento.id,
     }, hoy)),
   ];
 }
