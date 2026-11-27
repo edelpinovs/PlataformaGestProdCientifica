@@ -58,3 +58,19 @@ describe("listado SNII: búsqueda y filtros", () => {
     expect(invalido.errores.nivel).toBe("Uno de los filtros tiene un valor que no existe.");
   });
 });
+
+// Issue 248: filtro por estatus para ver los próximos a vencer.
+describe("listado SNII: estatus", () => {
+  const hoy = new Date("2026-11-27T00:00:00.000Z");
+
+  it("filtra por estatus con la regla del reporte, sin pisar el filtro de resultado", () => {
+    const where = filtroSnii(consulta({ estatus: "AMARILLO", resultado: "APROBADO" }).consulta, hoy);
+    expect(where.resultado).toBe("APROBADO");
+    expect(where.AND).toEqual([{ fin: { gte: hoy, lte: expect.any(Date) }, resultado: { in: ["APROBADO", "EN_RECONSIDERACION"] } }]);
+  });
+
+  it("ordenar por estatus es ordenar por la fecha de fin", () => {
+    expect(ordenSnii(consulta({ orden: "estatus", dir: "asc" }).consulta)).toEqual([{ fin: "asc" }, { id: "asc" }]);
+  });
+});
+

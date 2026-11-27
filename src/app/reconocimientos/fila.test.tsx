@@ -45,3 +45,19 @@ describe("acciones de fila de Reconocimientos con icono (issue 389)", () => {
     expect(html).toContain('title="Eliminar"');
   });
 });
+
+describe("estatus de vigencia en las filas (issue 248)", () => {
+  beforeEach(() => vi.stubGlobal("React", React));
+  const fila = (estatus: "VERDE" | "AMARILLO" | "ROJO" | null) => renderToStaticMarkup(
+    <table><tbody><FilaSnii profesores={[profesor]} estatus={estatus} reconocimiento={{
+      id: 1, nivel: "NIVEL_1", tipoParticipacion: "NUEVO_INGRESO", resultado: "APROBADO", ...fechas, convocatoriaId: null, profesor,
+    }} /></tbody></table>,
+  );
+
+  it("muestra el estatus con su etiqueta, o «Sin vigencia» si no tiene", () => {
+    expect(fila("AMARILLO")).toContain("Por vencer");
+    expect(fila("ROJO")).toContain("Vencido");
+    expect(fila(null)).toContain("Sin vigencia");
+  });
+});
+

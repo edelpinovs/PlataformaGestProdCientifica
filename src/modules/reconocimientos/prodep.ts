@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { condicionTexto, ordenarPor, type ConsultaListado, type DefinicionListado } from "@/lib/listados/consulta";
 import type { Prisma } from "@/generated/prisma/client";
+import { condicionEstatus, ESTATUS } from "./estatus";
 import { hayTraslape, type PeriodoVigencia } from "./vigencia";
 
 export const TIPOS_SOLICITUD_PRODEP = ["PRIMER_RECONOCIMIENTO", "RENOVACION"] as const;
@@ -215,11 +216,13 @@ export function tieneProdepActivo(reconocimientos: readonly ResumenVigenciaProde
 }
 
 export const LISTADO_PRODEP: DefinicionListado = {
-  columnas: ["profesor", "tipoSolicitud", "resultado", "inicio", "fin"],
+  columnas: ["profesor", "tipoSolicitud", "resultado", "inicio", "fin", "estatus"],
   ordenInicial: { columna: "profesor", dir: "asc" },
   filtros: {
     tipoSolicitud: TIPOS_SOLICITUD_PRODEP,
     resultado: RESULTADOS_PRODEP,
+    // Issue 248: deja ver los próximos a vencer.
+    estatus: ESTATUS,
   },
 };
 
@@ -229,6 +232,7 @@ export const COLUMNAS_PRODEP = [
   { clave: "resultado", texto: "Resultado" },
   { clave: "inicio", texto: "Inicio" },
   { clave: "fin", texto: "Fin" },
+  { clave: "estatus", texto: "Estatus" },
 ];
 
 export const ETIQUETAS_TIPO_SOLICITUD_PRODEP: Record<(typeof TIPOS_SOLICITUD_PRODEP)[number], string> = {
@@ -267,7 +271,8 @@ export function rangoFechaBusqueda(texto: string): { desde: Date; hasta: Date } 
   return { desde, hasta };
 }
 
-export function filtroProdep(consulta: ConsultaListado): Prisma.ReconocimientoProdepWhereInput {
+/** `hoy` es el día de la consulta (00:00 UTC): con él se calcula el estatus que se filtra. */
+export function filtroProdep(consulta: ConsultaListado, hoy: Date = new Date()): Prisma.ReconocimientoProdepWhereInput {
   const texto = condicionTexto(consulta.q, (contiene) => [
     { profesor: { is: { nombres: contiene } } },
     { profesor: { is: { apellidos: contiene } } },
@@ -298,11 +303,14 @@ export function filtroProdep(consulta: ConsultaListado): Prisma.ReconocimientoPr
 
   const tipoSolicitud = TIPOS_SOLICITUD_PRODEP.find((tipo) => tipo === consulta.filtros.tipoSolicitud);
   const resultado = RESULTADOS_PRODEP.find((valor) => valor === consulta.filtros.resultado);
+  const estatus = ESTATUS.find((valor) => valor === consulta.filtros.estatus);
 
   return {
     ...(criterios.length ? { OR: criterios } : {}),
     ...(tipoSolicitud ? { tipoSolicitud } : {}),
     ...(resultado ? { resultado } : {}),
+    // Con AND, para no pisar el filtro de resultado.
+    ...(estatus ? { AND: [condicionEstatus(estatus, hoy)] } : {}),
   };
 }
 
@@ -313,5 +321,7 @@ export function ordenProdep(consulta: ConsultaListado) {
     resultado: (dir) => ({ resultado: dir }),
     inicio: (dir) => ({ inicio: dir }),
     fin: (dir) => ({ fin: dir }),
+    // El estatus sale de la fecha de fin: ordenar por él es ordenar por esa fecha.
+    estatus: (dir) => ({ fin: dir }),
   });
 }

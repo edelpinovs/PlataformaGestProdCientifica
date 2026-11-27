@@ -109,6 +109,13 @@ describe("tieneProdepActivo", () => {
 });
 
 describe("listado PRODEP", () => {
+  it("filtra por estatus para ver los próximos a vencer (issue 248) y ordena por él con la fecha de fin", () => {
+    const hoy = new Date("2026-11-27T00:00:00.000Z");
+    const { consulta } = analizarListado(LISTADO_PRODEP, { estatus: "ROJO" });
+    expect(filtroProdep(consulta, hoy).AND).toEqual([{ fin: { lt: hoy }, resultado: { in: ["APROBADO", "EN_RECONSIDERACION"] } }]);
+    expect(ordenProdep(analizarListado(LISTADO_PRODEP, { orden: "estatus", dir: "desc" }).consulta)).toEqual([{ fin: "desc" }, { id: "desc" }]);
+  });
+
   it("solo permite ordenar por columnas declaradas y traduce el orden a campos Prisma", () => {
     const { consulta } = analizarListado(LISTADO_PRODEP, { orden: "fin", dir: "desc" });
     expect(ordenProdep(consulta)).toEqual([{ fin: "desc" }, { id: "desc" }]);

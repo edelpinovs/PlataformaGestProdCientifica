@@ -4,7 +4,9 @@ import { Aviso, claseTabla, EstadoVacio, Panel } from "@/components/ui";
 import { requireModulo } from "@/lib/auth/session";
 import { analizarListado, hayFiltrosActivos, paginar } from "@/lib/listados/consulta";
 import { prisma } from "@/lib/prisma";
+import { ESTATUS, ETIQUETAS_ESTATUS, estatusReconocimiento } from "@/modules/reconocimientos/estatus";
 import { NIVELES_SNII, TIPOS_PARTICIPACION_SNII } from "@/modules/reconocimientos/snii";
+import { inicioDelDiaUtc } from "@/modules/reportes/vigencias";
 import {
   COLUMNAS_SNII,
   ETIQUETAS_NIVEL_SNII,
@@ -27,7 +29,9 @@ export default async function SniiPage({ searchParams }: PageProps<"/reconocimie
   const perfil = await requireModulo("reconocimientos");
   const parametros = await searchParams;
   const { consulta, errores } = analizarListado(LISTADO_SNII, parametros);
-  const where = filtroSnii(consulta);
+  // El estatus se calcula con el día de hoy, igual en el filtro y en cada fila (issue 248).
+  const hoy = inicioDelDiaUtc(new Date());
+  const where = filtroSnii(consulta, hoy);
   const total = await prisma.reconocimientoSnii.count({ where });
   const paginacion = paginar(total, consulta);
   const [profesores, reconocimientos] = await Promise.all([
@@ -69,6 +73,7 @@ export default async function SniiPage({ searchParams }: PageProps<"/reconocimie
                 opciones: TIPOS_PARTICIPACION_SNII.map((valor) => ({ valor, texto: ETIQUETAS_PARTICIPACION_SNII[valor] })),
               },
               { clave: "resultado", etiqueta: "Resultado", opciones: RESULTADOS_SNII.map((valor) => ({ valor, texto: ETIQUETAS_RESULTADO_SNII[valor] })) },
+              { clave: "estatus", etiqueta: "Estatus", opciones: ESTATUS.map((valor) => ({ valor, texto: ETIQUETAS_ESTATUS[valor] })) },
             ]}
           />
           {reconocimientos.length === 0 ? (
@@ -91,7 +96,8 @@ export default async function SniiPage({ searchParams }: PageProps<"/reconocimie
               </thead>
               <tbody>
                 {reconocimientos.map((reconocimiento) => (
-                  <FilaSnii key={reconocimiento.id} reconocimiento={reconocimiento} profesores={profesores} />
+                  <FilaSnii key={reconocimiento.id} reconocimiento={reconocimiento} profesores={profesores}
+                    estatus={estatusReconocimiento(reconocimiento.resultado, reconocimiento.fin, hoy)} />
                 ))}
               </tbody>
             </table>

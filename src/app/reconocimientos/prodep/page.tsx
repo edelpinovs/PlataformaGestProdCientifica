@@ -14,6 +14,8 @@ import {
   RESULTADOS_PRODEP,
   TIPOS_SOLICITUD_PRODEP,
 } from "@/modules/reconocimientos/prodep";
+import { ESTATUS, ETIQUETAS_ESTATUS, estatusReconocimiento } from "@/modules/reconocimientos/estatus";
+import { inicioDelDiaUtc } from "@/modules/reportes/vigencias";
 import { FilaProdep } from "./fila";
 import { FormularioProdep } from "./formulario";
 import type { ProfesorProdep } from "./formulario-campos";
@@ -24,7 +26,9 @@ export default async function ProdepPage({ searchParams }: PageProps<"/reconocim
   const perfil = await requireModulo("reconocimientos");
   const parametros = await searchParams;
   const { consulta, errores } = analizarListado(LISTADO_PRODEP, parametros);
-  const where = filtroProdep(consulta);
+  // El estatus se calcula con el día de hoy, igual en el filtro y en cada fila (issue 248).
+  const hoy = inicioDelDiaUtc(new Date());
+  const where = filtroProdep(consulta, hoy);
   const total = await prisma.reconocimientoProdep.count({ where });
   const paginacion = paginar(total, consulta);
   const [profesores, reconocimientos] = await Promise.all([
@@ -86,6 +90,7 @@ export default async function ProdepPage({ searchParams }: PageProps<"/reconocim
                 etiqueta: "Resultado",
                 opciones: RESULTADOS_PRODEP.map((valor) => ({ valor, texto: ETIQUETAS_RESULTADO_PRODEP[valor] })),
               },
+              { clave: "estatus", etiqueta: "Estatus", opciones: ESTATUS.map((valor) => ({ valor, texto: ETIQUETAS_ESTATUS[valor] })) },
             ]}
           />
           {reconocimientos.length === 0 ? (
@@ -111,7 +116,8 @@ export default async function ProdepPage({ searchParams }: PageProps<"/reconocim
               </thead>
               <tbody>
                 {reconocimientos.map((reconocimiento) => (
-                  <FilaProdep key={reconocimiento.id} reconocimiento={reconocimiento} profesores={opcionesProfesores} />
+                  <FilaProdep key={reconocimiento.id} reconocimiento={reconocimiento} profesores={opcionesProfesores}
+                    estatus={estatusReconocimiento(reconocimiento.resultado, reconocimiento.fin, hoy)} />
                 ))}
               </tbody>
             </table>

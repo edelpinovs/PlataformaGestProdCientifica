@@ -1,5 +1,6 @@
 import type { Prisma } from "@/generated/prisma/client";
 import { condicionTexto, ordenarPor, type ConsultaListado, type DefinicionListado } from "@/lib/listados/consulta";
+import { condicionEstatus, ESTATUS } from "./estatus";
 import { rangoFechaBusqueda } from "./prodep";
 import { NIVELES_SNII, TIPOS_PARTICIPACION_SNII } from "./snii";
 
@@ -19,10 +20,11 @@ export const ETIQUETAS_RESULTADO_SNII: Record<(typeof RESULTADOS_SNII)[number], 
 };
 
 export const LISTADO_SNII: DefinicionListado = {
-  columnas: ["profesor", "nivel", "tipoParticipacion", "resultado", "inicio", "fin"],
+  columnas: ["profesor", "nivel", "tipoParticipacion", "resultado", "inicio", "fin", "estatus"],
   // Lo que vence más tarde primero, como mostraba la pantalla antes de paginarse.
   ordenInicial: { columna: "fin", dir: "desc" },
-  filtros: { nivel: NIVELES_SNII, tipoParticipacion: TIPOS_PARTICIPACION_SNII, resultado: RESULTADOS_SNII },
+  // «estatus» (issue 248) deja ver los próximos a vencer.
+  filtros: { nivel: NIVELES_SNII, tipoParticipacion: TIPOS_PARTICIPACION_SNII, resultado: RESULTADOS_SNII, estatus: ESTATUS },
 };
 
 export const COLUMNAS_SNII = [
@@ -32,6 +34,7 @@ export const COLUMNAS_SNII = [
   { clave: "resultado", texto: "Resultado" },
   { clave: "inicio", texto: "Inicio" },
   { clave: "fin", texto: "Fin" },
+  { clave: "estatus", texto: "Estatus" },
 ];
 
 /** Valores de una lista cuya clave o etiqueta visible contiene el texto buscado. */
@@ -41,7 +44,8 @@ function coinciden<T extends string>(valores: readonly T[], etiquetas: Record<T,
     || etiquetas[valor].toLocaleLowerCase("es-MX").includes(busqueda));
 }
 
-export function filtroSnii(consulta: ConsultaListado): Prisma.ReconocimientoSniiWhereInput {
+/** `hoy` es el día de la consulta (00:00 UTC): con él se calcula el estatus que se filtra. */
+export function filtroSnii(consulta: ConsultaListado, hoy: Date = new Date()): Prisma.ReconocimientoSniiWhereInput {
   // Lo que muestra la fila: nombre, código y CVU del profesor, sus etiquetas y sus fechas.
   const texto = condicionTexto(consulta.q, (contiene) => [
     { profesor: { is: { nombres: contiene } } },
@@ -63,12 +67,15 @@ export function filtroSnii(consulta: ConsultaListado): Prisma.ReconocimientoSnii
   const nivel = NIVELES_SNII.find((valor) => valor === consulta.filtros.nivel);
   const tipoParticipacion = TIPOS_PARTICIPACION_SNII.find((valor) => valor === consulta.filtros.tipoParticipacion);
   const resultado = RESULTADOS_SNII.find((valor) => valor === consulta.filtros.resultado);
+  const estatus = ESTATUS.find((valor) => valor === consulta.filtros.estatus);
 
   return {
     ...(criterios.length ? { OR: criterios } : {}),
     ...(nivel ? { nivel } : {}),
     ...(tipoParticipacion ? { tipoParticipacion } : {}),
     ...(resultado ? { resultado } : {}),
+    // Con AND, para no pisar el filtro de resultado.
+    ...(estatus ? { AND: [condicionEstatus(estatus, hoy)] } : {}),
   };
 }
 
@@ -80,5 +87,7 @@ export function ordenSnii(consulta: ConsultaListado) {
     resultado: (dir) => ({ resultado: dir }),
     inicio: (dir) => ({ inicio: dir }),
     fin: (dir) => ({ fin: dir }),
+    // El estatus sale de la fecha de fin: ordenar por él es ordenar por esa fecha.
+    estatus: (dir) => ({ fin: dir }),
   });
 }
