@@ -28,6 +28,20 @@ const CATALOGOS = [
     descripcion: "Grados que se asignan a los profesores.",
     icono: "m2 9 10-5 10 5-10 5zM6 11v5c0 1.5 3 3 6 3s6-1.5 6-3v-5",
   },
+  {
+    clave: "areas",
+    href: "/catalogos/areas",
+    nombre: "Áreas",
+    descripcion: "Áreas del conocimiento que agrupan a las subáreas.",
+    icono: "M3 6h18M3 12h18M3 18h18",
+  },
+  {
+    clave: "subareas",
+    href: "/catalogos/subareas",
+    nombre: "Subáreas",
+    descripcion: "Subdivisiones de cada área.",
+    icono: "M4 6h16M8 12h12M12 18h8",
+  },
 ] as const;
 
 const formatoNumero = new Intl.NumberFormat("es-MX");
@@ -36,12 +50,14 @@ export default async function CatalogosPage() {
   const perfil = await requireModulo("catalogos");
   const modulo = getModulo("catalogos");
 
-  const [divisiones, departamentos, grados] = await Promise.all([
+  const [divisiones, departamentos, grados, areas, subareas] = await Promise.all([
     prisma.division.count(),
     prisma.departamento.count(),
     prisma.gradoCientifico.count(),
+    prisma.area.count(),
+    prisma.subarea.count(),
   ]);
-  const totales: Record<(typeof CATALOGOS)[number]["clave"], number> = { divisiones, departamentos, grados };
+  const totales: Record<(typeof CATALOGOS)[number]["clave"], number> = { divisiones, departamentos, grados, areas, subareas };
 
   return (
     <Marco correo={perfil.correo} rol={perfil.rol} activo="catalogos" titulo={modulo.nombre} subtitulo={modulo.descripcion}>

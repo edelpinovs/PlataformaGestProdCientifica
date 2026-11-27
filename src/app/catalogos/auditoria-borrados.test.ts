@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { eliminarArea } from "./areas/actions";
 import { eliminarDepartamento } from "./departamentos/actions";
 import { eliminarDivision } from "./divisiones/actions";
 import { eliminarGrado } from "./grados/actions";
+import { eliminarSubarea } from "./subareas/actions";
 
 // #277: eliminar un registro de Catálogos deja su constancia en la bitácora, dentro de la misma transacción.
 
@@ -14,6 +16,8 @@ const dobles = vi.hoisted(() => ({
   gradoCientifico: { findUnique: vi.fn(), deleteMany: vi.fn() },
   division: { findUnique: vi.fn(), deleteMany: vi.fn() },
   departamento: { findUnique: vi.fn(), deleteMany: vi.fn(), count: vi.fn() },
+  area: { findUnique: vi.fn(), deleteMany: vi.fn() },
+  subarea: { findUnique: vi.fn(), deleteMany: vi.fn(), count: vi.fn() },
   profesor: { count: vi.fn() },
 }));
 vi.mock("@/lib/auth/session", () => ({ requireModulo: dobles.requireModulo }));
@@ -35,6 +39,10 @@ const casos = [
     existente: { nombre: "Ciencias", _count: { departamentos: 0 } }, resumen: "Eliminó la división «Ciencias» (id 7)." },
   { nombre: "departamento", accion: eliminarDepartamento, modelo: dobles.departamento, tipo: "Departamento",
     existente: { nombre: "Física", _count: { profesores: 0, programas: 0, cuerposAcademicos: 0 } }, resumen: "Eliminó el departamento «Física» (id 7)." },
+  { nombre: "área", accion: eliminarArea, modelo: dobles.area, tipo: "Area",
+    existente: { nombre: "Biología", _count: { subareas: 0 } }, resumen: "Eliminó el área «Biología» (id 7)." },
+  { nombre: "subárea", accion: eliminarSubarea, modelo: dobles.subarea, tipo: "Subarea",
+    existente: { nombre: "Genética" }, resumen: "Eliminó la subárea «Genética» (id 7)." },
 ];
 
 describe.each(casos)("eliminar $nombre y su bitácora (#277)", ({ accion, modelo, tipo, existente, resumen }) => {
