@@ -127,6 +127,14 @@ describe("listado de calidad", () => {
     expect(filtrarHallazgos(hallazgos, consulta({ q: "perfil para entrar" }))).toEqual([]);
   });
 
+  it("la descarga sí trae «Sin perfil de acceso» sin filtro, y respeta el filtro y la búsqueda (#348)", () => {
+    const completo = { ocultarPorOmision: false };
+    expect(reglas(filtrarHallazgos(hallazgos, consulta(), completo))).toContain("SIN_PERFIL");
+    expect(filtrarHallazgos(hallazgos, consulta(), completo)).toHaveLength(hallazgos.length);
+    expect(reglas(filtrarHallazgos(hallazgos, consulta({ regla: "CA_SIN_LIDER" }), completo))).toEqual(["CA_SIN_LIDER"]);
+    expect(reglas(filtrarHallazgos(hallazgos, consulta({ q: "perfil para entrar" }), completo))).toEqual(["SIN_PERFIL"]);
+  });
+
   it("dice cuáles quedaron fuera por omisión y ninguno cuando se filtra por regla", () => {
     expect(reglas(hallazgosOcultos(hallazgos, consulta()))).toEqual(["SIN_PERFIL"]);
     expect(hallazgosOcultos(hallazgos, consulta({ regla: "SIN_PERFIL" }))).toEqual([]);

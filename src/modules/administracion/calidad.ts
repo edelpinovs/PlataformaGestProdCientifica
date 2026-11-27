@@ -190,11 +190,20 @@ export function hallazgosOcultos(hallazgos: Hallazgo[], consulta: ConsultaListad
  * Filtra por regla y por texto libre (registro, problema y detalle, sin distinguir mayúsculas ni
  * acentos). Esta lista se calcula en memoria y es acotada (un hallazgo por registro afectado), por eso
  * se filtra aquí y no con `skip`/`take` en la base; se justifica en el issue 242.
+ *
+ * La pantalla deja fuera las reglas ocultas por omisión. La descarga pasa `{ ocultarPorOmision: false }`
+ * para que el archivo no quede incompleto sin decirlo (#348): ahí se filtra por la columna «Problema».
  */
-export function filtrarHallazgos(hallazgos: Hallazgo[], consulta: ConsultaListado): Hallazgo[] {
+export function filtrarHallazgos(
+  hallazgos: Hallazgo[],
+  consulta: ConsultaListado,
+  { ocultarPorOmision = true }: { ocultarPorOmision?: boolean } = {},
+): Hallazgo[] {
   const texto = normalizar(consulta.q.trim());
   return hallazgos.filter((h) => {
-    if (consulta.filtros.regla ? h.regla !== consulta.filtros.regla : REGLAS_OCULTAS_POR_OMISION.includes(h.regla)) return false;
+    if (consulta.filtros.regla) {
+      if (h.regla !== consulta.filtros.regla) return false;
+    } else if (ocultarPorOmision && REGLAS_OCULTAS_POR_OMISION.includes(h.regla)) return false;
     if (!texto) return true;
     return normalizar(`${h.registro} ${REGLAS_CALIDAD[h.regla].texto} ${h.detalle}`).includes(texto);
   });

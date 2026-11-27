@@ -64,6 +64,18 @@ describe("exportar listados del panel (issue 244)", () => {
     expect(dobles.cargarHallazgos).toHaveBeenCalledTimes(1);
   });
 
+  it("sin filtro, la calidad de datos incluye «Sin perfil de acceso», que la pantalla oculta (#348)", async () => {
+    dobles.cargarHallazgos.mockResolvedValue([
+      { clave: "CA_SIN_LIDER:1", regla: "CA_SIN_LIDER", severidad: "aviso", registro: "CA-1 · Química", detalle: "No tiene un líder asignado.", enlace: "/cuerpos-academicos/1" },
+      { clave: "SIN_PERFIL:7", regla: "SIN_PERFIL", severidad: "aviso", registro: "900 · Profesor Demo", detalle: "Aún no tiene perfil.", enlace: "/administracion/usuarios" },
+    ]);
+    await pedir("?listado=calidad&formato=xlsx");
+    expect(dobles.auditoria.create.mock.calls[0][0].data.resumen).toBe("Exportó el listado de calidad de datos a Excel (2 filas).");
+
+    await pedir("?listado=calidad&formato=xlsx&regla=CA_SIN_LIDER");
+    expect(dobles.auditoria.create.mock.calls[1][0].data.resumen).toContain("(1 fila)");
+  });
+
   it("aplica la búsqueda y los filtros al consultar, sin paginar", async () => {
     await pedir("?listado=usuarios&formato=xlsx&q=ana&rol=DOCENTE&estado=ACTIVO");
     const consulta = dobles.perfil.findMany.mock.calls[0][0];
