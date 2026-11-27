@@ -11,6 +11,7 @@ import { SelectorProfesor } from "@/components/selector-profesor";
 import { ANIO_MINIMO_ESCANEO, MAXIMO_ANIOS_RANGO, type RangoEscaneo } from "@/modules/produccion/rango-escaneo";
 import { resumenBusqueda } from "@/modules/produccion/resumen-busqueda";
 import { hoyMexico } from "@/modules/produccion/fechas-escaneo";
+import { opcionesDepartamento, textoDepartamento, type Departamento } from "@/modules/produccion/departamento";
 
 function BotonEscanear({ enCurso, continuar, periodo }: { enCurso: boolean; continuar: boolean; periodo: boolean }) {
   const { pending } = useFormStatus();
@@ -50,6 +51,8 @@ function ProgresoEscaneo({ estado, enviando }: { estado: EstadoEscaneo; enviando
 
 export function FormularioEscaneo({
   profesores,
+  departamentos = [],
+  departamentoTrabajo,
   trabajoPendiente,
   fuentesTrabajo,
   enriquecerTrabajo,
@@ -57,6 +60,8 @@ export function FormularioEscaneo({
   rangoTrabajo,
 }: {
   profesores: { id: number; nombres: string; apellidos: string; codigo: string }[];
+  departamentos?: Departamento[];
+  departamentoTrabajo?: string;
   trabajoPendiente?: number;
   fuentesTrabajo?: FuenteEscaneo[];
   enriquecerTrabajo?: boolean;
@@ -72,6 +77,7 @@ export function FormularioEscaneo({
   const [profesorElegido, elegirProfesor] = useState(profesorTrabajo ?? "todos");
   const [desdeElegido, elegirDesde] = useState(rangoTrabajo?.desde ?? "");
   const [hastaElegido, elegirHasta] = useState(rangoTrabajo?.hasta ?? "");
+  const [departamentoElegido, elegirDepartamento] = useState(departamentoTrabajo ?? "");
   // Al cambiar el formulario tras una búsqueda, su barra y su resultado se ocultan: ya no describen
   // la búsqueda que se está armando. Se vuelven a mostrar con el siguiente envío (nuevo `intento`).
   const [descartadoEn, descartar] = useState<number>();
@@ -87,6 +93,7 @@ export function FormularioEscaneo({
   const hoy = hoyMexico();
   const desdeMostrado = bloqueado ? rangoGuardado?.desde ?? "" : desdeElegido;
   const hastaMostrado = bloqueado ? rangoGuardado?.hasta ?? "" : hastaElegido;
+  const departamentoMostrado = bloqueado ? estado.departamento ?? departamentoTrabajo ?? "" : departamentoElegido;
   const profesorDeLista = profesores.find(profesor => String(profesor.id) === profesorElegido);
   const nombreElegido = profesorElegido === "todos" ? "todos"
     : profesorDeLista ? `${profesorDeLista.apellidos}, ${profesorDeLista.nombres} · ${profesorDeLista.codigo}`
@@ -132,6 +139,15 @@ export function FormularioEscaneo({
                 onChange={evento => elegirProfesor(evento.target.checked ? "todos" : "")} />
               Todos los profesores activos
             </label>
+            {profesorElegido === "todos" && <label className={claseEtiqueta}>
+              Departamento
+              <select name="departamento" value={departamentoMostrado} onChange={evento => elegirDepartamento(evento.target.value)}
+                aria-invalid={Boolean(estado.erroresCampos?.departamento)} className={`${claseCampo(Boolean(estado.erroresCampos?.departamento))} w-full min-w-0`}>
+                <option value="">Todos los departamentos</option>
+                {opcionesDepartamento(departamentos).map(opcion => <option key={opcion.valor} value={opcion.valor}>{opcion.texto}</option>)}
+              </select>
+            </label>}
+            {estado.erroresCampos?.departamento && profesorElegido === "todos" && <Aviso tipo="error">{estado.erroresCampos.departamento}</Aviso>}
             {profesorElegido === "todos" ? <input type="hidden" name="profesorId" value="todos" /> :
               (estado.pendiente || estado.continuar) && !profesores.some(profesor => String(profesor.id) === profesorElegido) ?
               <p className="text-sm text-texto-2">Profesor del trabajo #{profesorElegido}. Se conserva la selección original aunque ya no esté activo.</p> :
@@ -179,7 +195,7 @@ export function FormularioEscaneo({
         </div>
 
         <div className="flex flex-col gap-4 border-t border-linea pt-4 sm:flex-row sm:items-center sm:justify-between">
-          <p aria-live="polite" className="text-sm text-texto-2">{resumenBusqueda({ fuentes: fuentesMostradas, profesor: nombreElegido, desde: desdeMostrado, hasta: hastaMostrado })}</p>
+          <p aria-live="polite" className="text-sm text-texto-2">{resumenBusqueda({ fuentes: fuentesMostradas, profesor: nombreElegido, departamento: departamentoMostrado ? textoDepartamento(departamentoMostrado, departamentos) : "", desde: desdeMostrado, hasta: hastaMostrado })}</p>
           <BotonEscanear enCurso={Boolean(estado.pendiente)} continuar={Boolean(estado.continuar)} periodo={Boolean(desdeMostrado)} />
         </div>
       </form>

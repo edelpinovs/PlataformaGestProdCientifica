@@ -3,6 +3,7 @@ import { analizarListado, condicionTexto, enlaceListado, ordenarPor, paginar, ty
 import { tipoPublicacionEnum, fuentePublicacionEnum, estadoAutoriaEnum } from "./tipos";
 import { normalizarTitulo } from "./normalizacion";
 import { anioActualMexico } from "./fechas-escaneo";
+import { condicionDepartamento, departamentoEsquema } from "./departamento";
 
 export const ETIQUETAS_TIPO = { ARTICULO: "Artículo", LIBRO: "Libro", CAPITULO: "Capítulo", MEMORIA_CONGRESO: "Memoria de congreso", REGISTRO_SOFTWARE: "Registro de software", PATENTE: "Patente", OTRO: "Otro" };
 export const ETIQUETAS_FUENTE = { ORCID: "ORCID", SCOPUS: "Scopus", OPENALEX: "OpenAlex", CROSSREF: "Crossref", GOOGLE_SCHOLAR: "Google Scholar", MANUAL: "Captura manual" };
@@ -22,7 +23,7 @@ export type ParametrosConsulta = ParametrosListado;
 export type ErroresConsulta = ErroresListado;
 export const RUTA_PUBLICACIONES = "/produccion/publicaciones";
 export const CONSULTA_INICIAL: ConsultaPublicaciones = {
-  pagina: 1, q: "", orden: "titulo", dir: "asc", filtros: { profesor: "", anio: "", tipo: "", fuente: "", estado: "", desde: "", hasta: "" },
+  pagina: 1, q: "", orden: "titulo", dir: "asc", filtros: { profesor: "", departamento: "", anio: "", tipo: "", fuente: "", estado: "", desde: "", hasta: "" },
 };
 
 const profesorEsquema = z.string({ error: "Selecciona un solo profesor." }).refine(
@@ -49,7 +50,7 @@ export function analizarConsulta(parametros: ParametrosConsulta, anioActual = an
   );
   // Los enlaces del #98 con `texto` siguen funcionando; las consultas nuevas usan q.
   const { consulta, errores } = analizarListado(LISTADO_PUBLICACIONES, { ...parametros, q: parametros.q ?? parametros.texto });
-  for (const [clave, esquema] of [["profesor", profesorEsquema], ["anio", anioEsquema]] as const) {
+  for (const [clave, esquema] of [["profesor", profesorEsquema], ["departamento", departamentoEsquema], ["anio", anioEsquema]] as const) {
     const resultado = esquema.safeParse(parametros[clave] ?? "");
     consulta.filtros[clave] = resultado.success ? resultado.data : "";
     if (!resultado.success) errores[clave] = resultado.error.issues[0].message;
@@ -79,6 +80,7 @@ export function filtroPublicaciones(consulta: ConsultaPublicaciones) {
   const tipo = tipoPublicacionEnum.options.find((valor) => valor === consulta.filtros.tipo);
   const fuente = fuentePublicacionEnum.options.find((valor) => valor === consulta.filtros.fuente);
   const estado = estadoAutoriaEnum.options.find((valor) => valor === consulta.filtros.estado);
+  const departamento = condicionDepartamento(consulta.filtros.departamento);
   const normalizado = normalizarTitulo(consulta.q);
   const tipos = tipoPublicacionEnum.options.filter((valor) => normalizado && normalizarTitulo(ETIQUETAS_TIPO[valor]).includes(normalizado));
   const fuentes = fuentePublicacionEnum.options.filter((valor) => normalizado && normalizarTitulo(ETIQUETAS_FUENTE[valor]).includes(normalizado));
@@ -101,8 +103,10 @@ export function filtroPublicaciones(consulta: ConsultaPublicaciones) {
       ...(desde ? { gte: new Date(`${desde}T00:00:00Z`) } : {}),
       ...(hasta ? { lte: new Date(`${hasta}T00:00:00Z`) } : {}),
     } }] } : {}),
-    ...(consulta.filtros.profesor || estado ? { autorias: { some: {
+    // Profesor, departamento y estado se cumplen en la misma autoría.
+    ...(consulta.filtros.profesor || departamento || estado ? { autorias: { some: {
       ...(consulta.filtros.profesor ? { profesorId: Number(consulta.filtros.profesor) } : {}), ...(estado ? { estado } : {}),
+      ...(departamento ? { profesor: departamento } : {}),
     } } } : {}),
   };
 }
@@ -136,7 +140,7 @@ export const paginarPublicaciones = (total: number, consulta: ConsultaPublicacio
 export const enlaceConsulta = (consulta: ConsultaPublicaciones, pagina: number) => `${enlaceListado(RUTA_PUBLICACIONES, LISTADO_PUBLICACIONES, consulta, { pagina })}#publicaciones`;
 
 export function redireccionConsultaAnterior(parametros: ParametrosConsulta): string | null {
-  const claves = ["q", "texto", "pagina", "orden", "dir", "profesor", "anio", "tipo", "fuente", "estado", "tamanio", "desde", "hasta"];
+  const claves = ["q", "texto", "pagina", "orden", "dir", "profesor", "departamento", "anio", "tipo", "fuente", "estado", "tamanio", "desde", "hasta"];
   if (!claves.some((clave) => parametros[clave] !== undefined)) return null;
   const busqueda = new URLSearchParams();
   for (const clave of claves) {

@@ -18,6 +18,7 @@ import { analizarBusqueda, LIMITE_DETALLE, textoDuracion } from "@/modules/produ
 import { ETIQUETAS_TIPO, RUTA_PUBLICACIONES } from "@/modules/produccion/consulta";
 import { NavegacionProduccion } from "../navegacion-produccion";
 import { puedeEscanear } from "@/modules/produccion/permisos";
+import { SIN_DEPARTAMENTO, textoDepartamento } from "@/modules/produccion/departamento";
 
 function EstadoBusqueda({ estado, texto }: { estado: keyof typeof ESTADOS_HISTORIAL; texto: string }) {
   const tipo = TIPO_ESTADO_HISTORIAL[estado];
@@ -45,12 +46,15 @@ export default async function HistorialPage({ searchParams }: { searchParams: Pr
   const analisis = datos.success ? analizarBusqueda(datos.data) : null;
   const filasProfesores = profesoresIds.length > 1 && analisis?.consultasRegistradas ? analisis.profesores.slice(0, LIMITE_DETALLE) : [];
   const idsPublicaciones = analisis ? analisis.publicaciones.slice(0, LIMITE_DETALLE).map((p) => p.publicacionId) : [];
-  const [unico, siguiente, nombres, publicaciones] = await Promise.all([
+  const departamentoBusqueda = datos.success ? datos.data.departamento ?? "" : "";
+  const [unico, siguiente, nombres, publicaciones, departamento] = await Promise.all([
     profesoresIds.length === 1 ? prisma.profesor.findUnique({ where: { id: profesoresIds[0] }, select: seleccion }) : null,
     siguienteId === undefined ? null : prisma.profesor.findUnique({ where: { id: siguienteId }, select: seleccion }),
     filasProfesores.length ? prisma.profesor.findMany({ where: { id: { in: filasProfesores.map((f) => f.profesorId) } }, select: { id: true, ...seleccion } }) : [],
     idsPublicaciones.length ? prisma.publicacion.findMany({ where: { id: { in: idsPublicaciones } },
       select: { id: true, titulo: true, tipo: true, fechaPublicacion: true, doi: true, creadaEn: true } }) : [],
+    departamentoBusqueda && departamentoBusqueda !== SIN_DEPARTAMENTO
+      ? prisma.departamento.findUnique({ where: { id: Number(departamentoBusqueda) }, select: { id: true, nombre: true, nomenclatura: true } }) : null,
   ]);
   const publicacionesOrdenadas = idsPublicaciones.map((id) => publicaciones.find((p) => p.id === id)).filter((p) => p !== undefined);
   const rango = datos.success ? rangoEfectivo(datos.data) : undefined;
@@ -61,7 +65,7 @@ export default async function HistorialPage({ searchParams }: { searchParams: Pr
   const reintento = registro && datos.success && (registro.estado === "FALLIDO" || registro.estado === "CANCELADO") ? seleccionReintento(datos.data) : null;
   const datosDetalle: [string, string][] = registro ? [
     ["Inicio", fechaEscaneo(registro.creadoEn)],
-    ["Profesores", !datos.success ? "No registrado" : profesoresIds.length === 1 ? (unico ? nombreProfesor(unico) : `Profesor #${profesoresIds[0]}`) : `${profesoresIds.length} profesores activos`],
+    ["Profesores", !datos.success ? "No registrado" : profesoresIds.length === 1 ? (unico ? nombreProfesor(unico) : `Profesor #${profesoresIds[0]}`) : `${profesoresIds.length} profesores activos${departamentoBusqueda ? ` (${textoDepartamento(departamentoBusqueda, departamento ? [departamento] : [])})` : ""}`],
     ["Fuentes", datos.success && datos.data.fuentes?.length ? datos.data.fuentes.map((fuente) => NOMBRES_FUENTE[fuente]).join(", ") : "No registradas"],
     ["Periodo", !datos.success ? "No registrado" : rango ? textoRango(rango) : "Novedades desde la búsqueda anterior"],
     [registro.estado === "CANCELADO" ? "Cancelada" : "Terminó", fin ? fechaEscaneo(fin) : "Sin terminar"],

@@ -10,7 +10,7 @@ import { AVISO_SIN_PERMISO_ESCANEO } from "@/modules/produccion/permisos";
 const dobles = vi.hoisted(() => ({
   redirect: vi.fn(),
   requireModulo: vi.fn(), consultarPublicaciones: vi.fn(),
-  profesor: { findMany: vi.fn() }, publicacion: { count: vi.fn() },
+  profesor: { findMany: vi.fn() }, departamento: { findMany: vi.fn() }, publicacion: { count: vi.fn() },
   autoria: { count: vi.fn() }, job: { findFirst: vi.fn() },
 }));
 vi.mock("@/lib/auth/session", () => ({ requireModulo: dobles.requireModulo }));
@@ -27,6 +27,7 @@ describe("RF-PC: permisos y validación de la página", () => {
     dobles.redirect.mockImplementation((ruta) => { throw new Error(`Redirección: ${ruta}`); });
     dobles.requireModulo.mockResolvedValue({ rol: "ADMINISTRADOR", correo: "admin@demo.invalid" });
     dobles.profesor.findMany.mockResolvedValue([]);
+    dobles.departamento.findMany.mockResolvedValue([]);
     dobles.publicacion.count.mockResolvedValue(0);
     dobles.autoria.count.mockResolvedValue(0);
     dobles.job.findFirst.mockResolvedValue(null);

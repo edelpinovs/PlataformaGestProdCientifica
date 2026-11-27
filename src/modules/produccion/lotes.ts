@@ -4,6 +4,7 @@ import { consultaFuenteEsquema, FUENTES_ANTERIORES, FUENTES_ESCANEO, NOMBRES_FUE
 import { fuentePublicacionEnum } from "./tipos";
 import { hoyMexico } from "./fechas-escaneo";
 import { fechaCampo, fechaValida, rangoDeSolicitud, validarRango } from "./rango-escaneo";
+import { departamentoEsquema } from "./departamento";
 
 /**
  * Tiempo sin actualizarse tras el cual un trabajo «En proceso» se considera interrumpido:
@@ -26,6 +27,8 @@ export const datosLoteEsquema = z.object({
   fuentes: seleccionFuentesEsquema.optional(),
   enriquecerAutores: z.boolean({ error: "La opción para completar autores no es válida." }).optional(),
   fuenteEnCurso: z.enum(FUENTES_ESCANEO, { error: "La fuente en curso no es válida." }).nullish(),
+  // Departamento elegido al buscar «todos» (vacío o ausente = todos los departamentos); solo informativo.
+  departamento: departamentoEsquema.optional(),
   resumen: z.object({
     profesoresProcesados: entero, publicacionesEncontradas: entero, publicacionesGuardadas: entero,
     autoriasCreadas: entero, coautoriasDetectadas: entero, errores: z.array(z.string()),
@@ -45,6 +48,8 @@ export const solicitudEscaneoEsquema = z.object({
       (valor) => Number.isSafeInteger(Number(valor)) && Number(valor) <= 2147483647, "Selecciona un profesor válido.",
     ),
   ], { error: "Selecciona un profesor válido." }),
+  // Solo aplica con «todos»; con un profesor elegido se ignora. Ausente = todos los departamentos.
+  departamento: departamentoEsquema.default(""),
   // Rango con fechas completas (#266): ambas vacías = buscar novedades.
   desde: fechaCampo,
   hasta: fechaCampo,
@@ -52,7 +57,9 @@ export const solicitudEscaneoEsquema = z.object({
   enriquecerAutores: opcionEnriquecerEsquema,
 }).superRefine(({ desde, hasta }, contexto) => {
   if (fechaValida(desde) && fechaValida(hasta)) validarRango(desde, hasta, hoyMexico(), contexto);
-}).transform(({ desde, hasta, ...resto }) => ({ ...resto, rango: rangoDeSolicitud(desde, hasta, hoyMexico()) }));
+}).transform(({ desde, hasta, departamento, ...resto }) => ({
+  ...resto, departamento: resto.profesorId === "todos" ? departamento : "", rango: rangoDeSolicitud(desde, hasta, hoyMexico()),
+}));
 
 export function avanzarLote(datos: DatosLote, resultado: ResumenEscaneo): DatosLote {
   if (datos.indice >= datos.profesoresIds.length) return datos;

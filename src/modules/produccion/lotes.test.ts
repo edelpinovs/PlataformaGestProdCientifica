@@ -7,6 +7,15 @@ describe("RF-020: reglas de lotes", () => {
     expect(resultado.success).toBe(false);
     if (!resultado.success) expect(resultado.error.issues[0].message).toBe("Selecciona un profesor válido.");
   });
+  it("acepta el departamento solo con «todos» y lo da por vacío si no llega", () => {
+    expect(solicitudEscaneoEsquema.parse({ profesorId: "todos", departamento: "3", desde: "", hasta: "", fuentes: ["ORCID"] }).departamento).toBe("3");
+    expect(solicitudEscaneoEsquema.parse({ profesorId: "5", departamento: "3", desde: "", hasta: "", fuentes: ["ORCID"] }).departamento).toBe("");
+    expect(solicitudEscaneoEsquema.parse({ profesorId: "todos", desde: "", hasta: "", fuentes: ["ORCID"] }).departamento).toBe("");
+    const manipulado = solicitudEscaneoEsquema.safeParse({ profesorId: "todos", departamento: "3 OR 1=1", desde: "", hasta: "", fuentes: ["ORCID"] });
+    expect(manipulado.success).toBe(false);
+    if (!manipulado.success) expect(manipulado.error.issues[0]).toMatchObject({ path: ["departamento"], message: "Selecciona un departamento válido." });
+  });
+
   it("valida el rango y el profesor en el servidor (#266)", () => {
     const rechazo = solicitudEscaneoEsquema.safeParse({ profesorId: "todos", desde: "1500-01-01", hasta: "", fuentes: ["ORCID"] });
     expect(rechazo.success).toBe(false);

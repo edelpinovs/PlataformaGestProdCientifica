@@ -124,6 +124,25 @@ describe("RF-020: cola persistida de escaneo", () => {
     }) });
   });
 
+  it("con un departamento toma solo sus activos y guarda el filtro; «sin» busca a quienes no tienen uno", async () => {
+    dobles.prisma.profesor.findMany.mockResolvedValue([{ id: 5 }]);
+    await crearTrabajoEscaneo("escaneo-manual", undefined, undefined, ["ORCID"], false, "3");
+    expect(dobles.prisma.profesor.findMany).toHaveBeenLastCalledWith({ where: { estatusLaboral: "ACTIVO", departamentoId: 3 }, select: { id: true }, orderBy: { id: "asc" } });
+    expect(dobles.prisma.job.create).toHaveBeenLastCalledWith({ data: expect.objectContaining({ datos: expect.objectContaining({ profesoresIds: [5], departamento: "3" }) }) });
+    await crearTrabajoEscaneo("escaneo-manual", undefined, undefined, ["ORCID"], false, "sin");
+    expect(dobles.prisma.profesor.findMany).toHaveBeenLastCalledWith({ where: { estatusLaboral: "ACTIVO", departamentoId: null }, select: { id: true }, orderBy: { id: "asc" } });
+  });
+
+  it("un departamento sin profesores activos no crea un trabajo vacío; con un profesor elegido se ignora", async () => {
+    dobles.prisma.profesor.findMany.mockResolvedValue([]);
+    await expect(crearTrabajoEscaneo("escaneo-manual", undefined, undefined, ["ORCID"], false, "3")).rejects.toThrow("No hay profesores activos en ese departamento.");
+    expect(dobles.prisma.job.create).not.toHaveBeenCalled();
+    dobles.prisma.profesor.findMany.mockResolvedValue([{ id: 5 }]);
+    await crearTrabajoEscaneo("escaneo-manual", 5, undefined, ["ORCID"], false, "3");
+    expect(dobles.prisma.profesor.findMany).toHaveBeenLastCalledWith(expect.objectContaining({ where: { estatusLaboral: "ACTIVO", id: 5 } }));
+    expect(dobles.prisma.job.create.mock.lastCall?.[0].data.datos.departamento).toBeUndefined();
+  });
+
   it("si no hay profesores crea un trabajo completado con total cero", async () => {
     dobles.prisma.profesor.findMany.mockResolvedValue([]);
     await crearTrabajoEscaneo("escaneo-diario");

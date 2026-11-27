@@ -21,9 +21,10 @@ export default async function PublicacionesPage({ searchParams }: { searchParams
   if (!analisis.success) {
     for (const error of analisis.error.issues) errores[error.path[0]] ??= error.message;
   }
-  const [profesores, resultado] = await Promise.all([
+  const [profesores, departamentos, resultado] = await Promise.all([
     prisma.profesor.findMany({ select: { id: true, nombres: true, apellidos: true, codigo: true, estatusLaboral: true },
       orderBy: [{ apellidos: "asc" }, { id: "asc" }] }),
+    prisma.departamento.findMany({ select: { id: true, nombre: true, nomenclatura: true }, orderBy: [{ nombre: "asc" }, { id: "asc" }] }),
     analisis.success ? consultarPublicaciones(consulta) : Promise.resolve(null),
   ]);
   return <Marco correo={perfil.correo} rol={perfil.rol} activo="produccion" titulo="Publicaciones"
@@ -31,7 +32,7 @@ export default async function PublicacionesPage({ searchParams }: { searchParams
     volver={{ href: "/produccion", texto: "Producción científica" }}>
     <NavegacionProduccion actual="publicaciones" />
     <Panel titulo="Buscar publicaciones">
-      <FiltrosPublicaciones key={JSON.stringify(consulta)} consulta={consulta} profesores={profesores} errores={errores} anioActual={anioActual} />
+      <FiltrosPublicaciones key={JSON.stringify(consulta)} consulta={consulta} profesores={profesores} departamentos={departamentos} errores={errores} anioActual={anioActual} />
     </Panel>
     <div id="publicaciones" className="min-w-0 scroll-mt-4">
       <Panel titulo="Resultados">

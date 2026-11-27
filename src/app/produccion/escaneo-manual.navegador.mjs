@@ -5,7 +5,7 @@ await probarEnChrome(`
 import React from "react";import {createRoot} from "react-dom/client";
 import {FormularioEscaneo} from ${JSON.stringify(path.join(process.cwd(), "src/app/produccion/formulario-escaneo.tsx"))};
 import {Panel} from ${JSON.stringify(path.join(process.cwd(), "src/components/ui.tsx"))};
-createRoot(document.getElementById("raiz")).render(<main className="min-h-screen bg-fondo p-5 text-texto"><Panel titulo="Búsqueda manual de Coordinación" descripcion="Inicio: 9 nov 2026, 10:00. Zona horaria: America/Mexico_City."><FormularioEscaneo profesores={[{id:1,codigo:"DEMO-001",nombres:"Profesor ficticio",apellidos:"Ejemplo"}]} trabajoPendiente={7}/></Panel><output id="resultado">EN CURSO</output></main>);
+createRoot(document.getElementById("raiz")).render(<main className="min-h-screen bg-fondo p-5 text-texto"><Panel titulo="Búsqueda manual de Coordinación" descripcion="Inicio: 9 nov 2026, 10:00. Zona horaria: America/Mexico_City."><FormularioEscaneo profesores={[{id:1,codigo:"DEMO-001",nombres:"Profesor ficticio",apellidos:"Ejemplo"}]} departamentos={[{id:3,nombre:"Departamento Ficticio",nomenclatura:"DFI"}]} trabajoPendiente={7}/></Panel><output id="resultado">EN CURSO</output></main>);
 const esperar=async c=>{for(let i=0;i<500;i++){if(c())return;await new Promise(r=>setTimeout(r,10));}throw Error("Tiempo agotado")};
 const comprobar=(c,m)=>{if(!c)throw Error(m)};
 (async()=>{try{
@@ -26,10 +26,15 @@ const comprobar=(c,m)=>{if(!c)throw Error(m)};
  comprobar(document.querySelector('[role="status"]').textContent.includes("2 de 2"),"No muestra el avance final");
  comprobar(document.body.textContent.includes("Escaneo con resultados parciales."),"No muestra el resultado parcial");
  comprobar(!document.querySelector('input[type="checkbox"]').matches(":disabled"),"No habilitó una nueva búsqueda al terminar");
+ const departamento=document.querySelector('select[name="departamento"]');
+ comprobar(departamento&&!departamento.disabled,"Falta elegir departamento al buscar a todos");
+ comprobar([...departamento.options].map(o=>o.textContent).join("|")==="Todos los departamentos|Departamento Ficticio (DFI)|Sin departamento","Opciones de departamento inesperadas");
+ Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,"value").set.call(departamento,"3");departamento.dispatchEvent(new Event("change",{bubbles:true}));
+ await esperar(()=>document.body.textContent.includes("para los profesores activos de Departamento Ficticio (DFI)"));
  document.querySelector("form").requestSubmit();
  await esperar(()=>window.solicitudes?.length===3);
  comprobar(!window.solicitudes[2].jobId,"La nueva búsqueda usa el trabajo anterior");
- comprobar(window.solicitudes[2].profesorId==="todos","Falta el alcance nuevo");
+ comprobar(window.solicitudes[2].profesorId==="todos"&&window.solicitudes[2].departamento==="3","Falta el alcance nuevo con su departamento");
  await esperar(()=>document.body.textContent.includes("Escaneo finalizado."));
  comprobar(document.documentElement.scrollWidth<=innerWidth,"El formulario desborda el ancho");
  const enlace=t=>[...document.querySelectorAll("a")].find(a=>a.textContent.includes(t));
