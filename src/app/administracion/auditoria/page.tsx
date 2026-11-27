@@ -75,20 +75,28 @@ export default async function AuditoriaPage({ searchParams }: PageProps<"/admini
               <thead className={claseTabla.encabezado}>
                 <tr>
                   <EncabezadoOrdenable {...contexto} columna="fecha" className={claseTabla.celdaEncabezado}>Fecha</EncabezadoOrdenable>
-                  <EncabezadoOrdenable {...contexto} columna="actor" className={claseTabla.celdaEncabezado}>Persona</EncabezadoOrdenable>
-                  <EncabezadoOrdenable {...contexto} columna="modulo" className={claseTabla.celdaEncabezado}>Módulo</EncabezadoOrdenable>
-                  <EncabezadoOrdenable {...contexto} columna="accion" className={claseTabla.celdaEncabezado}>Acción</EncabezadoOrdenable>
-                  <th className={`${claseTabla.celdaEncabezado} pr-0`}>Detalle</th>
+                  <EncabezadoOrdenable {...contexto} columna="actor" className={`${claseTabla.celdaEncabezado} hidden md:table-cell`}>Persona</EncabezadoOrdenable>
+                  <EncabezadoOrdenable {...contexto} columna="modulo" className={`${claseTabla.celdaEncabezado} hidden md:table-cell`}>Módulo</EncabezadoOrdenable>
+                  <EncabezadoOrdenable {...contexto} columna="accion" className={`${claseTabla.celdaEncabezado} hidden md:table-cell`}>Acción</EncabezadoOrdenable>
+                  <th className={`${claseTabla.celdaEncabezado} pr-0 hidden md:table-cell`}>Detalle</th>
                 </tr>
               </thead>
               <tbody>
                 {registros.map((r) => (
                   <tr key={r.id} className={claseTabla.fila}>
-                    <td className={`${claseTabla.celda} whitespace-nowrap`}>{formatoFecha.format(r.creadoEn)}</td>
-                    <td className={`${claseTabla.celda} break-all text-texto`}>{r.actorCorreo}</td>
-                    <td className={claseTabla.celda}>{textoModulo(r.modulo)}</td>
-                    <td className={claseTabla.celda}>{textoAccion(r.accion)}</td>
-                    <td className={`${claseTabla.celda} pr-0`}>{r.resumen}</td>
+                    <td className={claseTabla.celda}>
+                      <span className="block whitespace-nowrap">{formatoFecha.format(r.creadoEn)}</span>
+                      {/* En celular las columnas se apilan bajo la fecha. */}
+                      <span className="mt-1 flex flex-col gap-0.5 text-xs text-texto-3 md:hidden">
+                        <span className="break-all text-texto">{r.actorCorreo}</span>
+                        <span>{textoModulo(r.modulo)} · {textoAccion(r.accion)}</span>
+                        <span>{r.resumen}</span>
+                      </span>
+                    </td>
+                    <td className={`${claseTabla.celda} break-all text-texto hidden md:table-cell`}>{r.actorCorreo}</td>
+                    <td className={`${claseTabla.celda} hidden md:table-cell`}>{textoModulo(r.modulo)}</td>
+                    <td className={`${claseTabla.celda} hidden md:table-cell`}>{textoAccion(r.accion)}</td>
+                    <td className={`${claseTabla.celda} pr-0 hidden md:table-cell`}>{r.resumen}</td>
                   </tr>
                 ))}
               </tbody>

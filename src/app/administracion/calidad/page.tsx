@@ -66,19 +66,26 @@ export default async function CalidadPage({ searchParams }: PageProps<"/administ
               <thead className={claseTabla.encabezado}>
                 <tr>
                   <EncabezadoOrdenable {...contexto} columna="registro" className={claseTabla.celdaEncabezado}>Registro</EncabezadoOrdenable>
-                  <EncabezadoOrdenable {...contexto} columna="regla" className={claseTabla.celdaEncabezado}>Problema</EncabezadoOrdenable>
-                  <EncabezadoOrdenable {...contexto} columna="detalle" className={claseTabla.celdaEncabezado}>Detalle</EncabezadoOrdenable>
+                  <EncabezadoOrdenable {...contexto} columna="regla" className={`${claseTabla.celdaEncabezado} hidden md:table-cell`}>Problema</EncabezadoOrdenable>
+                  <EncabezadoOrdenable {...contexto} columna="detalle" className={`${claseTabla.celdaEncabezado} hidden md:table-cell`}>Detalle</EncabezadoOrdenable>
                   <th className={`${claseTabla.celdaEncabezado} pr-0 text-right`}><span className="sr-only">Corregir</span></th>
                 </tr>
               </thead>
               <tbody>
                 {pagina.map((h) => (
                   <tr key={h.clave} className={claseTabla.fila}>
-                    <td className={`${claseTabla.celda} text-texto`}>{h.registro}</td>
-                    <td className={`${claseTabla.celda} whitespace-nowrap`}>
+                    <td className={`${claseTabla.celda} text-texto`}>
+                      {h.registro}
+                      {/* En celular las columnas se apilan bajo el registro. */}
+                      <span className="mt-1 flex flex-col items-start gap-1 text-xs text-texto-3 md:hidden">
+                        <EtiquetaEstado tipo={h.severidad}>{REGLAS_CALIDAD[h.regla].texto}</EtiquetaEstado>
+                        <span>{h.detalle}</span>
+                      </span>
+                    </td>
+                    <td className={`${claseTabla.celda} whitespace-nowrap hidden md:table-cell`}>
                       <EtiquetaEstado tipo={h.severidad}>{REGLAS_CALIDAD[h.regla].texto}</EtiquetaEstado>
                     </td>
-                    <td className={claseTabla.celda}>{h.detalle}</td>
+                    <td className={`${claseTabla.celda} hidden md:table-cell`}>{h.detalle}</td>
                     <td className={`${claseTabla.celda} pr-0 text-right whitespace-nowrap`}>
                       <Link href={h.enlace} className="text-sm font-medium text-marca hover:underline"
                         aria-label={`Corregir ${h.registro}`}>
