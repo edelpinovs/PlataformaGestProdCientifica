@@ -1,6 +1,7 @@
 import { z } from "zod";
-import { condicionTexto, ordenarPor, type ConsultaListado, type DefinicionListado } from "@/lib/listados/consulta";
+import { condicionTexto, ordenarPor, type CondicionTexto, type ConsultaListado, type DefinicionListado } from "@/lib/listados/consulta";
 import type { Prisma } from "@/generated/prisma/client";
+import { porPalabras } from "./busqueda";
 import { condicionEstatus, ESTATUS } from "./estatus";
 import { hayTraslape, type PeriodoVigencia } from "./vigencia";
 
@@ -273,12 +274,16 @@ export function rangoFechaBusqueda(texto: string): { desde: Date; hasta: Date } 
 
 /** `hoy` es el día de la consulta (00:00 UTC): con él se calcula el estatus que se filtra. */
 export function filtroProdep(consulta: ConsultaListado, hoy: Date = new Date()): Prisma.ReconocimientoProdepWhereInput {
-  const texto = condicionTexto(consulta.q, (contiene) => [
+  const camposProfesor = (contiene: CondicionTexto): Prisma.ReconocimientoProdepWhereInput[] => [
     { profesor: { is: { nombres: contiene } } },
     { profesor: { is: { apellidos: contiene } } },
     { profesor: { is: { codigo: contiene } } },
-  ]);
+  ];
+  const texto = condicionTexto(consulta.q, camposProfesor);
   const criterios: Prisma.ReconocimientoProdepWhereInput[] = [...(texto.OR ?? [])];
+  // Nombre completo («Ana Prueba»): cada palabra en algún dato del profesor (revisión del PR 433).
+  const nombreCompleto = porPalabras(consulta.q, camposProfesor);
+  if (nombreCompleto) criterios.push(nombreCompleto);
   const busqueda = consulta.q.trim().toLocaleLowerCase("es-MX");
   const rangoFecha = rangoFechaBusqueda(consulta.q.trim());
 

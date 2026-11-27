@@ -1,5 +1,6 @@
 import type { Prisma } from "@/generated/prisma/client";
-import { condicionTexto, ordenarPor, type ConsultaListado, type DefinicionListado } from "@/lib/listados/consulta";
+import { condicionTexto, ordenarPor, type CondicionTexto, type ConsultaListado, type DefinicionListado } from "@/lib/listados/consulta";
+import { porPalabras } from "./busqueda";
 import { condicionEstatus, ESTATUS } from "./estatus";
 import { rangoFechaBusqueda } from "./prodep";
 import { NIVELES_SNII, TIPOS_PARTICIPACION_SNII } from "./snii";
@@ -47,13 +48,16 @@ function coinciden<T extends string>(valores: readonly T[], etiquetas: Record<T,
 /** `hoy` es el día de la consulta (00:00 UTC): con él se calcula el estatus que se filtra. */
 export function filtroSnii(consulta: ConsultaListado, hoy: Date = new Date()): Prisma.ReconocimientoSniiWhereInput {
   // Lo que muestra la fila: nombre, código y CVU del profesor, sus etiquetas y sus fechas.
-  const texto = condicionTexto(consulta.q, (contiene) => [
+  const camposProfesor = (contiene: CondicionTexto): Prisma.ReconocimientoSniiWhereInput[] => [
     { profesor: { is: { nombres: contiene } } },
     { profesor: { is: { apellidos: contiene } } },
     { profesor: { is: { codigo: contiene } } },
     { profesor: { is: { cvu: contiene } } },
-  ]);
+  ];
+  const texto = condicionTexto(consulta.q, camposProfesor);
   const criterios: Prisma.ReconocimientoSniiWhereInput[] = [...(texto.OR ?? [])];
+  const nombreCompleto = porPalabras(consulta.q, camposProfesor);
+  if (nombreCompleto) criterios.push(nombreCompleto);
   const busqueda = consulta.q.trim().toLocaleLowerCase("es-MX");
   const rango = rangoFechaBusqueda(consulta.q.trim());
   if (rango) {

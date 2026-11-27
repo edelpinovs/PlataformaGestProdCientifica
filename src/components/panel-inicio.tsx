@@ -155,7 +155,7 @@ function Tabla({ filas }: { filas: DatosInicio["filas"] }) {
             <th className={claseTabla.celdaEncabezado}>Programa</th>
             <th className={claseTabla.celdaEncabezado}>Detalle</th>
             <th className={claseTabla.celdaEncabezado}>Vence</th>
-            <th className={claseTabla.celdaEncabezado}>Estado</th>
+            <th className={claseTabla.celdaEncabezado}>Estatus</th>
           </tr>
         </thead>
         <tbody>

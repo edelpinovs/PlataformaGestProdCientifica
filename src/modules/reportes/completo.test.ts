@@ -3,6 +3,7 @@ import {
   analizarCompleto,
   consultarCompleto,
   enlaceCompleto,
+  ETIQUETA_COLUMNA_COMPLETO,
   filaCompleto,
   SIN_CONVOCATORIA,
   SIN_CUERPO,
@@ -39,6 +40,13 @@ function profesor(parcial: Partial<Parameters<typeof filaCompleto>[0]> = {}) {
 }
 
 describe("reporte completo por profesor", () => {
+  it("llama estatus a la vigencia de SNII, PRODEP y el cuerpo", () => {
+    expect(ETIQUETA_COLUMNA_COMPLETO.sniiSemaforo).toBe("Estatus SNII");
+    expect(ETIQUETA_COLUMNA_COMPLETO.prodepSemaforo).toBe("Estatus PRODEP");
+    expect(ETIQUETA_COLUMNA_COMPLETO.caSemaforo).toBe("Estatus del cuerpo");
+    expect(ETIQUETA_COLUMNA_COMPLETO.estatus).toBe("Estatus");
+  });
+
   it("junta en una fila solo el SNII y el PRODEP vigentes, el cuerpo que vence antes y las convocatorias", () => {
     const fila = profesor({
       snii: [
