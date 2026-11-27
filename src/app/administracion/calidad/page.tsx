@@ -67,7 +67,7 @@ export default async function CalidadPage({ searchParams }: PageProps<"/administ
                 {pagina.map((h) => (
                   <tr key={h.clave} className={claseTabla.fila}>
                     <td className={`${claseTabla.celda} text-texto`}>{h.registro}</td>
-                    <td className={claseTabla.celda}>
+                    <td className={`${claseTabla.celda} whitespace-nowrap`}>
                       <EtiquetaEstado tipo={h.severidad}>{REGLAS_CALIDAD[h.regla].texto}</EtiquetaEstado>
                     </td>
                     <td className={claseTabla.celda}>{h.detalle}</td>

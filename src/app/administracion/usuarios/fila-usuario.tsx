@@ -19,6 +19,10 @@ import {
 import { ETIQUETA_ROL, ROLES, type Rol } from "@/lib/auth/roles";
 import type { OpcionProfesor } from "@/lib/selectores/profesor";
 
+// Iconos propios de esta fila (issue 347): desactivar no es borrar, así que no usa el de eliminar.
+const ICONO_PAUSA = "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18M10 9v6M14 9v6";
+const ICONO_REACTIVAR = "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18M10 8.5l5.5 3.5-5.5 3.5z";
+
 // Fila de un usuario con Editar y Desactivar o Reactivar. No usa <FilaEditable> porque el
 // identificador es un uuid, hay un selector de profesor y los usuarios no se eliminan: se
 // desactivan, para conservar su historial (justificación en el issue 241).
@@ -63,9 +67,9 @@ export function FilaUsuario(props: Props) {
           aria-label={`Editar ${correo}`} title="Editar">
           <Icono d={ICONOS.editar} />
         </button>
-        <button type="button" onClick={() => setModo("estado")} className={claseAccionIcono(activo)}
+        <button type="button" onClick={() => setModo("estado")} className={claseAccionIcono()}
           aria-label={`${activo ? "Desactivar" : "Reactivar"} ${correo}`} title={activo ? "Desactivar" : "Reactivar"}>
-          <Icono d={activo ? ICONOS.eliminar : ICONOS.mas} />
+          <Icono d={activo ? ICONO_PAUSA : ICONO_REACTIVAR} />
         </button>
       </td>
     </tr>
@@ -96,12 +100,12 @@ function Edicion({ id, correo, rol, profesor, opcionesProfesor, editar, cerrar }
                 valorInicial={profesorActual} deshabilitado={guardando}
                 error={estado.campo === "profesorId" ? estado.error : undefined} />
             </div>
-            <div className="flex gap-2 sm:pt-7">
-              <button type="submit" disabled={guardando} className={claseBoton}>
-                {guardando ? "Guardando…" : "Guardar"}
-              </button>
-              <button type="button" onClick={cerrar} className={claseBotonSecundario}>Cancelar</button>
-            </div>
+          </div>
+          <div className="flex gap-2">
+            <button type="submit" disabled={guardando} className={claseBoton}>
+              {guardando ? "Guardando…" : "Guardar"}
+            </button>
+            <button type="button" onClick={cerrar} className={claseBotonSecundario}>Cancelar</button>
           </div>
           {estado.error && estado.campo !== "profesorId" && <Aviso tipo="error">{estado.error}</Aviso>}
         </form>
@@ -113,31 +117,34 @@ function Edicion({ id, correo, rol, profesor, opcionesProfesor, editar, cerrar }
 function CambioEstado({ id, correo, activo, esPropio, cambiarEstado, cerrar }: Props & { cerrar: () => void }) {
   const [estado, accion, enviando] = useActionState<EstadoFila, FormData>(cambiarEstado, {});
   const desactivar = activo;
+  // Quien está en la pantalla no puede desactivarse a sí mismo: se avisa antes y no se ofrece el botón.
+  const bloqueado = desactivar && esPropio;
 
   return (
     <tr className={claseTabla.fila}>
       <td colSpan={6} className="py-3">
-        <form action={accion} className={`flex flex-col gap-3 rounded-xl p-4 ${desactivar ? "bg-peligro-suave" : "bg-superficie-alt"}`}>
+        <form action={accion} className={`flex flex-col gap-3 rounded-xl p-4 ${desactivar && !bloqueado ? "bg-peligro-suave" : "bg-superficie-alt"}`}>
           <input type="hidden" name="id" value={id} />
           <input type="hidden" name="accion" value={desactivar ? "desactivar" : "reactivar"} />
           {estado.error ? (
             <Aviso tipo="error">{estado.error}</Aviso>
+          ) : bloqueado ? (
+            <Aviso tipo="aviso">No puedes desactivar tu propio acceso. Pídeselo a otro administrador.</Aviso>
           ) : desactivar ? (
             <p className="text-sm text-texto">
               ¿Desactivar el acceso de <strong>«{correo}»</strong>? No podrá iniciar sesión, pero sus registros se conservan y puedes reactivarlo cuando quieras.
-              {esPropio && " Este es tu propio usuario."}
             </p>
           ) : (
             <p className="text-sm text-texto">¿Reactivar el acceso de <strong>«{correo}»</strong>?</p>
           )}
           <div className="flex gap-2">
-            {!estado.error && (
+            {!estado.error && !bloqueado && (
               <button type="submit" disabled={enviando} className={desactivar ? claseBotonPeligro : claseBoton}>
                 {enviando ? "Guardando…" : desactivar ? "Desactivar" : "Reactivar"}
               </button>
             )}
             <button type="button" onClick={cerrar} className={claseBotonSecundario}>
-              {estado.error ? "Cerrar" : "Cancelar"}
+              {estado.error || bloqueado ? "Cerrar" : "Cancelar"}
             </button>
           </div>
         </form>

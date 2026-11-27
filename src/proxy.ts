@@ -35,6 +35,8 @@ export async function proxy(request: NextRequest) {
   if (!user && !esPublica) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
+    // Sin los parámetros de la página pedida (por ejemplo, los de una descarga): en /login no sirven.
+    url.search = "";
     return NextResponse.redirect(url);
   }
 
