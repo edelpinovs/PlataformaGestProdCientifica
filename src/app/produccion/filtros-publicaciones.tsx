@@ -3,15 +3,18 @@ import { SelectorFiltro } from "@/components/listado-cliente";
 import { SelectorProfesor } from "@/components/selector-profesor";
 import { COLUMNAS_PUBLICACIONES, RUTA_PUBLICACIONES, ETIQUETAS_TIPO, ETIQUETAS_FUENTE, ETIQUETAS_ESTADO, opcionesAnioPublicacion, type ConsultaPublicaciones, type ErroresConsulta } from "@/modules/produccion/consulta";
 import { fechaCorta } from "@/modules/produccion/rango-escaneo";
+import { opcionesDepartamento, textoDepartamento, type Departamento } from "@/modules/produccion/departamento";
 
-export function FiltrosPublicaciones({ consulta, profesores, errores, anioActual }: {
+export function FiltrosPublicaciones({ consulta, profesores, departamentos = [], errores, anioActual }: {
   anioActual: number;
+  departamentos?: Departamento[];
   consulta: ConsultaPublicaciones;
   profesores: { id: number; codigo: string; nombres: string; apellidos: string; estatusLaboral: string }[];
   errores: ErroresConsulta;
 }) {
   const filtrosActivos = [consulta.q && `Texto: ${consulta.q}`,
     consulta.filtros.profesor && `Profesor: ${profesores.find((profesor) => profesor.id === Number(consulta.filtros.profesor))?.codigo ?? consulta.filtros.profesor}`,
+    consulta.filtros.departamento && `Departamento: ${textoDepartamento(consulta.filtros.departamento, departamentos)}`,
     consulta.filtros.anio && `Año: ${consulta.filtros.anio}`,
     ...[ETIQUETAS_TIPO, ETIQUETAS_FUENTE, ETIQUETAS_ESTADO].map((etiquetas, indice) => {
       const valor = consulta.filtros[["tipo", "fuente", "estado"][indice]];
@@ -32,6 +35,7 @@ export function FiltrosPublicaciones({ consulta, profesores, errores, anioActual
         { clave: "tipo", etiqueta: "Tipo", opciones: opciones(ETIQUETAS_TIPO) },
         { clave: "fuente", etiqueta: "Fuente", opciones: opciones(ETIQUETAS_FUENTE) },
         { clave: "estado", etiqueta: "Estado de autoría", opciones: opciones(ETIQUETAS_ESTADO) },
+        { clave: "departamento", etiqueta: "Departamento", opciones: opcionesDepartamento(departamentos) },
         // Año, Desde y Hasta forman un solo grupo para que no se separen al acomodarse la fila.
         { clave: "anio", etiqueta: "Fecha de publicación", opciones: [], contenido: <div role="group" aria-label="Fecha de publicación" className="flex flex-wrap gap-3">
           <label className={clasePastilla("anio")}>

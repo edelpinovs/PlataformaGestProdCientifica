@@ -87,6 +87,19 @@ describe("RF-PC-01, RF-PC-09 y RF-PC-10: consulta de publicaciones", () => {
     expect(filtro.fechaPublicacion).toEqual({ gte: new Date("2024-01-01T00:00:00Z"), lt: new Date("2025-01-01T00:00:00Z") });
   });
 
+  it("filtra por departamento en la misma autoría que profesor y estado, y por quienes no tienen uno", () => {
+    const conDepartamento = analizarConsulta({ departamento: "3", estado: "PENDIENTE" });
+    if (!conDepartamento.success) throw new Error("La consulta de prueba debe ser válida.");
+    expect(filtroPublicaciones(conDepartamento.data).autorias).toEqual({ some: { estado: "PENDIENTE", profesor: { departamentoId: 3 } } });
+    const sin = analizarConsulta({ departamento: "sin" });
+    if (!sin.success) throw new Error("La consulta de prueba debe ser válida.");
+    expect(filtroPublicaciones(sin.data).autorias).toEqual({ some: { profesor: { departamentoId: null } } });
+    expect(enlaceConsulta(sin.data, 2)).toContain("departamento=sin");
+    const manipulado = analizarConsulta({ departamento: "x" });
+    expect(manipulado.success).toBe(false);
+    if (!manipulado.success) expect(manipulado.error.issues).toContainEqual({ path: ["departamento"], message: "Selecciona un departamento válido." });
+  });
+
   it("los filtros ausentes no excluyen obras sin fecha o sin autorías", () => {
     expect(filtroPublicaciones(CONSULTA_INICIAL)).toEqual({});
   });

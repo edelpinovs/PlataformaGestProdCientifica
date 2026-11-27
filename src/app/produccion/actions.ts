@@ -12,6 +12,7 @@ import { datosLoteEsquema, seleccionReintento, solicitudEscaneoEsquema } from "@
 import { idRegistroHistorial } from "@/modules/produccion/historial";
 import type { ResumenEscaneo } from "@/modules/produccion/escaneo";
 import { cancelarTrabajoEscaneo, crearTrabajoEscaneo, MENSAJE_REINTENTO_SIN_ACTIVOS, procesarSiguienteProfesor, TIPOS_ESCANEO } from "./trabajos";
+import { MENSAJE_DEPARTAMENTO_SIN_ACTIVOS } from "@/modules/produccion/departamento";
 import { presentarResultadoEscaneo } from "@/modules/produccion/resultado-escaneo";
 import { rangoEfectivo, type RangoEscaneo } from "@/modules/produccion/rango-escaneo";
 
@@ -20,9 +21,9 @@ export type EstadoEscaneo = {
   error?: string; exito?: boolean; mensaje?: string; resumen?: ResumenEscaneo;
   jobId?: number; pendiente?: boolean; avance?: number; total?: number;
   fuenteEnCurso?: FuenteEscaneo | null;
-  continuar?: boolean; fuentes?: FuenteEscaneo[]; enriquecerAutores?: boolean; rango?: RangoEscaneo;
+  continuar?: boolean; fuentes?: FuenteEscaneo[]; enriquecerAutores?: boolean; rango?: RangoEscaneo; departamento?: string;
   intento?: number;
-  erroresCampos?: { profesorId?: string; desde?: string; hasta?: string; fuentes?: string; enriquecerAutores?: string };
+  erroresCampos?: { profesorId?: string; departamento?: string; desde?: string; hasta?: string; fuentes?: string; enriquecerAutores?: string };
 };
 
 function actualizarPantallasProduccion() {
@@ -42,13 +43,14 @@ export async function iniciarEscaneoAction(_: EstadoEscaneo, formData: FormData)
       if (!trabajo) return { error: "No se encontró el escaneo solicitado." };
     } else {
       const parseo = solicitudEscaneoEsquema.safeParse({
-        profesorId: formData.get("profesorId") ?? "todos", desde: formData.get("desde") ?? "", hasta: formData.get("hasta") ?? "",
+        profesorId: formData.get("profesorId") ?? "todos", departamento: formData.get("departamento") ?? "", desde: formData.get("desde") ?? "", hasta: formData.get("hasta") ?? "",
         fuentes: formData.getAll("fuentes"), enriquecerAutores: formData.get("enriquecerAutores"),
       });
       if (!parseo.success) return {
         error: parseo.error.issues[0]?.message ?? "Revisa los datos del escaneo.",
         erroresCampos: {
           profesorId: parseo.error.issues.find((error) => error.path[0] === "profesorId")?.message,
+          departamento: parseo.error.issues.find((error) => error.path[0] === "departamento")?.message,
           desde: parseo.error.issues.find((error) => error.path[0] === "desde")?.message,
           hasta: parseo.error.issues.find((error) => error.path[0] === "hasta")?.message,
           fuentes: parseo.error.issues.find((error) => error.path[0] === "fuentes")?.message,
@@ -57,7 +59,7 @@ export async function iniciarEscaneoAction(_: EstadoEscaneo, formData: FormData)
       };
       trabajo = await crearTrabajoEscaneo("escaneo-manual",
         parseo.data.profesorId === "todos" ? undefined : Number(parseo.data.profesorId),
-        parseo.data.rango, parseo.data.fuentes, parseo.data.enriquecerAutores);
+        parseo.data.rango, parseo.data.fuentes, parseo.data.enriquecerAutores, parseo.data.departamento);
     }
     const pendiente = trabajo.estado === "PENDIENTE" || trabajo.estado === "EN_PROCESO";
     if (pendiente) {
@@ -76,6 +78,7 @@ export async function iniciarEscaneoAction(_: EstadoEscaneo, formData: FormData)
       fuentes: datos.success ? datos.data.fuentes ?? [...FUENTES_ANTERIORES] : [...FUENTES_ANTERIORES],
       enriquecerAutores: datos.success ? debeEnriquecerAutores(datos.data) : undefined,
       rango: datos.success ? rangoEfectivo(datos.data) : undefined,
+      departamento: datos.success ? datos.data.departamento ?? "" : "",
       resumen: datos.success ? {
         ...datos.data.resumen,
         errores: datos.data.resumen.errores.map(() => "No se pudo completar una consulta o guardar sus resultados."),
@@ -87,6 +90,7 @@ export async function iniciarEscaneoAction(_: EstadoEscaneo, formData: FormData)
     };
   } catch (error) {
     if (error instanceof TrabajoEscaneoPendiente) return { error: error.message, jobId: error.trabajoId, continuar: true };
+    if (error instanceof Error && error.message === MENSAJE_DEPARTAMENTO_SIN_ACTIVOS) return { error: error.message, erroresCampos: { departamento: error.message } };
     return { error: "No se pudo consultar o iniciar el escaneo. Inténtalo de nuevo más tarde." };
   }
 }

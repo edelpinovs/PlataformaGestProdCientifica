@@ -5,6 +5,7 @@ import { repositorioPrisma } from "./repositorio";
 import { debeEnriquecerAutores, FUENTES_ANTERIORES, type FuenteEscaneo } from "@/modules/produccion/fuentes";
 import { TrabajoEscaneoPendiente } from "@/modules/produccion/fechas-escaneo";
 import { rangoEfectivo, type RangoEscaneo } from "@/modules/produccion/rango-escaneo";
+import { condicionDepartamento, MENSAJE_DEPARTAMENTO_SIN_ACTIVOS } from "@/modules/produccion/departamento";
 
 export const TIPOS_ESCANEO = ["escaneo-manual", "escaneo-diario"];
 export const MENSAJE_REINTENTO_SIN_ACTIVOS = "Ninguno de los profesores sigue activo para reintentar.";
@@ -12,9 +13,10 @@ export const MENSAJE_REINTENTO_SIN_ACTIVOS = "Ninguno de los profesores sigue ac
 
 /**
  * Crea la búsqueda. `profesores` es un profesor, una lista (reintentos, #279) o nada para todos;
- * en cualquier caso solo entran los profesores activos (#259).
+ * en cualquier caso solo entran los profesores activos (#259). Con «todos», `departamento` limita a
+ * los de un departamento o a los que no tienen uno (`sin`).
  */
-export async function crearTrabajoEscaneo(tipo: string, profesores?: number | number[], rango?: RangoEscaneo, fuentes?: FuenteEscaneo[], enriquecerAutores?: boolean) {
+export async function crearTrabajoEscaneo(tipo: string, profesores?: number | number[], rango?: RangoEscaneo, fuentes?: FuenteEscaneo[], enriquecerAutores?: boolean, departamento = "") {
   return prisma.$transaction(async transaccion => {
     // Serializa el inicio en todas las instancias, sin depender de un bloqueo en memoria.
     // $executeRaw y no $queryRaw: la función devuelve void y el adaptador de Prisma no puede leer esa columna.
@@ -25,10 +27,12 @@ export async function crearTrabajoEscaneo(tipo: string, profesores?: number | nu
     });
     if (pendiente) throw new TrabajoEscaneoPendiente(pendiente.id);
     const lista = Array.isArray(profesores);
+    const porDepartamento = profesores === undefined ? condicionDepartamento(departamento) : undefined;
     const elegidos = await transaccion.profesor.findMany({
-      where: { estatusLaboral: "ACTIVO", ...(Array.isArray(profesores) ? { id: { in: profesores } } : profesores ? { id: profesores } : {}) },
+      where: { estatusLaboral: "ACTIVO", ...porDepartamento, ...(Array.isArray(profesores) ? { id: { in: profesores } } : profesores ? { id: profesores } : {}) },
       select: { id: true }, orderBy: { id: "asc" },
     });
+    if (porDepartamento && elegidos.length === 0) throw new Error(MENSAJE_DEPARTAMENTO_SIN_ACTIVOS);
     if (profesores !== undefined && elegidos.length === 0) {
       throw new Error(lista ? MENSAJE_REINTENTO_SIN_ACTIVOS : "El profesor no está disponible para escanear.");
     }
@@ -37,6 +41,7 @@ export async function crearTrabajoEscaneo(tipo: string, profesores?: number | nu
       ...(rango ? { desde: rango.desde, hasta: rango.hasta } : {}), resumen: resumenVacio(),
       fuentes: fuentes ?? [...FUENTES_ANTERIORES],
       ...(enriquecerAutores === undefined ? {} : { enriquecerAutores }),
+      ...(porDepartamento ? { departamento } : {}),
     };
     return transaccion.job.create({ data: {
       tipo, estado: elegidos.length ? "PENDIENTE" : "COMPLETADO",

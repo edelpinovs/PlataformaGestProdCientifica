@@ -34,8 +34,24 @@ describe("escaneo manual de Administración y Coordinación (#170, #265)", () =>
     const datos = new FormData(); datos.set("jobId", "7");
     await iniciarEscaneoAction({}, datos);
     expect(dobles.permiso).toHaveBeenCalledWith(["ADMINISTRADOR", "COORDINADOR"]);
-    expect(dobles.crear).toHaveBeenCalledExactlyOnceWith("escaneo-manual", undefined, undefined, ["ORCID"], false);
+    expect(dobles.crear).toHaveBeenCalledExactlyOnceWith("escaneo-manual", undefined, undefined, ["ORCID"], false, "");
     expect(dobles.after).toHaveBeenCalledTimes(2);
+  });
+  it("con «todos» pasa el departamento elegido; con un profesor lo ignora", async () => {
+    const todos = new FormData(); todos.set("fuentes", "ORCID"); todos.set("profesorId", "todos"); todos.set("departamento", "3");
+    await iniciarEscaneoAction({}, todos);
+    expect(dobles.crear).toHaveBeenLastCalledWith("escaneo-manual", undefined, undefined, ["ORCID"], false, "3");
+    const uno = new FormData(); uno.set("fuentes", "ORCID"); uno.set("profesorId", "5"); uno.set("departamento", "sin");
+    await iniciarEscaneoAction({}, uno);
+    expect(dobles.crear).toHaveBeenLastCalledWith("escaneo-manual", 5, undefined, ["ORCID"], false, "");
+  });
+  it("rechaza un departamento manipulado y explica cuando no hay activos en él, en español", async () => {
+    const manipulado = new FormData(); manipulado.set("fuentes", "ORCID"); manipulado.set("departamento", "x");
+    expect(await iniciarEscaneoAction({}, manipulado)).toMatchObject({ erroresCampos: { departamento: "Selecciona un departamento válido." } });
+    expect(dobles.crear).not.toHaveBeenCalled();
+    dobles.crear.mockRejectedValue(new Error("No hay profesores activos en ese departamento."));
+    const vacio = new FormData(); vacio.set("fuentes", "ORCID"); vacio.set("departamento", "sin");
+    expect(await iniciarEscaneoAction({}, vacio)).toEqual({ error: "No hay profesores activos en ese departamento.", erroresCampos: { departamento: "No hay profesores activos en ese departamento." } });
   });
   it("un doble inicio ofrece continuar el trabajo pendiente en lugar de lanzar otro", async () => {
     dobles.crear.mockRejectedValue(new TrabajoEscaneoPendiente(12));

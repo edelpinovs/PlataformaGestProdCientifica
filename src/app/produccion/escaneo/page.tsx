@@ -20,9 +20,10 @@ export const maxDuration = 300;
 
 export default async function EscaneoPage() {
   const perfil = await requireModulo("produccion");
-  const [profesores, ultimoJob, pendiente] = await Promise.all([
+  const [profesores, departamentos, ultimoJob, pendiente] = await Promise.all([
     prisma.profesor.findMany({ where: { estatusLaboral: "ACTIVO" },
       select: { id: true, nombres: true, apellidos: true, codigo: true }, orderBy: [{ apellidos: "asc" }, { id: "asc" }] }),
+    prisma.departamento.findMany({ select: { id: true, nombre: true, nomenclatura: true }, orderBy: [{ nombre: "asc" }, { id: "asc" }] }),
     prisma.job.findFirst({ where: { tipo: { in: ["escaneo-manual", "escaneo-diario"] } }, orderBy: { creadoEn: "desc" } }),
     obtenerTrabajoPendiente(),
   ]);
@@ -35,7 +36,7 @@ export default async function EscaneoPage() {
       <Link href="/produccion/demostracion" className={claseBotonSecundario}>Abrir demostración sin base de datos</Link>
     </Panel>}
     <Panel titulo="Nueva búsqueda" descripcion="Elige en tres pasos y revisa el resumen antes de buscar. El avance se guarda por profesor.">
-      {puedeEscanear(perfil.rol) ? <FormularioEscaneo profesores={profesores} trabajoPendiente={pendiente?.id} fuentesTrabajo={datosPendientes.data?.fuentes} enriquecerTrabajo={datosPendientes.success ? debeEnriquecerAutores(datosPendientes.data) : undefined} profesorTrabajo={datosPendientes.data?.profesoresIds.length === 1 ? String(datosPendientes.data.profesoresIds[0]) : "todos"} rangoTrabajo={datosPendientes.success ? rangoEfectivo(datosPendientes.data) : undefined} /> : <Aviso tipo="aviso">{AVISO_SIN_PERMISO_ESCANEO}</Aviso>}
+      {puedeEscanear(perfil.rol) ? <FormularioEscaneo profesores={profesores} departamentos={departamentos} departamentoTrabajo={datosPendientes.data?.departamento} trabajoPendiente={pendiente?.id} fuentesTrabajo={datosPendientes.data?.fuentes} enriquecerTrabajo={datosPendientes.success ? debeEnriquecerAutores(datosPendientes.data) : undefined} profesorTrabajo={datosPendientes.data?.profesoresIds.length === 1 ? String(datosPendientes.data.profesoresIds[0]) : "todos"} rangoTrabajo={datosPendientes.success ? rangoEfectivo(datosPendientes.data) : undefined} /> : <Aviso tipo="aviso">{AVISO_SIN_PERMISO_ESCANEO}</Aviso>}
     </Panel>
     <Panel titulo="Último escaneo registrado">
       {ultimoJob && <ResultadoEscaneo resultado={presentarResultadoEscaneo(ultimoJob.estado, ultimoJob.datos)} jobId={ultimoJob.id} />}

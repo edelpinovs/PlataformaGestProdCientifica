@@ -11,16 +11,20 @@ function unirLista(elementos: string[]): string {
  * Frase que resume, antes de enviar, qué hará la búsqueda con lo elegido en el formulario.
  * Solo orienta: el servidor vuelve a validar fuentes, profesor y rango.
  */
-export function resumenBusqueda({ fuentes, profesor, desde, hasta }: {
+export function resumenBusqueda({ fuentes, profesor, departamento = "", desde, hasta }: {
   fuentes: FuenteEscaneo[];
   /** «todos», el nombre del profesor elegido o vacío si aún no se elige. */
   profesor: string;
+  /** Con «todos»: el nombre del departamento, «sin departamento» o vacío para todos. */
+  departamento?: string;
   desde: string;
   hasta: string;
 }): string {
   const elegidas = FUENTES_ESCANEO.filter((fuente) => fuentes.includes(fuente)).map((fuente) => NOMBRES_FUENTE[fuente]);
   const enFuentes = elegidas.length ? `en ${unirLista(elegidas)}` : "sin fuentes elegidas";
-  const quien = profesor === "todos" ? "todos los profesores activos" : profesor || "un profesor por elegir";
+  const quien = profesor !== "todos" ? profesor || "un profesor por elegir"
+    : departamento === "sin departamento" ? "los profesores activos sin departamento"
+      : departamento ? `los profesores activos de ${departamento}` : "todos los profesores activos";
   const cuando = desde && hasta ? `del ${fechaCorta(desde)} al ${fechaCorta(hasta)}`
     : desde ? `del ${fechaCorta(desde)} a hoy`
       : hasta ? "falta la fecha Desde"
