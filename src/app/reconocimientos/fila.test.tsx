@@ -15,9 +15,9 @@ const { FilaProdep } = await import("./prodep/fila");
 const profesor = { id: 1, codigo: "DEMO001", nombres: "Ana", apellidos: "Prueba Uno", cvu: "900001" };
 const fechas = { inicio: new Date("2025-01-01T00:00:00Z"), fin: new Date("2028-12-31T00:00:00Z") };
 const snii = (convocatoriaId: number | null) => renderToStaticMarkup(
-  <ul><FilaSnii profesores={[profesor]} reconocimiento={{
+  <table><tbody><FilaSnii profesores={[profesor]} reconocimiento={{
     id: 1, nivel: "NIVEL_1", tipoParticipacion: "NUEVO_INGRESO", resultado: "APROBADO", ...fechas, convocatoriaId, profesor,
-  }} /></ul>,
+  }} /></tbody></table>,
 );
 const prodep = (convocatoriaId: number | null) => renderToStaticMarkup(
   <table><tbody><FilaProdep profesores={[]} reconocimiento={{
