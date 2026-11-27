@@ -8,8 +8,10 @@ import {
   leerExportacion,
   tablaConvocatoria,
   tablaMatriz,
+  tablaResultados,
   tablaVigencias,
 } from "./exportar";
+import { analizarResultados, filaResultados, type ObraResultado } from "./publicaciones";
 import { analizarMatriz, filaMatriz } from "./matriz";
 import { analizarReporte, filaCuerpo, filaSnii, NO_APLICA } from "./vigencias";
 
@@ -124,6 +126,20 @@ describe("exportación del reporte armado (RF-030)", () => {
       programas: [10],
     }));
     expect(matriz.filas).toEqual([["CV001"]]);
+  });
+
+  it("exporta el total validado, las columnas aparte y el desglose", () => {
+    const obra: ObraResultado = { publicacionId: 7, estado: "VALIDADA", tipo: "ARTICULO", fuente: "SCOPUS", anio: 2024 };
+    const ada = filaResultados({
+      id: 1, codigo: "P-1", nombres: "Ada", apellidos: "López", estatusLaboral: "LICENCIA",
+      departamento: { id: 1, nombre: "Computación" },
+      obras: [obra, { publicacionId: 8, estado: "PENDIENTE", tipo: "LIBRO", fuente: "ORCID", anio: 2024 }],
+    }, { anio: null, tipo: null, fuente: null });
+    const tabla = tablaResultados([ada], analizarResultados({ columnas: "nombre,actividad,validadas,pendientes,porTipo" }, {
+      departamentos: [1], anios: [2024], haySinAnio: false,
+    }));
+    expect(tabla.columnas).toEqual(["Nombre", "Actividad", "Obras validadas", "Pendientes", "Por tipo"]);
+    expect(tabla.filas).toEqual([["Ada López", "No activo", "1", "1", "Artículo (1)"]]);
   });
 
   it("arma el enlace sin la página y rechaza un formato desconocido", () => {

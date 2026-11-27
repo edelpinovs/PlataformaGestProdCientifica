@@ -29,6 +29,14 @@ import {
   type FilaMatriz,
 } from "./matriz";
 import {
+  COLUMNAS_RESULTADOS,
+  consultarResultados,
+  ETIQUETA_COLUMNA_RESULTADOS,
+  textoResultados,
+  type EstadoResultados,
+  type FilaResultado,
+} from "./publicaciones";
+import {
   COLUMNAS_VIGENCIA,
   consultarVigencias,
   ETIQUETA_COLUMNA,
@@ -40,7 +48,7 @@ import {
 // RF-030: el reporte que la persona armó (columnas, filtros y orden) se descarga
 // completo, no solo la página visible. El PDF se escribe aquí, sin librería nueva.
 
-export const REPORTES_EXPORTABLES = ["vigencias", "convocatoria", "matriz", "completo"] as const;
+export const REPORTES_EXPORTABLES = ["vigencias", "convocatoria", "matriz", "completo", "publicaciones"] as const;
 export type ReporteExportable = (typeof REPORTES_EXPORTABLES)[number];
 
 export const FORMATOS_EXPORTABLES = ["xlsx", "pdf"] as const;
@@ -58,6 +66,7 @@ const NOMBRE_ARCHIVO: Record<ReporteExportable, string> = {
   convocatoria: "convocatoria-anual",
   matriz: "matriz-acreditacion",
   completo: "reporte-completo",
+  publicaciones: "resultados-publicaciones",
 };
 
 export function nombreArchivo(reporte: ReporteExportable, formato: FormatoExportable) {
@@ -119,6 +128,17 @@ export function tablaCompleto(filas: FilaCompleto[], estado: EstadoCompleto): Ta
     hoja: "Completo",
     columnas: columnas.map((columna) => ETIQUETA_COLUMNA_COMPLETO[columna]),
     filas: todas.map((fila) => columnas.map((columna) => textoCompleto(fila, columna))),
+  };
+}
+
+export function tablaResultados(filas: FilaResultado[], estado: EstadoResultados): TablaExportable {
+  const columnas = COLUMNAS_RESULTADOS.filter((columna) => estado.columnas.includes(columna));
+  const { filas: todas } = consultarResultados(filas, estado, true);
+  return {
+    titulo: "Resultados de publicaciones",
+    hoja: "Publicaciones",
+    columnas: columnas.map((columna) => ETIQUETA_COLUMNA_RESULTADOS[columna]),
+    filas: todas.map((fila) => columnas.map((columna) => textoResultados(fila, columna))),
   };
 }
 
