@@ -110,6 +110,14 @@ describe("resultados de publicaciones (D-304)", () => {
     const departamento = consultarResultados(filas, analizarResultados({ departamento: "2" }, catalogo));
     expect(departamento.filas.map((fila) => fila.nombre)).toEqual(["Beto López"]);
     expect(departamento.obrasDistintas).toBe(1);
+    const sinDepartamento = consultarResultados(filas, analizarResultados({ departamento: "sin" }, catalogo));
+    expect(sinDepartamento.filas).toHaveLength(0);
+    const inactivo = filaResultados(persona(3, "Leo", "LICENCIA", [obra({ publicacionId: 4, estado: "VALIDADA" })]), sinCorte);
+    const conInactivo = [...filas, inactivo];
+    const busqueda = consultarResultados(conInactivo, analizarResultados({ q: "activo" }, catalogo));
+    expect(busqueda.filas.map((fila) => fila.nombre)).toEqual(["Ada López", "Beto López"]);
+    const porActividad = consultarResultados(conInactivo, analizarResultados({ actividad: "no-activa" }, catalogo));
+    expect(porActividad.filas.map((fila) => fila.nombre)).toEqual(["Leo López"]);
   });
 
   it("sin obras validadas lo dice y un filtro imposible avisa en español", () => {

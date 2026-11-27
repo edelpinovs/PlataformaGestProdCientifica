@@ -16,6 +16,7 @@ import {
   TIPOS_DISTINCION,
   analizarReporte,
   opcionesAnio,
+  tiposPedidos,
   type ColumnaVigencia,
   type EstadoReporte,
   type FilaVigencia,
@@ -33,9 +34,12 @@ const TIPO_ETIQUETA = {
 
 export default async function ReportesPage({ searchParams }: { searchParams: Promise<ParametrosListado> }) {
   const perfil = await requireModulo("reportes");
-  const departamentos = await cargarDepartamentos();
-  const estado = analizarReporte(await searchParams, { departamentos: departamentos.map((fila) => fila.id) });
-  const cargadas = await cargarVigencias(estado.tipos);
+  const parametros = await searchParams;
+  const [departamentos, cargadas] = await Promise.all([
+    cargarDepartamentos(),
+    cargarVigencias(tiposPedidos(parametros)),
+  ]);
+  const estado = analizarReporte(parametros, { departamentos: departamentos.map((fila) => fila.id) });
   const { filas, paginacion } = consultarVigencias(cargadas, estado);
   const vista: EstadoReporte = { ...estado, consulta: { ...estado.consulta, pagina: paginacion.pagina } };
   const mensajes = Object.values(vista.errores);
@@ -157,6 +161,7 @@ function Constructor({ estado, anios, departamentos }: {
             aria-invalid={Boolean(estado.errores.departamento)} className={claseCampo(Boolean(estado.errores.departamento))}>
             <option value="">Todos</option>
             {departamentos.map((fila) => <option key={fila.id} value={fila.id}>{fila.nombre}</option>)}
+            <option value="sin">Sin departamento</option>
           </select>
         </label>
         <label className={claseEtiqueta}>

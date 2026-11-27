@@ -9,6 +9,7 @@ import {
   type ParametrosListado,
   type Sentido,
 } from "@/lib/listados/consulta";
+import { coincideDepartamento, leerDepartamento, type FiltroDepartamento } from "./comun";
 import { SIN_DEPARTAMENTO } from "./vigencias";
 
 // Reporte de convocatoria anual (RF-028).
@@ -98,8 +99,8 @@ export type EstadoConvocatoria = {
   consulta: ConsultaListado;
   columnas: ColumnaConvocatoria[];
   anio: number | null;
-  /** Null muestra todos los departamentos. */
-  departamentoId: number | null;
+  /** Null muestra todos. `sin` aísla a quien no tiene departamento. */
+  departamentoId: FiltroDepartamento;
   errores: ErroresListado;
 };
 
@@ -219,7 +220,7 @@ function leerAnio(crudo: string | string[] | undefined) {
 
 export function analizarConvocatoria(
   parametros: ParametrosListado,
-  catalogo: { departamentos: readonly number[] } = { departamentos: [] },
+  catalogo: { departamentos: readonly number[] },
 ): EstadoConvocatoria {
   const { consulta, errores } = analizarListado(LISTADO_CONVOCATORIA, parametros);
   const columnas = leerColumnas(parametros.columnas, esArmado(parametros.armado) && parametros.columnas === undefined);
@@ -229,21 +230,6 @@ export function analizarConvocatoria(
   if (anio.error) errores.anio = anio.error;
   if (departamento.error) errores.departamento = departamento.error;
   return { consulta, columnas: columnas.valores, anio: anio.anio, departamentoId: departamento.id, errores };
-}
-
-function leerDepartamento(crudo: string | string[] | undefined, permitidos: readonly number[]) {
-  if (crudo === undefined || crudo === "") return { id: null };
-  const resultado = z.string({ error: "Elige un solo departamento." })
-    .regex(/^\d+$/, "Elige un departamento que exista.")
-    .transform(Number)
-    .safeParse(crudo);
-  if (!resultado.success || !permitidos.includes(resultado.data)) {
-    return {
-      id: null,
-      error: resultado.success ? "Elige un departamento que exista." : resultado.error.issues[0]?.message ?? "Elige un departamento que exista.",
-    };
-  }
-  return { id: resultado.data };
 }
 
 function programasElegidos(estado: EstadoConvocatoria): ProgramaConvocatoria[] {
@@ -261,7 +247,7 @@ export function consultarConvocatoria(
   if (estado.columnas.length === 0) return { filas: [] as FilaConvocatoria[], paginacion: paginar(0, estado.consulta) };
   const genero = estado.consulta.filtros.genero;
   const hechos = hechosConvocatoria(dictamenes, participaciones, historial, programasElegidos(estado), estado.anio)
-    .filter((hecho) => estado.departamentoId === null || hecho.departamentoId === estado.departamentoId);
+    .filter((hecho) => coincideDepartamento(hecho.departamentoId, estado.departamentoId));
   const texto = estado.consulta.q.trim().toLocaleLowerCase("es-MX");
   const filas = agruparConvocatoria(hechos).filter((fila) => {
     if (genero && fila.genero !== genero) return false;

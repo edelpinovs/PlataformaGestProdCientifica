@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import type { ParametrosListado } from "@/lib/listados/consulta";
+import { columnasSinDatosPersonales, CORREO_PENDIENTE } from "./comun";
 import {
   analizarReporte,
   COLUMNAS_VIGENCIA,
@@ -33,8 +35,8 @@ function snii(parcial: Partial<Parameters<typeof filaSnii>[0]> = {}) {
   }, hoy);
 }
 
-function estadoBase() {
-  return analizarReporte({});
+function estadoBase(parametros: ParametrosListado = {}, catalogo: { departamentos: readonly number[] } = { departamentos: [] }) {
+  return analizarReporte(parametros, catalogo);
 }
 
 describe("estatus aplicado a cada distinción (RF-026)", () => {
@@ -145,13 +147,15 @@ describe("reporte armado por quien consulta", () => {
   it("al entrar muestra las tres distinciones y todas las columnas", () => {
     const estado = estadoBase();
     expect(estado.tipos).toEqual(["SNII", "PRODEP", "CA"]);
-    expect(estado.columnas).toEqual([...COLUMNAS_VIGENCIA]);
+    expect(estado.columnas).toEqual(columnasSinDatosPersonales(COLUMNAS_VIGENCIA));
+    expect(estado.columnas).not.toContain("correo");
+    expect(estado.columnas).not.toContain("cvu");
     expect(estado.anio).toBeNull();
     expect(estado.errores).toEqual({});
   });
 
   it("filtra los vencimientos por el año de la fecha de fin (RF-027)", () => {
-    const estado = analizarReporte({ anio: "2027" });
+    const estado = estadoBase({ anio: "2027" });
     expect(estado.anio).toBe(2027);
     expect(consultarVigencias(filas, estado).filas.map((fila) => fila.nombre)).toEqual(["Grace Hopper"]);
     expect(opcionesAnio(filas, null)).toEqual([2024, 2027, 2030]);
@@ -167,46 +171,46 @@ describe("reporte armado por quien consulta", () => {
       anioVencimiento: 2030,
       departamento: "Computación",
     }, hoy);
-    expect(consultarVigencias([cuerpo], analizarReporte({ anio: "2030" })).filas).toHaveLength(1);
-    expect(consultarVigencias([cuerpo], analizarReporte({ anio: "2020" })).filas).toHaveLength(0);
+    expect(consultarVigencias([cuerpo], estadoBase({ anio: "2030" })).filas).toHaveLength(1);
+    expect(consultarVigencias([cuerpo], estadoBase({ anio: "2020" })).filas).toHaveLength(0);
   });
 
   it("un año inválido se ignora y se avisa en español", () => {
-    const invalido = analizarReporte({ anio: "siglo" });
+    const invalido = estadoBase({ anio: "siglo" });
     expect(invalido.anio).toBeNull();
     expect(invalido.errores.anio).toBe("El año debe tener cuatro dígitos, entre 1990 y 2100.");
     expect(consultarVigencias(filas, invalido).paginacion.total).toBe(filas.length);
-    expect(analizarReporte({ anio: ["2026", "2027"] }).errores.anio).toBe("Elige un solo año.");
-    expect(analizarReporte({ anio: "1899" }).errores.anio).toBe("El año debe tener cuatro dígitos, entre 1990 y 2100.");
+    expect(estadoBase({ anio: ["2026", "2027"] }).errores.anio).toBe("Elige un solo año.");
+    expect(estadoBase({ anio: "1899" }).errores.anio).toBe("El año debe tener cuatro dígitos, entre 1990 y 2100.");
   });
 
   it("conserva el año al pasar de página", () => {
-    const estado = analizarReporte({ anio: "2027" });
+    const estado = estadoBase({ anio: "2027" });
     expect(enlaceReporte("/reportes", estado, { pagina: 2 })).toBe("/reportes?anio=2027&pagina=2");
   });
 
   it("respeta las distinciones elegidas", () => {
-    const estado = analizarReporte({ tipos: "SNII" });
+    const estado = estadoBase({ tipos: "SNII" });
     const { filas: pagina, paginacion } = consultarVigencias(filas, estado);
     expect(pagina.map((fila) => fila.tipo)).toEqual(["SNII", "SNII"]);
     expect(paginacion.total).toBe(2);
   });
 
   it("busca solo en las columnas que quedaron visibles", () => {
-    const conNombre = analizarReporte({ q: "hopper", columnas: "nombre,semaforo" });
+    const conNombre = estadoBase({ q: "hopper", columnas: "nombre,semaforo" });
     expect(consultarVigencias(filas, conNombre).filas.map((fila) => fila.nombre)).toEqual(["Grace Hopper"]);
 
-    const sinNombre = analizarReporte({ q: "hopper", columnas: "semaforo" });
+    const sinNombre = estadoBase({ q: "hopper", columnas: "semaforo" });
     expect(consultarVigencias(filas, sinNombre).filas).toEqual([]);
   });
 
   it("filtra por el semáforo calculado", () => {
-    const estado = analizarReporte({ semaforo: "ROJO" });
+    const estado = estadoBase({ semaforo: "ROJO" });
     expect(consultarVigencias(filas, estado).filas.map((fila) => fila.nombre)).toEqual(["Alan Turing"]);
   });
 
   it("si la columna de orden no está en el reporte, usa la primera columna visible", () => {
-    const estado = analizarReporte({ columnas: "nombre", orden: "fin" });
+    const estado = estadoBase({ columnas: "nombre", orden: "fin" });
     const { filas: pagina } = consultarVigencias(filas, estado);
     expect(pagina.map((fila) => fila.nombre)).toEqual(["Ada Lovelace", "Alan Turing", "Grace Hopper"]);
   });
@@ -216,7 +220,7 @@ describe("reporte armado por quien consulta", () => {
       snii({ id: 10, fin: new Date(Date.UTC(2028, 0, 1)), nombres: "Bea" }),
       snii({ id: 2, fin: new Date(Date.UTC(2028, 0, 1)), nombres: "Ana" }),
     ];
-    const { filas: pagina } = consultarVigencias(mismoDia, analizarReporte({ orden: "fin", dir: "asc" }));
+    const { filas: pagina } = consultarVigencias(mismoDia, estadoBase({ orden: "fin", dir: "asc" }));
     expect(pagina.map((fila) => fila.id)).toEqual(["snii-00000002", "snii-00000010"]);
   });
 
@@ -226,27 +230,27 @@ describe("reporte armado por quien consulta", () => {
       fin: new Date(Date.UTC(2030, 0, indice + 1)),
       nombres: `Persona ${indice + 1}`,
     }));
-    const pagina2 = consultarVigencias(muchas, analizarReporte({ pagina: "2" }));
+    const pagina2 = consultarVigencias(muchas, estadoBase({ pagina: "2" }));
     expect(pagina2.filas).toHaveLength(1);
     expect(pagina2.paginacion.desde).toBe(11);
 
-    const lejos = consultarVigencias(muchas, analizarReporte({ pagina: "9" }));
+    const lejos = consultarVigencias(muchas, estadoBase({ pagina: "9" }));
     expect(lejos.paginacion.pagina).toBe(2);
     expect(lejos.filas).toHaveLength(1);
   });
 
   it("sin columnas no cuenta distinciones", () => {
-    const estado = analizarReporte({ armado: "1", tipos: "SNII" });
+    const estado = estadoBase({ armado: "1", tipos: "SNII" });
     expect(estado.columnas).toEqual([]);
     expect(consultarVigencias(filas, estado).paginacion.total).toBe(0);
   });
 
   it("avisa en español si la selección queda vacía o trae un valor que no existe", () => {
-    expect(analizarReporte({ armado: "1" }).errores.tipos).toBe("Elige al menos una distinción.");
-    expect(analizarReporte({ armado: "1" }).errores.columnas).toBe("Elige al menos una columna.");
-    expect(analizarReporte({ tipos: "OTRA" }).errores.tipos).toBe("Hay una distinción que no existe.");
-    expect(analizarReporte({ columnas: "sueldo" }).errores.columnas).toBe("Hay una columna que no existe.");
-    expect(analizarReporte({ semaforo: "azul" }).errores.semaforo).toBe("Uno de los filtros tiene un valor que no existe.");
+    expect(estadoBase({ armado: "1" }).errores.tipos).toBe("Elige al menos una distinción.");
+    expect(estadoBase({ armado: "1" }).errores.columnas).toBe("Elige al menos una columna.");
+    expect(estadoBase({ tipos: "OTRA" }).errores.tipos).toBe("Hay una distinción que no existe.");
+    expect(estadoBase({ columnas: "sueldo" }).errores.columnas).toBe("Hay una columna que no existe.");
+    expect(estadoBase({ semaforo: "azul" }).errores.semaforo).toBe("Uno de los filtros tiene un valor que no existe.");
   });
 
   it("filtra por departamento junto con la búsqueda y el año, y al cambiarlo vuelve a la página 1", () => {
@@ -255,18 +259,27 @@ describe("reporte armado por quien consulta", () => {
       snii({ id: 1, departamentoId: 1, departamento: "Computación", nombres: "Ada", fin: new Date(Date.UTC(2030, 0, 1)) }),
       snii({ id: 2, departamentoId: 2, departamento: "Matemáticas", nombres: "Alan", fin: new Date(Date.UTC(2024, 0, 1)) }),
     ];
-    const estado = analizarReporte({ departamento: "1", q: "ada", anio: "2030" }, catalogo);
+    const estado = estadoBase({ departamento: "1", q: "ada", anio: "2030" }, catalogo);
     expect(estado.consulta.pagina).toBe(1);
     expect(estado.departamentoId).toBe(1);
     expect(consultarVigencias(filas, estado, true).filas.map((fila) => fila.nombre)).toEqual(["Ada Lovelace"]);
-    expect(analizarReporte({ departamento: "9" }, catalogo).errores.departamento).toBe("Elige un departamento que exista.");
-    expect(analizarReporte({ departamento: ["1", "2"] }, catalogo).errores.departamento).toBe("Elige un solo departamento.");
-    expect(enlaceReporte("/reportes", analizarReporte({ departamento: "1" }, catalogo))).toBe("/reportes?departamento=1");
-    expect(enlaceReporte("/reportes", analizarReporte({ departamento: "1", pagina: "2" }, catalogo))).toBe("/reportes?departamento=1&pagina=2");
+    expect(estadoBase({ departamento: "9" }, catalogo).errores.departamento).toBe("Elige un departamento que exista.");
+    expect(estadoBase({ departamento: ["1", "2"] }, catalogo).errores.departamento).toBe("Elige un solo departamento.");
+    expect(enlaceReporte("/reportes", estadoBase({ departamento: "1" }, catalogo))).toBe("/reportes?departamento=1");
+    expect(enlaceReporte("/reportes", estadoBase({ departamento: "sin" }, catalogo))).toBe("/reportes?departamento=sin");
+    const sinDepartamento = consultarVigencias(
+      [snii({ id: 1, departamentoId: null }), snii({ id: 2, departamentoId: 1 })],
+      estadoBase({ departamento: "sin" }, catalogo),
+    );
+    expect(sinDepartamento.filas.map((fila) => fila.id)).toEqual([snii({ id: 1, departamentoId: null }).id]);
+    const pendiente = snii({ correo: "pend-0001@pendiente.invalid", cvu: "  " });
+    expect(pendiente.correo).toBe(CORREO_PENDIENTE);
+    expect(pendiente.cvu).toBe(SIN_CVU);
+    expect(enlaceReporte("/reportes", estadoBase({ departamento: "1", pagina: "2" }, catalogo))).toBe("/reportes?departamento=1&pagina=2");
   });
 
   it("conserva la selección al pasar de página", () => {
-    const estado = analizarReporte({ tipos: ["SNII", "CA"], columnas: "nombre,fin", q: "ada", semaforo: "VERDE" });
+    const estado = estadoBase({ tipos: ["SNII", "CA"], columnas: "nombre,fin", q: "ada", semaforo: "VERDE" });
     expect(enlaceReporte("/reportes", estado, { pagina: 2 })).toBe(
       "/reportes?tipos=SNII%2CCA&columnas=nombre%2Cfin&q=ada&semaforo=VERDE&pagina=2",
     );

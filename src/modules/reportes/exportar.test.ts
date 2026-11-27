@@ -36,7 +36,7 @@ describe("exportación del reporte armado (RF-030)", () => {
       ...Array.from({ length: 12 }, (_, indice) => snii(indice + 1, `Nombre${indice + 1}`, 2030)),
       snii(99, "Fuera", 2020),
     ];
-    const tabla = tablaVigencias(filas, analizarReporte({ columnas: "nombre", anio: "2030" }));
+    const tabla = tablaVigencias(filas, analizarReporte({ columnas: "nombre", anio: "2030" }, { departamentos: [] }));
     expect(tabla.columnas).toEqual(["Nombre"]);
     expect(tabla.filas).toHaveLength(12);
     expect(tabla.filas.some((fila) => fila[0].includes("Fuera"))).toBe(false);
@@ -58,7 +58,7 @@ describe("exportación del reporte armado (RF-030)", () => {
       id: 3, clave: "CA-003", nombre: "Redes", nivel: "EN_CONSOLIDACION",
       anioRegistro: 2023, anioVencimiento: 2026, departamento: "Computación",
     }, hoy);
-    const tabla = tablaVigencias([persona, cuerpo], analizarReporte({ columnas: "nombre,correo,cvu" }));
+    const tabla = tablaVigencias([persona, cuerpo], analizarReporte({ columnas: "nombre,correo,cvu" }, { departamentos: [] }));
     expect(tabla.columnas).toEqual(["Nombre", "Correo electrónico", "CVU"]);
     expect(tabla.filas).toEqual([
       ["Ada López", "ada@demo.invalid", "100200"],
@@ -68,7 +68,7 @@ describe("exportación del reporte armado (RF-030)", () => {
 
   it("escribe un PDF con el texto del reporte y más de una página", () => {
     const filas = Array.from({ length: 80 }, (_, indice) => snii(indice + 1, `Nombre${indice + 1}`, 2030));
-    const tabla = tablaVigencias(filas, analizarReporte({}));
+    const tabla = tablaVigencias(filas, analizarReporte({}, { departamentos: [] }));
     const pdf = generarPdf(tabla);
     const texto = pdf.toString("latin1");
     expect(texto.startsWith("%PDF-")).toBe(true);
@@ -91,7 +91,7 @@ describe("exportación del reporte armado (RF-030)", () => {
       tipo: "NUEVO_INGRESO",
       nivel: "CANDIDATO",
       inicio: "2026-01-01",
-    }], [], [], analizarConvocatoria({ columnas: "genero" }));
+    }], [], [], analizarConvocatoria({ columnas: "genero" }, { departamentos: [] }));
     expect(convocatoria.columnas).toEqual(["Género"]);
     expect(convocatoria.filas).toEqual([["Masculino"]]);
 
@@ -140,6 +140,17 @@ describe("exportación del reporte armado (RF-030)", () => {
     }));
     expect(tabla.columnas).toEqual(["Nombre", "Actividad", "Obras validadas", "Pendientes", "Por tipo"]);
     expect(tabla.filas).toEqual([["Ada López", "No activo", "1", "1", "Artículo (1)"]]);
+  });
+
+  it("el PDF parte el correo en los signos y no a la mitad de una palabra", () => {
+    const tabla = {
+      titulo: "Correo",
+      hoja: "Correo",
+      columnas: ["Correo", "A", "B", "C", "D", "E", "F", "G"],
+      filas: [["persona.ficticia.larga@alumnos.udg.mx", "1", "2", "3", "4", "5", "6", "7"]],
+    };
+    const texto = generarPdf(tabla).toString("latin1");
+    expect(texto).toContain("alumnos");
   });
 
   it("arma el enlace sin la página y rechaza un formato desconocido", () => {

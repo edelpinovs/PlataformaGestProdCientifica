@@ -44,7 +44,7 @@ describe("reporte completo por profesor", () => {
     expect(ETIQUETA_COLUMNA_COMPLETO.sniiSemaforo).toBe("Estatus SNII");
     expect(ETIQUETA_COLUMNA_COMPLETO.prodepSemaforo).toBe("Estatus PRODEP");
     expect(ETIQUETA_COLUMNA_COMPLETO.caSemaforo).toBe("Estatus del cuerpo");
-    expect(ETIQUETA_COLUMNA_COMPLETO.estatus).toBe("Estatus");
+    expect(ETIQUETA_COLUMNA_COMPLETO.estatus).toBe("Estatus laboral");
   });
 
   it("junta en una fila solo el SNII y el PRODEP vigentes, el cuerpo que vence antes y las convocatorias", () => {

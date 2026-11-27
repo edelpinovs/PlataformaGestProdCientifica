@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { ParametrosListado } from "@/lib/listados/consulta";
 import {
   analizarConvocatoria,
   aniosConvocatoria,
@@ -9,6 +10,10 @@ import {
   type HistorialSnii,
   type ParticipacionReporte,
 } from "./convocatoria";
+
+function estadoConvocatoria(parametros: ParametrosListado = {}, catalogo: { departamentos: readonly number[] } = { departamentos: [] }) {
+  return analizarConvocatoria(parametros, catalogo);
+}
 
 function snii(parcial: Partial<DictamenConvocatoria> = {}): DictamenConvocatoria {
   return {
@@ -63,7 +68,7 @@ describe("clasificación de la convocatoria anual (RF-028)", () => {
       { profesorId: 4, programa: "SNII", anio: 2026, departamento: null, departamentoId: null, genero: "F", resultado: "NO_APROBADO" },
       { profesorId: 5, programa: "SNII", anio: 2026, departamento: "Computación", departamentoId: 1, genero: "M", resultado: "APROBADO" },
     ];
-    const { filas } = consultarConvocatoria(dictamenes, participaciones, [], analizarConvocatoria({}));
+    const { filas } = consultarConvocatoria(dictamenes, participaciones, [], estadoConvocatoria({}));
     expect(filas).toEqual([
       expect.objectContaining({ departamento: "Computación", genero: "F", nuevosIngresos: 2, vigentes: 0 }),
       expect.objectContaining({ departamento: "Matemáticas", genero: "M", noAprobados: 1 }),
@@ -77,13 +82,13 @@ describe("clasificación de la convocatoria anual (RF-028)", () => {
       snii({ id: 2, profesorId: 2, genero: "PENDIENTE" }),
       snii({ id: 3, profesorId: 3, genero: "PENDIENTE" }),
     ];
-    const todas = consultarConvocatoria(dictamenes, [], [], analizarConvocatoria({})).filas;
+    const todas = consultarConvocatoria(dictamenes, [], [], estadoConvocatoria({})).filas;
     expect(todas).toEqual(expect.arrayContaining([
       expect.objectContaining({ genero: "F", nuevosIngresos: 1 }),
       expect.objectContaining({ genero: "PENDIENTE", nuevosIngresos: 2 }),
     ]));
 
-    const estado = analizarConvocatoria({ genero: "PENDIENTE" });
+    const estado = estadoConvocatoria({ genero: "PENDIENTE" });
     expect(estado.errores.genero).toBeUndefined();
     expect(consultarConvocatoria(dictamenes, [], [], estado).filas).toEqual([
       expect.objectContaining({ genero: "PENDIENTE", nuevosIngresos: 2 }),
@@ -95,16 +100,16 @@ describe("clasificación de la convocatoria anual (RF-028)", () => {
       snii({ anio: 2026, programa: "SNII" }),
       snii({ id: 2, profesorId: 8, anio: 2025, programa: "PRODEP", tipo: "RENOVACION", nivel: null }),
     ];
-    const solo = analizarConvocatoria({ anio: "2025", programa: "PRODEP" });
+    const solo = estadoConvocatoria({ anio: "2025", programa: "PRODEP" });
     const { filas } = consultarConvocatoria(dictamenes, [], [], solo);
     expect(filas).toEqual([expect.objectContaining({ vigentes: 1, nuevosIngresos: 0 })]);
     expect(aniosConvocatoria(dictamenes, [], null)).toEqual([2025, 2026]);
   });
 
   it("avisa en español si el año o la columna no sirven", () => {
-    expect(analizarConvocatoria({ anio: "siglo" }).errores.anio).toBe("El año debe tener cuatro dígitos, entre 1990 y 2100.");
-    expect(analizarConvocatoria({ anio: ["2025", "2026"] }).errores.anio).toBe("Elige un solo año.");
-    expect(analizarConvocatoria({ programa: "CA" }).errores.programa).toBe("Uno de los filtros tiene un valor que no existe.");
+    expect(estadoConvocatoria({ anio: "siglo" }).errores.anio).toBe("El año debe tener cuatro dígitos, entre 1990 y 2100.");
+    expect(estadoConvocatoria({ anio: ["2025", "2026"] }).errores.anio).toBe("Elige un solo año.");
+    expect(estadoConvocatoria({ programa: "CA" }).errores.programa).toBe("Uno de los filtros tiene un valor que no existe.");
   });
 
   it("filtra por departamento junto con la búsqueda y, al cambiarlo, vuelve a la página 1", () => {
@@ -113,18 +118,18 @@ describe("clasificación de la convocatoria anual (RF-028)", () => {
       snii({ id: 1, profesorId: 1, departamentoId: 1, departamento: "Computación" }),
       snii({ id: 2, profesorId: 2, departamentoId: 2, departamento: "Matemáticas" }),
     ];
-    const estado = analizarConvocatoria({ departamento: "2", q: "matemáticas", genero: "F" }, catalogo);
+    const estado = estadoConvocatoria({ departamento: "2", q: "matemáticas", genero: "F" }, catalogo);
     expect(estado.consulta.pagina).toBe(1);
     expect(estado.departamentoId).toBe(2);
     expect(consultarConvocatoria(dictamenes, [], [], estado, true).filas.map((fila) => fila.departamento)).toEqual(["Matemáticas"]);
-    expect(analizarConvocatoria({ departamento: "9" }, catalogo).errores.departamento).toBe("Elige un departamento que exista.");
-    expect(analizarConvocatoria({ departamento: ["1", "2"] }, catalogo).errores.departamento).toBe("Elige un solo departamento.");
-    expect(enlaceConvocatoria("/reportes/convocatoria", analizarConvocatoria({ departamento: "1", pagina: "3" }, catalogo))).toContain("departamento=1");
-    expect(enlaceConvocatoria("/reportes/convocatoria", analizarConvocatoria({ departamento: "1" }, catalogo))).not.toContain("pagina=");
+    expect(estadoConvocatoria({ departamento: "9" }, catalogo).errores.departamento).toBe("Elige un departamento que exista.");
+    expect(estadoConvocatoria({ departamento: ["1", "2"] }, catalogo).errores.departamento).toBe("Elige un solo departamento.");
+    expect(enlaceConvocatoria("/reportes/convocatoria", estadoConvocatoria({ departamento: "1", pagina: "3" }, catalogo))).toContain("departamento=1");
+    expect(enlaceConvocatoria("/reportes/convocatoria", estadoConvocatoria({ departamento: "1" }, catalogo))).not.toContain("pagina=");
   });
 
   it("conserva año, programa y género al pasar de página", () => {
-    const estado = analizarConvocatoria({ anio: "2026", programa: "SNII", genero: "F", q: "computación" });
+    const estado = estadoConvocatoria({ anio: "2026", programa: "SNII", genero: "F", q: "computación" });
     expect(enlaceConvocatoria("/reportes/convocatoria", estado, { pagina: 2 })).toBe(
       "/reportes/convocatoria?anio=2026&programa=SNII&genero=F&q=computaci%C3%B3n&pagina=2",
     );
