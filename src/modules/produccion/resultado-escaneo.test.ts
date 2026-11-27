@@ -104,6 +104,14 @@ describe("Presentación segura del resultado del escaneo", () => {
     expect(resultado?.incidencias).toEqual([]);
   });
 
+  it("indica las autorías nuevas y el profesor cuando la búsqueda fue de uno solo", () => {
+    const uno = datos(3);
+    uno.resumen = { ...uno.resumen, autoriasCreadas: 3 };
+    expect(presentarResultadoEscaneo("COMPLETADO", uno)).toMatchObject({ autoriasNuevas: 3, profesorUnico: 1 });
+    expect(presentarResultadoEscaneo("COMPLETADO", { ...datos(0), profesoresIds: [1, 2], indice: 2 })).toMatchObject({ autoriasNuevas: 0, profesorUnico: undefined });
+    expect(presentarResultadoEscaneo("FALLIDO", null)).toMatchObject({ autoriasNuevas: 0, profesorUnico: undefined });
+  });
+
   it("#279: explica una búsqueda cancelada y conserva lo guardado", () => {
     const resultado = presentarResultadoEscaneo("CANCELADO", datos(2));
     expect(resultado?.tipo).toBe("aviso");

@@ -22,6 +22,8 @@ export function presentarResultadoEscaneo(estado: string, datos: unknown) {
     mensaje: estado === "FALLIDO" ? "No se pudo completar el escaneo. Puedes reintentarlo." : cancelado ? "La búsqueda se canceló antes de terminar." : "Escaneo finalizado.",
     fuentes: [] as FuenteResultado[],
     incidencias: [] as string[],
+    autoriasNuevas: 0,
+    profesorUnico: undefined as number | undefined,
   };
   const resumen = lectura.data.resumen;
   const todas = consultasDeFuentes(resumen);
@@ -66,5 +68,8 @@ export function presentarResultadoEscaneo(estado: string, datos: unknown) {
     mensaje: `${cancelado ? "La búsqueda se canceló antes de terminar; se conserva lo guardado hasta ese momento." : parcial ? "Escaneo con resultados parciales." : conIncidencias ? "Escaneo con incidencias." : "Escaneo finalizado."} Publicaciones encontradas: ${resumen.publicacionesEncontradas}. Guardadas o actualizadas: ${resumen.publicacionesGuardadas}. Autorías nuevas: ${resumen.autoriasCreadas}.${resumen.autoriasRechazadasOmitidas ? ` Autorías omitidas por rechazo previo: ${resumen.autoriasRechazadasOmitidas}. No se volvieron a proponer para revisión.` : ""}${!cancelado && !conIncidencias && !resumen.publicacionesEncontradas ? " No se encontraron publicaciones para el periodo consultado." : ""}`,
     fuentes,
     incidencias: [...incidencias],
+    // Para enlazar el resultado con Publicaciones (un solo profesor) y con Validación (autorías por revisar).
+    autoriasNuevas: resumen.autoriasCreadas,
+    profesorUnico: lectura.data.profesoresIds.length === 1 ? lectura.data.profesoresIds[0] : undefined,
   };
 }

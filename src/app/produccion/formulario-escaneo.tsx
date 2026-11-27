@@ -186,7 +186,7 @@ export function FormularioEscaneo({
       <ProgresoEscaneo estado={resultadoVigente ? estado : { ...estado, resultado: undefined }} enviando={enviando} />
       {(estado.pendiente || estado.continuar) && estado.jobId && <ControlBusqueda key={estado.jobId} jobId={estado.jobId} cancelar reintentar={false} />}
       {estado.error && !estado.resultado && <Aviso tipo="error">{estado.error}</Aviso>}
-      {!enviando && resultadoVigente && estado.resultado && <ResultadoEscaneo resultado={estado.resultado} />}
+      {!enviando && resultadoVigente && estado.resultado && <ResultadoEscaneo resultado={estado.resultado} jobId={estado.jobId} />}
       {estado.pendiente && (
         <p className="text-sm text-texto-3">El avance se guarda por profesor. Puedes volver a esta pantalla para continuar.</p>
       )}

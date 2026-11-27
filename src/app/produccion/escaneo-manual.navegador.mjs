@@ -32,11 +32,15 @@ const comprobar=(c,m)=>{if(!c)throw Error(m)};
  comprobar(window.solicitudes[2].profesorId==="todos","Falta el alcance nuevo");
  await esperar(()=>document.body.textContent.includes("Escaneo finalizado."));
  comprobar(document.documentElement.scrollWidth<=innerWidth,"El formulario desborda el ancho");
+ const enlace=t=>[...document.querySelectorAll("a")].find(a=>a.textContent.includes(t));
+ comprobar(enlace("Ver lo que encontró esta búsqueda")?.getAttribute("href")==="/produccion/historial?registro=8","Falta ir al detalle de esta búsqueda");
+ comprobar(enlace("Publicaciones de este profesor")?.getAttribute("href")==="/produccion/publicaciones?profesor=1","Falta ver las publicaciones del profesor");
+ comprobar(document.body.textContent.includes("131 autorías nuevas quedan por validar")&&enlace("Validación")?.getAttribute("href")==="/validacion?estado=PENDIENTE","Falta el aviso de autorías por validar");
  // Al cambiar el formulario, la barra y el resultado de la búsqueda anterior se ocultan.
  document.querySelector('input[name="fuentes"]').click();
  await esperar(()=>!document.body.textContent.includes("Escaneo finalizado."));
  comprobar(!document.querySelector("progress"),"La barra de la búsqueda anterior sigue a la vista");
- document.getElementById("resultado").textContent="CORRECTO: inicio, fuente actual, progreso automático, resultado parcial, éxito y resultado anterior oculto";
+ document.getElementById("resultado").textContent="CORRECTO: inicio, fuente actual, progreso automático, resultado parcial, éxito con enlaces a lo encontrado y resultado anterior oculto";
 }catch(e){document.getElementById("resultado").textContent="FALLO: "+e.message}})();
 `, "escaneo-manual", [{name:"accion-simulada",setup(b){
   b.onResolve({filter:/^\.\/actions$/},args=>/(formulario-escaneo|control-busqueda)\.tsx$/.test(args.importer)?{path:"accion",namespace:"escaneo"}:undefined);
@@ -47,7 +51,7 @@ const comprobar=(c,m)=>{if(!c)throw Error(m)};
       await new Promise(resolve=>setTimeout(resolve,250));
       if(window.solicitudes.length===1) return {jobId:7,pendiente:true,avance:1,total:2,fuenteEnCurso:"ORCID"};
       if(window.solicitudes.length===2) return {jobId:7,avance:2,total:2,resultado:{tipo:"aviso",mensaje:"Escaneo con resultados parciales.",fuentes:[],incidencias:[]}};
-      return {jobId:8,avance:1,total:1,exito:true,resultado:{tipo:"exito",mensaje:"Escaneo finalizado.",fuentes:[],incidencias:[]}};
+      return {jobId:8,avance:1,total:1,exito:true,resultado:{tipo:"exito",mensaje:"Escaneo finalizado.",fuentes:[],incidencias:[],autoriasNuevas:131,profesorUnico:1}};
     }
   `}));
 }}]);
