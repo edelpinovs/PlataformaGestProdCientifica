@@ -151,6 +151,12 @@ describe("eliminarParticipante (RF-018)", () => {
     expect(JSON.stringify(dobles.prisma.auditoria.create.mock.calls)).not.toMatch(/Ana|Prueba Uno/);
   });
 
+  it("si falla el registro de la bitácora, explica en español y no sigue (revisión del #393)", async () => {
+    dobles.prisma.$transaction.mockRejectedValue(new Error("conexión perdida"));
+    expect(await eliminarParticipante({}, formulario({ id: "1" }))).toEqual({ error: "No se pudo guardar el cambio. Inténtalo de nuevo; no se modificó nada." });
+    expect(dobles.redirect).not.toHaveBeenCalled();
+  });
+
   it("no escribe en la bitácora si no se borró nada", async () => {
     dobles.prisma.participacionConvocatoria.deleteMany.mockResolvedValue({ count: 0 });
     await eliminarParticipante({}, formulario({ id: "1" }));

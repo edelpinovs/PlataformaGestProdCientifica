@@ -9,6 +9,7 @@ import { requireModulo } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { revalidarProfesorSeleccionado } from "@/lib/selectores/profesor";
 import { eventoAuditoria, resumenEliminacion } from "@/modules/administracion/auditoria";
+import { NO_SE_GUARDO } from "@/modules/convocatorias/carga";
 import { motivoConvocatoriaConfirmada, participante } from "@/modules/convocatorias/participantes";
 
 // RF-018: registro de quienes participaron en una convocatoria. El resultado se muestra como
@@ -108,17 +109,22 @@ export async function eliminarParticipante(_: EstadoFila, formData: FormData): P
 
   // La condición va en el mismo DELETE: si la convocatoria se confirma en este instante, no se borra.
   // #380: el borrado y su constancia van juntos; si no se borró nada, no se registra.
-  const count = await prisma.$transaction(async (tx) => {
-    const borrado = await tx.participacionConvocatoria.deleteMany({
-      where: { id, convocatoria: { cargas: { none: { estado: "CONFIRMADA" } } } },
+  let count: number;
+  try {
+    count = await prisma.$transaction(async (tx) => {
+      const borrado = await tx.participacionConvocatoria.deleteMany({
+        where: { id, convocatoria: { cargas: { none: { estado: "CONFIRMADA" } } } },
+      });
+      if (borrado.count) {
+        // Sin el nombre del profesor (D-294): solo el id de la participación y la convocatoria.
+        const resumen = resumenEliminacion("la participación", `${id} de ${nombreConvocatoria}`);
+        await registrarAuditoria(tx, eventoAuditoria("registro.eliminado", perfil, { tipo: "ParticipacionConvocatoria", id: String(id) }, resumen, "convocatorias"));
+      }
+      return borrado.count;
     });
-    if (borrado.count) {
-      // Sin el nombre del profesor (D-294): solo el id de la participación y la convocatoria.
-      const resumen = resumenEliminacion("la participación", `${id} de ${nombreConvocatoria}`);
-      await registrarAuditoria(tx, eventoAuditoria("registro.eliminado", perfil, { tipo: "ParticipacionConvocatoria", id: String(id) }, resumen, "convocatorias"));
-    }
-    return borrado.count;
-  });
+  } catch {
+    return { error: NO_SE_GUARDO };
+  }
   if (!count) {
     const sigue = await prisma.participacionConvocatoria.findUnique({ where: { id }, select: { id: true } });
     return { error: sigue ? motivoConvocatoriaConfirmada(nombreConvocatoria, true)! : NO_EXISTE };

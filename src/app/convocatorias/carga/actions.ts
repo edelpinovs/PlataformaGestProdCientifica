@@ -12,6 +12,7 @@ import {
   cargaResultados,
   formatoDeArchivo,
   motivoNoEliminable,
+  NO_SE_GUARDO,
   nombreDeRuta,
   puedeVolverALeer,
   registroCarga,
@@ -147,15 +148,23 @@ export async function eliminarCarga(_: EstadoFila, formData: FormData): Promise<
   if (motivo) return { error: motivo };
 
   // La condición va en el mismo DELETE: si la carga se confirma en este instante, no se borra.
-  const borrada = await prisma.$transaction(async (tx) => {
-    const { count } = await tx.cargaResultados.deleteMany({ where: { id, estado: { not: "CONFIRMADA" } } });
-    if (count === 0) return false;
-    await tx.job.deleteMany({ where: { ...tareas, estado: { not: "EN_PROCESO" } } });
-    // Solo identificadores: ni el nombre del archivo, que podría nombrar a una persona (D-294).
-    const resumen = resumenEliminacion("la carga", `${id} de ${carga.convocatoria.programa} ${carga.convocatoria.anio}`);
-    await registrarAuditoria(tx, eventoAuditoria("registro.eliminado", perfil, { tipo: "CargaResultados", id: String(id) }, resumen, "convocatorias"));
-    return true;
-  });
+  let borrada: boolean;
+  try {
+    borrada = await prisma.$transaction(async (tx) => {
+      // Los renglones se borran con la carga: se cuentan antes para dejarlo en la bitácora.
+      const renglones = await tx.renglonResultado.count({ where: { cargaId: id } });
+      const { count } = await tx.cargaResultados.deleteMany({ where: { id, estado: { not: "CONFIRMADA" } } });
+      if (count === 0) return false;
+      await tx.job.deleteMany({ where: { ...tareas, estado: { not: "EN_PROCESO" } } });
+      // Solo identificadores y conteos: ni el nombre del archivo, que podría nombrar a una persona (D-294).
+      const resumen = resumenEliminacion("la carga",
+        `${id} de ${carga.convocatoria.programa} ${carga.convocatoria.anio} con ${renglones} ${renglones === 1 ? "renglón" : "renglones"}`);
+      await registrarAuditoria(tx, eventoAuditoria("registro.eliminado", perfil, { tipo: "CargaResultados", id: String(id) }, resumen, "convocatorias"));
+      return true;
+    });
+  } catch {
+    return { error: NO_SE_GUARDO };
+  }
   if (!borrada) {
     const actual = await prisma.cargaResultados.findUnique({ where: { id }, select: { estado: true } });
     return { error: actual ? (motivoNoEliminable({ estado: actual.estado, nombre }, false) ?? NO_EXISTE) : NO_EXISTE };

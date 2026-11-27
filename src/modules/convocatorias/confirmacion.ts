@@ -49,6 +49,14 @@ export type PlanConfirmacion = { bloqueo: string | null; snii: NuevoSnii[]; prod
  */
 export const VIGENCIA_SNII_CONFIRMADA = false;
 
+/** Motivo con que se omite un SNII sin vigencia mientras D-292 esté pendiente (la pantalla los cuenta aparte). */
+export const MOTIVO_VIGENCIA_PENDIENTE = "El listado no trae la vigencia y falta confirmar la regla de la Coordinación (D-292).";
+
+/** Cuántos de los planeados para confirmar esperan D-292: el balance los cuenta, pero no se registrarán. */
+export function esperanVigencia(plan: PlanConfirmacion): number {
+  return plan.omitidos.filter((o) => o.motivo === MOTIVO_VIGENCIA_PENDIENTE).length;
+}
+
 /**
  * D-224, opción (a), pendiente de confirmar con la Coordinación (D-292): el listado del SNII no trae
  * vigencia; los resultados de la convocatoria del año N empiezan el 1 de enero de N+1 y terminan el
@@ -93,7 +101,7 @@ export function planearConfirmacion(
       if (!r.nivel) { omitir("El listado no trae un nivel reconocible."); continue; }
       const delArchivo = r.vigenciaInicio && r.vigenciaFin ? { inicio: r.vigenciaInicio, fin: r.vigenciaFin } : null;
       if (!delArchivo && !vigenciaSniiConfirmada && r.nivel !== "EMERITO") {
-        omitir("El listado no trae la vigencia y falta confirmar la regla de la Coordinación (D-292).");
+        omitir(MOTIVO_VIGENCIA_PENDIENTE);
         continue;
       }
       const vigencia = delArchivo ?? vigenciaSnii(r.nivel, e.anio);

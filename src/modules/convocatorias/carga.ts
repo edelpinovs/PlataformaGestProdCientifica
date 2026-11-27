@@ -11,6 +11,12 @@ export const TAMANO_MAXIMO = TAMANO_MAXIMO_MB * 1024 * 1024;
 
 export const PRIMER_ANIO = 2000;
 
+/**
+ * Si una transacción falla (por ejemplo, el registro de la bitácora, que va en la misma), no se
+ * guarda nada y la persona ve este mensaje en lugar de la pantalla de error (revisión del #393).
+ */
+export const NO_SE_GUARDO = "No se pudo guardar el cambio. Inténtalo de nuevo; no se modificó nada.";
+
 export const FORMATOS = {
   pdf: ["application/pdf"],
   xlsx: ["application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"],

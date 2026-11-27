@@ -204,10 +204,12 @@ export function interpretarListado(filas: string[][], programa: Programa): Resul
     const materno = celda("materno");
     const nombres = celda("nombres") || celda("nombreCompleto");
     if (!paterno && !materno && !nombres) return;
-    if ([paterno, nombres].some(esTotal)) return;
 
     const numero = indice + 1;
     const avisar = (mensaje: string) => avisos.push({ renglon: numero, mensaje: `Renglón ${numero}: ${mensaje}` });
+    // Se descarta con aviso, no en silencio: si alguna vez es un apellido real, se ve en el resumen.
+    const total = [paterno, nombres].find(esTotal);
+    if (total) { avisar(`no se leyó porque parece una fila de totales («${total}»).`); return; }
 
     let cvu = limpiarCvu(textoCvu);
     if (cvu === "invalido") {
