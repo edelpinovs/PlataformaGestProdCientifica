@@ -10,6 +10,15 @@ import {
   type Sentido,
 } from "@/lib/listados/consulta";
 import { ETIQUETA_CONTRATACION, ETIQUETA_ESTATUS } from "@/modules/profesores/profesores";
+import {
+  columnasSinDatosPersonales,
+  coincideDepartamento,
+  leerDepartamento,
+  mismaSeleccion,
+  textoCorreo,
+  textoCvu,
+  type FiltroDepartamento,
+} from "./comun";
 import { ETIQUETA_GENERO, type Genero } from "./convocatoria";
 import { distincionVigente, SIN_GRADO, SIN_PROGRAMA, SIN_PRODEP, SIN_SNII } from "./matriz";
 import { calcularSemaforo } from "./semaforo";
@@ -43,7 +52,7 @@ export const ETIQUETA_COLUMNA_COMPLETO: Record<ColumnaCompleto, string> = {
   programas: "Programa educativo",
   grado: "Grado",
   contratacion: "Contratación",
-  estatus: "Estatus",
+  estatus: "Estatus laboral",
   snii: "SNII",
   sniiFin: "Vencimiento SNII",
   sniiSemaforo: "Estatus SNII",
@@ -97,7 +106,7 @@ export type FilaCompleto = {
 export type EstadoCompleto = {
   consulta: ConsultaListado;
   columnas: ColumnaCompleto[];
-  departamentoId: number | null;
+  departamentoId: FiltroDepartamento;
   programaId: number | null;
   errores: ErroresListado;
 };
@@ -161,8 +170,8 @@ export function filaCompleto(datos: {
     caFinOrden: finCuerpo?.getTime() ?? 0,
     codigo: datos.codigo,
     nombre: `${datos.nombres} ${datos.apellidos}`,
-    correo: datos.correo?.trim() || SIN_CORREO,
-    cvu: datos.cvu?.trim() || SIN_CVU,
+    correo: textoCorreo(datos.correo, SIN_CORREO),
+    cvu: textoCvu(datos.cvu, SIN_CVU),
     genero: ETIQUETA_GENERO[datos.genero],
     departamento: datos.departamento?.nombre ?? SIN_DEPARTAMENTO,
     programas: programas.map((programa) => programa.nombre).join(", ") || SIN_PROGRAMA,
@@ -189,7 +198,7 @@ function esArmado(crudo: string | string[] | undefined) {
 
 function leerColumnas(crudo: string | string[] | undefined, vacioForzado: boolean) {
   if (vacioForzado) return { valores: [] as ColumnaCompleto[], error: "Elige al menos una columna." };
-  if (crudo === undefined) return { valores: [...COLUMNAS_COMPLETO] };
+  if (crudo === undefined) return { valores: columnasSinDatosPersonales(COLUMNAS_COMPLETO) };
   const partes = (Array.isArray(crudo) ? crudo : [crudo]).flatMap((parte) => parte.split(",")).map((parte) => parte.trim()).filter(Boolean);
   if (partes.length === 0) return { valores: [] as ColumnaCompleto[], error: "Elige al menos una columna." };
   const valores = COLUMNAS_COMPLETO.filter((columna) => partes.includes(columna));
@@ -214,10 +223,7 @@ export function analizarCompleto(
 ): EstadoCompleto {
   const { consulta, errores } = analizarListado(LISTADO_COMPLETO, parametros);
   const columnas = leerColumnas(parametros.columnas, esArmado(parametros.armado) && parametros.columnas === undefined);
-  const departamento = leerId(parametros.departamento, catalogo.departamentos, {
-    repetido: "Elige un solo departamento.",
-    inexistente: "Elige un departamento que exista.",
-  });
+  const departamento = leerDepartamento(parametros.departamento, catalogo.departamentos);
   const programa = leerId(parametros.programa, catalogo.programas, {
     repetido: "Elige un solo programa educativo.",
     inexistente: "Elige un programa educativo que exista.",
@@ -243,7 +249,7 @@ export function consultarCompleto(filas: FilaCompleto[], estado: EstadoCompleto,
   if (estado.columnas.length === 0) return { filas: [] as FilaCompleto[], paginacion: paginar(0, estado.consulta) };
   const texto = estado.consulta.q.trim().toLocaleLowerCase("es-MX");
   const coinciden = filas.filter((fila) => {
-    if (estado.departamentoId !== null && fila.departamentoId !== estado.departamentoId) return false;
+    if (!coincideDepartamento(fila.departamentoId, estado.departamentoId)) return false;
     if (estado.programaId !== null && !fila.programaIds.includes(estado.programaId)) return false;
     if (!texto) return true;
     return estado.columnas.some((columna) => fila[columna].toLocaleLowerCase("es-MX").includes(texto));
@@ -270,7 +276,7 @@ export function enlaceCompleto(base: string, estado: EstadoCompleto, cambios: { 
   const pagina = cambios.pagina ?? (cambiaOrden ? 1 : estado.consulta.pagina);
   const parametros = new URLSearchParams();
   if (estado.columnas.length === 0) parametros.set("armado", "1");
-  else if (estado.columnas.length !== COLUMNAS_COMPLETO.length) parametros.set("columnas", estado.columnas.join(","));
+  else if (!mismaSeleccion(estado.columnas, columnasSinDatosPersonales(COLUMNAS_COMPLETO))) parametros.set("columnas", estado.columnas.join(","));
   if (estado.departamentoId !== null) parametros.set("departamento", String(estado.departamentoId));
   if (estado.programaId !== null) parametros.set("programa", String(estado.programaId));
   if (estado.consulta.q) parametros.set("q", estado.consulta.q);

@@ -32,7 +32,7 @@ export default async function PublicacionesReportePage({ searchParams }: { searc
   const { filas, paginacion, obrasDistintas } = consultarResultados(armadas, estado);
   const vista: EstadoResultados = { ...estado, consulta: { ...estado.consulta, pagina: paginacion.pagina } };
   const mensajes = Object.values(vista.errores);
-  const acotado = Boolean(vista.consulta.q) || vista.departamentoId !== null || vista.anio !== null || vista.tipo !== null || vista.fuente !== null;
+  const acotado = Boolean(vista.consulta.q) || vista.departamentoId !== null || vista.actividad !== null || vista.anio !== null || vista.tipo !== null || vista.fuente !== null;
   const columnas = COLUMNAS_RESULTADOS.filter((columna) => vista.columnas.includes(columna));
   const cifra = new Intl.NumberFormat("es-MX").format(obrasDistintas);
 
@@ -43,7 +43,7 @@ export default async function PublicacionesReportePage({ searchParams }: { searc
         <EnlacesReportes actual="publicaciones" />
         <Constructor estado={vista} departamentos={carga.departamentos} anios={[...carga.catalogo.anios].sort((a, b) => b - a)} haySinAnio={carga.catalogo.haySinAnio} />
       </Panel>
-      <Panel titulo="Resultado" descripcion="El año, el tipo y la fuente principal acotan qué obras se cuentan. El desglose es solo de las validadas.">
+      <Panel titulo="Resultado" descripcion="El año, el tipo y la fuente principal acotan qué obras se cuentan. La fuente principal es la que quedó guardada. El desglose es solo de las validadas.">
         <div className="flex flex-col gap-4">
           {mensajes.length > 0 && (
             <Aviso tipo="error"><ul>{mensajes.map((mensaje) => <li key={mensaje}>{mensaje}</li>)}</ul></Aviso>
@@ -99,7 +99,7 @@ function Constructor({ estado, departamentos, anios, haySinAnio }: {
   anios: number[];
   haySinAnio: boolean;
 }) {
-  const clave = [estado.columnas.join(","), estado.departamentoId ?? "", estado.anio ?? "", estado.tipo ?? "", estado.fuente ?? "", estado.consulta.q, estado.consulta.orden, estado.consulta.dir].join("|");
+  const clave = [estado.columnas.join(","), estado.departamentoId ?? "", estado.actividad ?? "", estado.anio ?? "", estado.tipo ?? "", estado.fuente ?? "", estado.consulta.q, estado.consulta.orden, estado.consulta.dir].join("|");
   const ordenVisible = estado.columnas.includes(estado.consulta.orden as ColumnaResultado) ? estado.consulta.orden : estado.columnas[0] ?? estado.consulta.orden;
 
   return (
@@ -123,6 +123,16 @@ function Constructor({ estado, departamentos, anios, haySinAnio }: {
             aria-invalid={Boolean(estado.errores.departamento)} className={claseCampo(Boolean(estado.errores.departamento))}>
             <option value="">Todos</option>
             {departamentos.map((fila) => <option key={fila.id} value={fila.id}>{fila.nombre}</option>)}
+            <option value="sin">Sin departamento</option>
+          </select>
+        </label>
+        <label className={claseEtiqueta}>
+          Actividad
+          <select name="actividad" defaultValue={estado.actividad ?? ""}
+            aria-invalid={Boolean(estado.errores.actividad)} className={claseCampo(Boolean(estado.errores.actividad))}>
+            <option value="">Todas</option>
+            <option value="activa">Activo</option>
+            <option value="no-activa">No activo</option>
           </select>
         </label>
         <label className={claseEtiqueta}>

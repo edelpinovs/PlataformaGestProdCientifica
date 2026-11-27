@@ -10,6 +10,7 @@ import {
   type Sentido,
 } from "@/lib/listados/consulta";
 import { ETIQUETAS_FUENTE, ETIQUETAS_TIPO } from "@/modules/produccion/consulta";
+import { coincideDepartamento, incluyeBusqueda, leerDepartamento, type FiltroDepartamento } from "./comun";
 import { SIN_DEPARTAMENTO } from "./vigencias";
 
 // Resultados de publicaciones (D-304). Una fila por profesor.
@@ -20,6 +21,8 @@ export const SIN_ANIO = "Sin año";
 export const SIN_OBRAS = "Sin obras validadas";
 export const ACTIVIDAD_ACTIVA = "Activo";
 export const ACTIVIDAD_NO_ACTIVA = "No activo";
+export const ACTIVIDADES_REPORTE = ["activa", "no-activa"] as const;
+export type ActividadReporte = (typeof ACTIVIDADES_REPORTE)[number];
 
 export const TIPOS_REPORTE = ["ARTICULO", "LIBRO", "CAPITULO", "MEMORIA_CONGRESO", "REGISTRO_SOFTWARE", "PATENTE", "OTRO"] as const;
 export const FUENTES_REPORTE = ["SCOPUS", "OPENALEX", "ORCID", "CROSSREF", "GOOGLE_SCHOLAR", "MANUAL"] as const;
@@ -33,6 +36,8 @@ const MENSAJE_TIPO = "Elige un tipo de publicación.";
 const MENSAJE_TIPO_REPETIDO = "Elige un solo tipo de publicación.";
 const MENSAJE_FUENTE = "Elige una fuente principal.";
 const MENSAJE_FUENTE_REPETIDA = "Elige una sola fuente principal.";
+const MENSAJE_ACTIVIDAD = "Elige Activo o No activo.";
+const MENSAJE_ACTIVIDAD_REPETIDA = "Elige una sola actividad.";
 
 export const COLUMNAS_RESULTADOS = [
   "codigo", "nombre", "departamento", "actividad",
@@ -110,7 +115,8 @@ export type CatalogoResultados = {
 export type EstadoResultados = CorteObras & {
   consulta: ConsultaListado;
   columnas: ColumnaResultado[];
-  departamentoId: number | null;
+  departamentoId: FiltroDepartamento;
+  actividad: ActividadReporte | null;
   errores: ErroresListado;
 };
 
@@ -200,15 +206,6 @@ function leerColumnas(crudo: string | string[] | undefined, vacioForzado: boolea
   return { valores };
 }
 
-function leerId(crudo: string | string[] | undefined, permitidos: readonly number[]) {
-  if (crudo === undefined || crudo === "") return { id: null };
-  const resultado = z.string({ error: "Elige un solo departamento." }).regex(/^\d+$/, "Elige un departamento que exista.").transform(Number).safeParse(crudo);
-  if (!resultado.success || !permitidos.includes(resultado.data)) {
-    return { id: null, error: resultado.success ? "Elige un departamento que exista." : resultado.error.issues[0]?.message ?? "Elige un departamento que exista." };
-  }
-  return { id: resultado.data };
-}
-
 function leerOpcion<T extends string>(crudo: string | string[] | undefined, valores: readonly T[], mensajes: { repetido: string; invalido: string }) {
   if (crudo === undefined || crudo === "") return { valor: null as T | null };
   if (Array.isArray(crudo)) return { valor: null as T | null, error: mensajes.repetido };
@@ -239,19 +236,22 @@ function leerAnio(crudo: string | string[] | undefined, catalogo: CatalogoResult
 export function analizarResultados(parametros: ParametrosListado, catalogo: CatalogoResultados): EstadoResultados {
   const { consulta, errores } = analizarListado(LISTADO_RESULTADOS, parametros);
   const columnas = leerColumnas(parametros.columnas, esArmado(parametros.armado) && parametros.columnas === undefined);
-  const departamento = leerId(parametros.departamento, catalogo.departamentos);
+  const departamento = leerDepartamento(parametros.departamento, catalogo.departamentos);
   const anio = leerAnio(parametros.anio, catalogo);
   const tipo = leerOpcion(parametros.tipo, TIPOS_REPORTE, { repetido: MENSAJE_TIPO_REPETIDO, invalido: MENSAJE_TIPO });
   const fuente = leerOpcion(parametros.fuente, FUENTES_REPORTE, { repetido: MENSAJE_FUENTE_REPETIDA, invalido: MENSAJE_FUENTE });
+  const actividad = leerOpcion(parametros.actividad, ACTIVIDADES_REPORTE, { repetido: MENSAJE_ACTIVIDAD_REPETIDA, invalido: MENSAJE_ACTIVIDAD });
   if (columnas.error) errores.columnas = columnas.error;
   if (departamento.error) errores.departamento = departamento.error;
   if (anio.error) errores.anio = anio.error;
   if (tipo.error) errores.tipo = tipo.error;
   if (fuente.error) errores.fuente = fuente.error;
+  if (actividad.error) errores.actividad = actividad.error;
   return {
     consulta,
     columnas: columnas.valores,
     departamentoId: departamento.id,
+    actividad: actividad.valor,
     anio: anio.anio,
     tipo: tipo.valor,
     fuente: fuente.valor,
@@ -274,9 +274,11 @@ export function consultarResultados(filas: FilaResultado[], estado: EstadoResult
   }
   const busqueda = estado.consulta.q.trim().toLocaleLowerCase("es-MX");
   const coinciden = filas.filter((fila) => {
-    if (estado.departamentoId !== null && fila.departamentoId !== estado.departamentoId) return false;
+    if (!coincideDepartamento(fila.departamentoId, estado.departamentoId)) return false;
+    if (estado.actividad === "activa" && fila.actividad !== ACTIVIDAD_ACTIVA) return false;
+    if (estado.actividad === "no-activa" && fila.actividad !== ACTIVIDAD_NO_ACTIVA) return false;
     if (!busqueda) return true;
-    return estado.columnas.some((columna) => textoResultados(fila, columna).toLocaleLowerCase("es-MX").includes(busqueda));
+    return estado.columnas.some((columna) => incluyeBusqueda(textoResultados(fila, columna), busqueda));
   });
   const orden = (estado.columnas as readonly string[]).includes(estado.consulta.orden)
     ? estado.consulta.orden as ColumnaResultado
@@ -308,6 +310,7 @@ export function enlaceResultados(base: string, estado: EstadoResultados, cambios
   if (estado.anio !== null) parametros.set("anio", String(estado.anio));
   if (estado.tipo !== null) parametros.set("tipo", estado.tipo);
   if (estado.fuente !== null) parametros.set("fuente", estado.fuente);
+  if (estado.actividad !== null) parametros.set("actividad", estado.actividad);
   if (estado.consulta.q) parametros.set("q", estado.consulta.q);
   if (orden !== LISTADO_RESULTADOS.ordenInicial.columna || dir !== LISTADO_RESULTADOS.ordenInicial.dir) {
     parametros.set("orden", orden);

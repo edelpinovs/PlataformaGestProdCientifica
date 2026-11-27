@@ -114,6 +114,7 @@ function Constructor({ estado, departamentos, programas }: {
             aria-invalid={Boolean(estado.errores.departamento)} className={claseCampo(Boolean(estado.errores.departamento))}>
             <option value="">Todos</option>
             {departamentos.map((fila) => <option key={fila.id} value={fila.id}>{fila.nombre}</option>)}
+            <option value="sin">Sin departamento</option>
           </select>
         </label>
         <label className={claseEtiqueta}>

@@ -25,9 +25,12 @@ const BASE = "/reportes/convocatoria";
 
 export default async function ConvocatoriaPage({ searchParams }: { searchParams: Promise<ParametrosListado> }) {
   const perfil = await requireModulo("reportes");
-  const departamentos = await cargarDepartamentos();
-  const estado = analizarConvocatoria(await searchParams, { departamentos: departamentos.map((fila) => fila.id) });
-  const carga = await cargarConvocatoria();
+  const parametros = await searchParams;
+  const [departamentos, carga] = await Promise.all([
+    cargarDepartamentos(),
+    cargarConvocatoria(),
+  ]);
+  const estado = analizarConvocatoria(parametros, { departamentos: departamentos.map((fila) => fila.id) });
   const { filas, paginacion } = consultarConvocatoria(carga.dictamenes, carga.participaciones, carga.historialSnii, estado);
   const vista: EstadoConvocatoria = { ...estado, consulta: { ...estado.consulta, pagina: paginacion.pagina } };
   const mensajes = Object.values(vista.errores);
@@ -153,6 +156,7 @@ function Constructor({ estado, anios, departamentos }: {
             aria-invalid={Boolean(estado.errores.departamento)} className={claseCampo(Boolean(estado.errores.departamento))}>
             <option value="">Todos</option>
             {departamentos.map((fila) => <option key={fila.id} value={fila.id}>{fila.nombre}</option>)}
+            <option value="sin">Sin departamento</option>
           </select>
         </label>
         {estado.columnas.length > 0 && <div className="grid grid-cols-2 gap-4 sm:hidden">

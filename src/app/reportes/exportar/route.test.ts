@@ -19,4 +19,11 @@ describe("exportar reportes (issue #261)", () => {
     await expect(pedido).rejects.toThrow("sin permiso");
     expect(dobles.requireModulo).toHaveBeenCalledWith("reportes");
   });
+
+  it("el reporte de publicaciones también exige el módulo antes de leer datos", async () => {
+    dobles.requireModulo.mockRejectedValue(new Error("sin permiso"));
+    const pedido = GET(new Request("http://localhost/reportes/exportar?reporte=publicaciones&formato=pdf"));
+    await expect(pedido).rejects.toThrow("sin permiso");
+    expect(dobles.requireModulo).toHaveBeenCalledWith("reportes");
+  });
 });

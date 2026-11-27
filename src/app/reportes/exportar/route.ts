@@ -23,7 +23,7 @@ import {
 } from "@/modules/reportes/exportar";
 import { analizarMatriz } from "@/modules/reportes/matriz";
 import { analizarResultados, filaResultados } from "@/modules/reportes/publicaciones";
-import { analizarReporte } from "@/modules/reportes/vigencias";
+import { analizarReporte, tiposPedidos } from "@/modules/reportes/vigencias";
 
 function parametrosDe(url: URL): ParametrosListado {
   const parametros: ParametrosListado = {};
@@ -40,14 +40,19 @@ function texto(mensaje: string, estado: number) {
 
 async function armar(reporte: ReporteExportable, parametros: ParametrosListado): Promise<TablaExportable> {
   if (reporte === "vigencias") {
-    const departamentos = await cargarDepartamentos();
+    const [departamentos, filas] = await Promise.all([
+      cargarDepartamentos(),
+      cargarVigencias(tiposPedidos(parametros)),
+    ]);
     const estado = analizarReporte(parametros, { departamentos: departamentos.map((fila) => fila.id) });
-    return tablaVigencias(await cargarVigencias(estado.tipos), estado);
+    return tablaVigencias(filas, estado);
   }
   if (reporte === "convocatoria") {
-    const departamentos = await cargarDepartamentos();
+    const [departamentos, carga] = await Promise.all([
+      cargarDepartamentos(),
+      cargarConvocatoria(),
+    ]);
     const estado = analizarConvocatoria(parametros, { departamentos: departamentos.map((fila) => fila.id) });
-    const carga = await cargarConvocatoria();
     return tablaConvocatoria(carga.dictamenes, carga.participaciones, carga.historialSnii, estado);
   }
   if (reporte === "publicaciones") {

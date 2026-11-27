@@ -10,6 +10,15 @@ import {
   type ParametrosListado,
   type Sentido,
 } from "@/lib/listados/consulta";
+import {
+  columnasSinDatosPersonales,
+  coincideDepartamento,
+  leerDepartamento,
+  mismaSeleccion,
+  textoCorreo,
+  textoCvu,
+  type FiltroDepartamento,
+} from "./comun";
 import { calcularSemaforo, type Semaforo } from "./semaforo";
 
 // Reporte de vigencias que arma la coordinación (RF-026, RF-027).
@@ -96,8 +105,8 @@ export type EstadoReporte = {
   columnas: ColumnaVigencia[];
   /** Año de la fecha de vencimiento. Null muestra todos los años. */
   anio: number | null;
-  /** Null muestra todos los departamentos. */
-  departamentoId: number | null;
+  /** Null muestra todos. `sin` aísla a quien no tiene departamento. */
+  departamentoId: FiltroDepartamento;
   errores: ErroresListado;
 };
 
@@ -148,16 +157,6 @@ function nombrePersona(nombres: string, apellidos: string) {
   return `${nombres} ${apellidos}`;
 }
 
-function textoCorreo(correo: string | null | undefined) {
-  const limpio = correo?.trim();
-  return limpio ? limpio : SIN_CORREO;
-}
-
-function textoCvu(cvu: string | null | undefined) {
-  const limpio = cvu?.trim();
-  return limpio ? limpio : SIN_CVU;
-}
-
 function detalleConReconsideracion(texto: string, resultado: string) {
   return resultado === "EN_RECONSIDERACION" ? `${texto} · En reconsideración` : texto;
 }
@@ -168,8 +167,8 @@ export function filaSnii(datos: DatosPersona & { nivel: string }, hoy: Date): Fi
     id: identificador("SNII", datos.id),
     tipo: "SNII",
     nombre: nombrePersona(datos.nombres, datos.apellidos),
-    correo: textoCorreo(datos.correo),
-    cvu: textoCvu(datos.cvu),
+    correo: textoCorreo(datos.correo, SIN_CORREO),
+    cvu: textoCvu(datos.cvu, SIN_CVU),
     detalle: detalleConReconsideracion(nivel, datos.resultado),
     departamento: datos.departamento ?? SIN_DEPARTAMENTO,
     departamentoId: datos.departamentoId ?? null,
@@ -185,8 +184,8 @@ export function filaProdep(datos: DatosPersona & { tipoSolicitud: string }, hoy:
     id: identificador("PRODEP", datos.id),
     tipo: "PRODEP",
     nombre: nombrePersona(datos.nombres, datos.apellidos),
-    correo: textoCorreo(datos.correo),
-    cvu: textoCvu(datos.cvu),
+    correo: textoCorreo(datos.correo, SIN_CORREO),
+    cvu: textoCvu(datos.cvu, SIN_CVU),
     detalle: detalleConReconsideracion(solicitud, datos.resultado),
     departamento: datos.departamento ?? SIN_DEPARTAMENTO,
     departamentoId: datos.departamentoId ?? null,
@@ -256,9 +255,10 @@ function leerSeleccion<T extends string>(
   vacioForzado: boolean,
   permitidos: readonly T[],
   mensajes: { vacio: string; desconocido: string },
+  porOmision?: readonly T[],
 ) {
   if (vacioForzado) return { valores: [] as T[], error: mensajes.vacio };
-  if (crudo === undefined) return { valores: [...permitidos] };
+  if (crudo === undefined) return { valores: [...(porOmision ?? permitidos)] };
   const partes = (Array.isArray(crudo) ? crudo : [crudo])
     .flatMap((parte) => parte.split(","))
     .map((parte) => parte.trim())
@@ -271,21 +271,37 @@ function leerSeleccion<T extends string>(
   return { valores };
 }
 
+const MENSAJES_TIPOS = {
+  vacio: "Elige al menos una distinción.",
+  desconocido: "Hay una distinción que no existe.",
+};
+
+/** Distinciones que hay que cargar. Un valor inválido no recorta la consulta: el aviso lo da analizarReporte. */
+export function tiposPedidos(parametros: ParametrosListado) {
+  const tipos = leerSeleccion(
+    parametros.tipos,
+    esArmado(parametros.armado) && parametros.tipos === undefined,
+    TIPOS_DISTINCION,
+    MENSAJES_TIPOS,
+  );
+  return tipos.valores.length > 0 ? tipos.valores : [...TIPOS_DISTINCION];
+}
+
 /** Lee la URL del reporte. Un valor inválido no rompe la pantalla: se avisa y se ignora. */
 export function analizarReporte(
   parametros: ParametrosListado,
-  catalogo: { departamentos: readonly number[] } = { departamentos: [] },
+  catalogo: { departamentos: readonly number[] },
 ): EstadoReporte {
   const { consulta, errores } = analizarListado(LISTADO_VIGENCIAS, parametros);
   const armado = esArmado(parametros.armado);
-  const tipos = leerSeleccion(parametros.tipos, armado && parametros.tipos === undefined, TIPOS_DISTINCION, {
-    vacio: "Elige al menos una distinción.",
-    desconocido: "Hay una distinción que no existe.",
-  });
-  const columnas = leerSeleccion(parametros.columnas, armado && parametros.columnas === undefined, COLUMNAS_VIGENCIA, {
-    vacio: "Elige al menos una columna.",
-    desconocido: "Hay una columna que no existe.",
-  });
+  const tipos = leerSeleccion(parametros.tipos, armado && parametros.tipos === undefined, TIPOS_DISTINCION, MENSAJES_TIPOS);
+  const columnas = leerSeleccion(
+    parametros.columnas,
+    armado && parametros.columnas === undefined,
+    COLUMNAS_VIGENCIA,
+    { vacio: "Elige al menos una columna.", desconocido: "Hay una columna que no existe." },
+    columnasSinDatosPersonales(COLUMNAS_VIGENCIA),
+  );
   if (tipos.error) errores.tipos = tipos.error;
   if (columnas.error) errores.columnas = columnas.error;
   const anio = leerAnio(parametros.anio);
@@ -300,21 +316,6 @@ export function analizarReporte(
     departamentoId: departamento.id,
     errores,
   };
-}
-
-function leerDepartamento(crudo: string | string[] | undefined, permitidos: readonly number[]) {
-  if (crudo === undefined || crudo === "") return { id: null };
-  const resultado = z.string({ error: "Elige un solo departamento." })
-    .regex(/^\d+$/, "Elige un departamento que exista.")
-    .transform(Number)
-    .safeParse(crudo);
-  if (!resultado.success || !permitidos.includes(resultado.data)) {
-    return {
-      id: null,
-      error: resultado.success ? "Elige un departamento que exista." : resultado.error.issues[0]?.message ?? "Elige un departamento que exista.",
-    };
-  }
-  return { id: resultado.data };
 }
 
 function leerAnio(crudo: string | string[] | undefined) {
@@ -374,7 +375,7 @@ export function consultarVigencias(filas: FilaVigencia[], estado: EstadoReporte,
     && coincide(fila, estado)
     && (!semaforo || fila.semaforo === semaforo)
     && (estado.anio === null || fila.fin.getUTCFullYear() === estado.anio)
-    && (estado.departamentoId === null || fila.departamentoId === estado.departamentoId));
+    && coincideDepartamento(fila.departamentoId, estado.departamentoId));
   const orden = (estado.columnas as readonly string[]).includes(estado.consulta.orden)
     ? estado.consulta.orden
     : estado.columnas[0];
@@ -386,8 +387,7 @@ export function consultarVigencias(filas: FilaVigencia[], estado: EstadoReporte,
   };
 }
 
-/** Conserva distinciones, columnas, año, búsqueda y estatus al ordenar o cambiar de página. */
-/** Conserva distinciones, columnas, año, departamento, búsqueda y semáforo al ordenar o cambiar de página. */
+/** Conserva distinciones, columnas, año, departamento, búsqueda y estatus al ordenar o cambiar de página. */
 export function enlaceReporte(
   base: string,
   estado: EstadoReporte,
@@ -402,7 +402,7 @@ export function enlaceReporte(
   if (estado.tipos.length > 0 && estado.tipos.length !== TIPOS_DISTINCION.length) {
     parametros.set("tipos", estado.tipos.join(","));
   }
-  if (estado.columnas.length > 0 && estado.columnas.length !== COLUMNAS_VIGENCIA.length) {
+  if (estado.columnas.length > 0 && !mismaSeleccion(estado.columnas, columnasSinDatosPersonales(COLUMNAS_VIGENCIA))) {
     parametros.set("columnas", estado.columnas.join(","));
   }
   if (estado.anio !== null) parametros.set("anio", String(estado.anio));

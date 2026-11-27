@@ -182,30 +182,46 @@ function escaparPdf(texto: string) {
   return texto.normalize("NFC").replace(/[^\u0020-\u00FF]/g, "?").replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
 }
 
+const LINEAS_PDF = 8;
+
+function indiceDeCorte(resto: string, maximo: number) {
+  const ventana = resto.slice(0, maximo);
+  let mejor = -1;
+  for (const separador of [";", " ", "@", ".", ",", "/"]) {
+    const indice = ventana.lastIndexOf(separador);
+    if (indice > mejor) mejor = indice;
+  }
+  if (mejor >= 3) {
+    const caracter = ventana[mejor];
+    return caracter === " " || caracter === ";" ? mejor : mejor + 1;
+  }
+  return maximo;
+}
+
 function partir(texto: string, ancho: number) {
-  const maximo = Math.max(4, Math.floor(ancho / (TAM_CUERPO * 0.5)));
+  const maximo = Math.max(8, Math.floor(ancho / (TAM_CUERPO * 0.5)));
   const lineas: string[] = [];
   let resto = texto;
-  while (resto.length > maximo) {
-    let corte = resto.lastIndexOf(" ", maximo);
-    if (corte < 1) corte = maximo;
+  while (resto.length > maximo && lineas.length < LINEAS_PDF - 1) {
+    const corte = indiceDeCorte(resto, maximo);
     lineas.push(resto.slice(0, corte).trimEnd());
     resto = resto.slice(corte).trimStart();
-    if (lineas.length === 3) {
-      const ultima = lineas[2];
-      lineas[2] = `${ultima.slice(0, Math.max(1, ultima.length - 3))}...`;
-      return lineas;
-    }
   }
-  lineas.push(resto);
-  return lineas.length > 0 ? lineas : [""];
+  if (resto.length > maximo) {
+    const corte = indiceDeCorte(resto, Math.max(4, maximo - 3));
+    const linea = resto.slice(0, corte).trimEnd();
+    lineas.push(`${linea.slice(0, Math.max(1, linea.length - 3))}...`);
+  } else if (resto.length > 0 || lineas.length === 0) {
+    lineas.push(resto);
+  }
+  return lineas;
 }
 
 function anchosDe(tabla: TablaExportable) {
   const usable = ANCHO - MARGEN * 2;
   const preferidos = tabla.columnas.map((columna, indice) => {
     const textos = [columna, ...tabla.filas.map((fila) => fila[indice] ?? "")];
-    const largo = textos.reduce((maximo, texto) => Math.max(maximo, Math.min(texto.length, 28)), 1);
+    const largo = textos.reduce((maximo, texto) => Math.max(maximo, Math.min(texto.length, 42)), 1);
     return Math.max(52, largo * TAM_CUERPO * 0.5 + 10);
   });
   const suma = preferidos.reduce((total, ancho) => total + ancho, 0);
