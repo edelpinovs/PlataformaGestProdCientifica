@@ -67,6 +67,30 @@ export function buscarDuplicado(
   return null;
 }
 
+/** Lo mínimo de una invitación pendiente que necesitan las reglas. */
+export type InvitacionPendienteUsuario = { correo: string; profesorId: number | null };
+
+/**
+ * Una invitación nueva no puede repetir el correo ni el profesor de un perfil (ya tiene acceso) ni de
+ * otra invitación pendiente (D-301). Cada una se respalda con `@unique` en la base.
+ */
+export function buscarDuplicadoInvitacion(
+  datos: { correo: string; profesorId?: number | null },
+  perfiles: PerfilUsuario[],
+  pendientes: InvitacionPendienteUsuario[],
+): Rechazo | null {
+  const duplicadoDePerfil = buscarDuplicado(datos, perfiles);
+  if (duplicadoDePerfil) return duplicadoDePerfil;
+  const nuevo = datos.correo.trim().toLowerCase();
+  if (pendientes.some((i) => i.correo.trim().toLowerCase() === nuevo)) {
+    return { campo: "correo", mensaje: "Ese correo ya tiene una invitación pendiente." };
+  }
+  if (datos.profesorId != null && pendientes.some((i) => i.profesorId === datos.profesorId)) {
+    return { campo: "profesorId", mensaje: "Ese profesor ya tiene una invitación pendiente." };
+  }
+  return null;
+}
+
 // Siempre debe quedar al menos un administrador activo: quitar el rol o el acceso al último
 // dejaría el panel sin nadie que pueda administrarlo.
 export function validarCambioRol(perfil: PerfilUsuario, nuevoRol: Rol, perfiles: PerfilUsuario[]): Rechazo | null {

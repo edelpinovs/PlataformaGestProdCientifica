@@ -13,6 +13,7 @@ export const DOMINIO_PENDIENTE = "pendiente.invalid";
 // reversión de `importar:altas`; si el esquema agrega una relación a Profesor, se agrega aquí (hay una prueba).
 export const SIN_USO_PROFESOR = {
   perfil: { is: null },
+  invitacion: { is: null },
   programas: { none: {} },
   reconocimientosSnii: { none: {} },
   reconocimientosProdep: { none: {} },

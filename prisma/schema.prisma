@@ -35,6 +35,20 @@ model Perfil {
   accesos    AccesoModulo[]
 }
 
+// Invitaciones que el panel de administración deja listas (#275, D-301). La aplicación nunca crea la
+// cuenta en Supabase Auth (el secreto solo vive en scripts/): una persona del equipo ejecuta
+// `npm run invitar:pendientes`, que crea el acceso, vincula el profesor, entrega el enlace y borra la fila.
+model InvitacionPendiente {
+  id         Int       @id @default(autoincrement())
+  correo     String    @unique
+  rol        Rol       @default(DOCENTE)
+  profesorId Int?      @unique
+  profesor   Profesor? @relation(fields: [profesorId], references: [id], onDelete: Cascade)
+  // Correo de quien la dejó, para saber a quién preguntar. Solo el correo de acceso, nada más.
+  creadaPor  String
+  creadoEn   DateTime  @default(now())
+}
+
 // Visitas de cada persona a cada módulo, para «Accesos frecuentes» de Mi cuenta (issue #226).
 // Solo el slug del módulo y un conteo: no guarda rutas, parámetros ni identificadores de registros.
 model AccesoModulo {
@@ -150,6 +164,7 @@ model Profesor {
   scholarId             String?                     @unique
   programas             ProgramaEducativo[]
   perfil                Perfil?
+  invitacion            InvitacionPendiente?
   reconocimientosSnii   ReconocimientoSnii[]
   reconocimientosProdep ReconocimientoProdep[]
   cuerposAcademicos     IntegranteCa[]

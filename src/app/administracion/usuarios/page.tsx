@@ -1,6 +1,6 @@
 import { BarraListado, EncabezadoOrdenable, PaginacionListado } from "@/components/listado";
 import { Marco } from "@/components/marco";
-import { Aviso, claseTabla, EstadoVacio, Panel } from "@/components/ui";
+import { Aviso, claseBotonSecundario, claseTabla, EstadoVacio, Panel } from "@/components/ui";
 import { ETIQUETA_ROL, ROLES } from "@/lib/auth/roles";
 import { requireModulo } from "@/lib/auth/session";
 import { analizarListado, hayFiltrosActivos, paginar } from "@/lib/listados/consulta";
@@ -16,8 +16,9 @@ import {
 } from "@/modules/administracion/usuarios-listado";
 import { MODULOS } from "@/modules/registry";
 import { Descargas } from "../descargas";
-import { cambiarEstadoUsuario, editarUsuario } from "./actions";
+import { cambiarEstadoUsuario, cancelarInvitacion, editarUsuario } from "./actions";
 import { FilaUsuario } from "./fila-usuario";
+import { RegistrarUsuario } from "./registrar-usuario";
 
 const BASE = "/administracion/usuarios";
 
@@ -26,13 +27,15 @@ export default async function UsuariosPage({ searchParams }: PageProps<"/adminis
 
   // Editar y cambiar el estado redirigen aquí con el resultado.
   const parametros = await searchParams;
-  const { editado, sinCambios, desactivado, reactivado } = parametros;
+  const { editado, sinCambios, desactivado, reactivado, cancelada, error } = parametros;
   const resultado =
     typeof editado === "string" ? `Se guardaron los cambios de «${editado}».`
     : typeof sinCambios === "string" ? `No había cambios que guardar en «${sinCambios}».`
     : typeof desactivado === "string" ? `Se desactivó el acceso de «${desactivado}».`
     : typeof reactivado === "string" ? `Se reactivó el acceso de «${reactivado}».`
+    : typeof cancelada === "string" ? `Se canceló la invitación pendiente de «${cancelada}».`
     : null;
+  const errorInvitacion = error === "invitacion" ? "Esa invitación ya no existe. Recarga la página." : null;
 
   // Búsqueda, filtros, orden y página vienen de la URL (D-009); lo inválido se ignora y se avisa.
   const { consulta, errores } = analizarListado(LISTADO_USUARIOS, parametros);
@@ -49,9 +52,14 @@ export default async function UsuariosPage({ searchParams }: PageProps<"/adminis
       profesor: { select: { id: true, nombres: true, apellidos: true, codigo: true } },
     },
   });
-  // Profesores que todavía no tienen perfil: son los que se pueden vincular (uno por profesor).
+  // Invitaciones que el equipo todavía no ejecuta con `npm run invitar:pendientes` (D-301).
+  const invitaciones = await prisma.invitacionPendiente.findMany({
+    orderBy: [{ creadoEn: "desc" }, { id: "desc" }],
+    select: { id: true, correo: true, rol: true, creadoEn: true, profesor: { select: { codigo: true, nombres: true, apellidos: true } } },
+  });
+  // Profesores que todavía no tienen perfil ni invitación: son los que se pueden vincular (uno por profesor).
   const libres = await prisma.profesor.findMany({
-    where: { perfil: { is: null } },
+    where: { perfil: { is: null }, invitacion: { is: null } },
     orderBy: [{ apellidos: "asc" }, { nombres: "asc" }, { id: "asc" }],
     select: { id: true, nombres: true, apellidos: true, codigo: true },
   });
@@ -68,6 +76,33 @@ export default async function UsuariosPage({ searchParams }: PageProps<"/adminis
         </span>
         <Descargas listado="usuarios" definicion={LISTADO_USUARIOS} consulta={consulta} />
       </div>
+
+      <RegistrarUsuario opcionesProfesor={libres} />
+      {errorInvitacion && <Aviso tipo="error">{errorInvitacion}</Aviso>}
+
+      {invitaciones.length > 0 && (
+        <Panel titulo="Invitaciones pendientes"
+          descripcion="Todavía no tienen acceso: el equipo debe ejecutar «npm run invitar:pendientes», que crea la cuenta y entrega el enlace de cada persona.">
+          <ul className="flex flex-col gap-3 text-sm">
+            {invitaciones.map((i) => (
+              <li key={i.id} className="flex flex-wrap items-center justify-between gap-3">
+                <span className="flex min-w-0 flex-col gap-0.5">
+                  <span className="break-all text-texto">{i.correo}</span>
+                  <span className="text-xs text-texto-3">
+                    {ETIQUETA_ROL[i.rol]}
+                    {i.profesor ? ` · ${i.profesor.nombres} ${i.profesor.apellidos} (${i.profesor.codigo})` : " · Sin profesor vinculado"}
+                    {` · ${formatoFechaAlta.format(i.creadoEn)}`}
+                  </span>
+                </span>
+                <form action={cancelarInvitacion}>
+                  <input type="hidden" name="id" value={i.id} />
+                  <button type="submit" className={claseBotonSecundario} aria-label={`Cancelar la invitación de ${i.correo}`}>Cancelar invitación</button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        </Panel>
+      )}
 
       <Panel titulo="Personas con acceso" descripcion="Cada profesor puede tener un solo perfil de acceso. Al desactivar a alguien se conservan sus registros.">
         {resultado && <div className="mb-4"><Aviso tipo={typeof sinCambios === "string" && typeof editado !== "string" ? "aviso" : "exito"}>{resultado}</Aviso></div>}

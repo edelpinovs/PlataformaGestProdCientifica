@@ -3,15 +3,24 @@
 import { revalidatePath } from "next/cache";
 import { redirect, RedirectType } from "next/navigation";
 import type { EstadoFila } from "@/components/fila-editable";
+import type { EstadoAlta } from "@/components/modal-alta-logica";
 import { Prisma } from "@/generated/prisma/client";
 import { requireModulo } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { revalidarProfesorSeleccionado } from "@/lib/selectores/profesor";
 import { registrarAuditoria } from "@/lib/auditoria";
-import { eventoAuditoria, resumenCambioEstado, resumenEdicionUsuario } from "@/modules/administracion/auditoria";
+import {
+  eventoAuditoria,
+  resumenCambioEstado,
+  resumenEdicionUsuario,
+  resumenInvitacion,
+  resumenInvitacionCancelada,
+} from "@/modules/administracion/auditoria";
 import {
   buscarDuplicado,
+  buscarDuplicadoInvitacion,
   edicionUsuario,
+  invitacionUsuario,
   validarCambioRol,
   validarDesactivacion,
   type PerfilUsuario,
@@ -141,4 +150,86 @@ export async function cambiarEstadoUsuario(_: EstadoFila, formData: FormData): P
   revalidatePath(BASE);
   const clave = accion === "reactivar" ? "reactivado" : "desactivado";
   redirect(`${BASE}?${clave}=${encodeURIComponent(perfil.correo)}`, RedirectType.replace);
+}
+
+// #275 · D-301: deja una invitación pendiente. La aplicación NO crea la cuenta en Supabase Auth (el
+// secreto solo vive en scripts/): una persona del equipo ejecuta `npm run invitar:pendientes`.
+// Se abre en un modal (D-214), así que no redirige: solo un `exito` confirmado cierra el modal.
+export async function invitarUsuario(_: EstadoAlta, formData: FormData): Promise<EstadoAlta> {
+  const actor = await requireModulo("administracion");
+
+  const valores = {
+    correo: String(formData.get("correo") ?? ""),
+    rol: String(formData.get("rol") ?? ""),
+    profesorId: String(formData.get("profesorId") ?? ""),
+  };
+  const datos = invitacionUsuario.safeParse(valores);
+  if (!datos.success) {
+    const issue = datos.error.issues[0];
+    return { error: issue.message, campo: String(issue.path[0]), valores };
+  }
+
+  const [perfiles, pendientes] = await Promise.all([
+    leerPerfiles(),
+    prisma.invitacionPendiente.findMany({ select: { correo: true, profesorId: true } }),
+  ]);
+  const duplicado = buscarDuplicadoInvitacion(datos.data, perfiles, pendientes);
+  if (duplicado) return { error: duplicado.mensaje, campo: duplicado.campo, valores };
+
+  // El servidor vuelve a comprobar con Prisma que el profesor existe y no tiene perfil ni invitación.
+  const profesorId = datos.data.profesorId ?? null;
+  let codigoProfesor: string | undefined;
+  if (profesorId !== null) {
+    const elegible = await revalidarProfesorSeleccionado(String(profesorId), (idProfesor) =>
+      prisma.profesor.findFirst({
+        where: { id: idProfesor, perfil: { is: null }, invitacion: { is: null } },
+        select: { id: true, nombres: true, apellidos: true, codigo: true },
+      }),
+    );
+    if (elegible.error) return { error: elegible.error, campo: "profesorId", valores };
+    codigoProfesor = elegible.profesor?.codigo;
+  }
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      const creada = await tx.invitacionPendiente.create({
+        data: { correo: datos.data.correo, rol: datos.data.rol, profesorId, creadaPor: actor.correo },
+        select: { id: true },
+      });
+      await registrarAuditoria(tx, eventoAuditoria("usuario.invitado", actor, { tipo: "InvitacionPendiente", id: String(creada.id) },
+        resumenInvitacion(datos.data.correo, datos.data.rol, codigoProfesor)));
+    });
+  } catch (e) {
+    // Otro administrador la dejó entre la consulta y el alta; la base lo impide con @unique.
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+      return { error: "Ese correo o ese profesor ya tiene una invitación pendiente.", campo: "correo", valores };
+    }
+    throw e;
+  }
+
+  revalidatePath(BASE);
+  return { exito: `Quedó pendiente la invitación de «${datos.data.correo}». El equipo debe ejecutar «npm run invitar:pendientes» para crear su acceso.` };
+}
+
+// #275: cancela una invitación que todavía no se ha ejecutado. No toca cuentas ya creadas.
+export async function cancelarInvitacion(formData: FormData): Promise<void> {
+  const actor = await requireModulo("administracion");
+
+  const texto = formData.get("id");
+  const id = typeof texto === "string" && /^[1-9]\d{0,9}$/.test(texto) && Number(texto) <= 2147483647 ? Number(texto) : null;
+  if (id === null) redirect(`${BASE}?error=invitacion`, RedirectType.replace);
+
+  const invitacion = await prisma.invitacionPendiente.findUnique({ where: { id }, select: { correo: true } });
+  if (!invitacion) redirect(`${BASE}?error=invitacion`, RedirectType.replace);
+
+  await prisma.$transaction(async (tx) => {
+    const { count } = await tx.invitacionPendiente.deleteMany({ where: { id } });
+    if (count > 0) {
+      await registrarAuditoria(tx, eventoAuditoria("usuario.invitacion_cancelada", actor, { tipo: "InvitacionPendiente", id: String(id) },
+        resumenInvitacionCancelada(invitacion.correo)));
+    }
+  });
+
+  revalidatePath(BASE);
+  redirect(`${BASE}?cancelada=${encodeURIComponent(invitacion.correo)}`, RedirectType.replace);
 }
