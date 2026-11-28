@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { editarReconocimientoSnii, registrarReconocimientoSnii } from "./actions";
+import {
+  editarReconocimientoSnii,
+  registrarReconocimientoSnii,
+  registrarReconocimientoSniiEnModal,
+} from "./actions";
 
 const dobles = vi.hoisted(() => ({
   requireModulo: vi.fn(),
@@ -81,5 +85,29 @@ describe("RF-007: traslape de periodos SNII según el resultado guardado", () =>
     dobles.requireModulo.mockRejectedValue(new Error("Sin permiso"));
     await expect(registrarReconocimientoSnii({}, formulario())).rejects.toThrow("Sin permiso");
     expect(dobles.profesor.findUnique).not.toHaveBeenCalled();
+  });
+
+  it("devuelve exito al guardar desde ModalAlta sin redirigir", async () => {
+    dobles.profesor.findUnique.mockResolvedValue({ id: 7, cvu: "123456" });
+    dobles.reconocimientoSnii.findMany.mockResolvedValue([]);
+    dobles.$transaction.mockResolvedValue({ error: null });
+
+    const estado = await registrarReconocimientoSniiEnModal({}, formulario());
+
+    expect(estado.exito).toMatch(/Se registró el reconocimiento SNII/);
+    expect(estado.error).toBeUndefined();
+  });
+
+  it("conserva los datos y el campo de un error desde ModalAlta", async () => {
+    const estado = await registrarReconocimientoSniiEnModal(
+      {},
+      formulario({ nivel: "CANDIDATO", tipoParticipacion: "RENOVACION", cvu: "654321" }),
+    );
+
+    expect(estado).toMatchObject({
+      error: "El nivel Candidato no admite renovación.",
+      campo: "tipoParticipacion",
+      valores: { nivel: "CANDIDATO", tipoParticipacion: "RENOVACION", cvu: "654321" },
+    });
   });
 });

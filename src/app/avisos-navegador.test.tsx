@@ -25,7 +25,11 @@ vi.mock("./convocatorias/carga/actions", () => ({ prepararCarga: vi.fn(), regist
 vi.mock("./convocatorias/participantes/actions", () => ({ registrarParticipante: vi.fn() }));
 vi.mock("./produccion/demostracion/actions", () => ({ demostrarEscaneoAction: vi.fn() }));
 vi.mock("./produccion/actions", () => ({ iniciarEscaneoAction: vi.fn() }));
-vi.mock("./reconocimientos/snii/actions", () => ({ registrarReconocimientoSnii: vi.fn(), editarReconocimientoSnii: vi.fn() }));
+vi.mock("./reconocimientos/snii/actions", () => ({
+  registrarReconocimientoSnii: vi.fn(),
+  registrarReconocimientoSniiEnModal: vi.fn(),
+  editarReconocimientoSnii: vi.fn(),
+}));
 vi.mock("./reconocimientos/prodep/actions", () => ({ registrarReconocimientoProdep: vi.fn(), editarReconocimientoProdep: vi.fn() }));
 vi.mock("./validacion/actions", () => ({ registrarPublicacionManual: vi.fn() }));
 
@@ -58,7 +62,9 @@ describe("avisos del navegador (issue 350)", () => {
   });
 
   it("SNII, PRODEP y la publicación manual conservan fecha y enlace, sin el aviso nativo", () => {
-    tieneNoValidate(renderToStaticMarkup(<FormularioSnii profesores={[profesor]} />));
+    // El alta SNII está cerrada hasta abrir el modal: el formulario vive en ModalAlta.
+    expect(renderToStaticMarkup(<FormularioSnii profesores={[profesor]} />)).toContain("Registrar reconocimiento");
+    expect(readFileSync(new URL("../components/modal-alta.tsx", import.meta.url), "utf8")).toMatch(/<form[^>]*noValidate/);
     tieneNoValidate(renderToStaticMarkup(<FormularioProdep profesores={[profesor]} />));
     tieneNoValidate(renderToStaticMarkup(
       <FormularioEdicionSnii cerrar={() => undefined} profesores={[profesor]} reconocimiento={{

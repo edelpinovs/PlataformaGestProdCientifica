@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect, RedirectType } from "next/navigation";
 import { Prisma } from "@/generated/prisma/client";
+import type { EstadoAlta } from "@/components/modal-alta-logica";
 import { requireModulo } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { reconocimientoSnii, resultadoSnii, type ReconocimientoSnii } from "@/modules/reconocimientos/snii";
@@ -118,9 +119,7 @@ async function guardarSnii(datos: ReconocimientoSnii, confirmarCambioCvu: boolea
   });
 }
 
-export async function registrarReconocimientoSnii(_: EstadoSnii, formData: FormData): Promise<EstadoSnii> {
-  await requireModulo("reconocimientos");
-
+async function registrarSniiInterno(formData: FormData): Promise<EstadoSnii> {
   const validacion = validar(formData);
   if (validacion.error) return validacion.error;
 
@@ -136,6 +135,31 @@ export async function registrarReconocimientoSnii(_: EstadoSnii, formData: FormD
 
   revalidatePath("/reconocimientos/snii");
   return { registrado: validacion.datos.cvu };
+}
+
+export async function registrarReconocimientoSnii(_: EstadoSnii, formData: FormData): Promise<EstadoSnii> {
+  await requireModulo("reconocimientos");
+  return registrarSniiInterno(formData);
+}
+
+// D-214: el alta conserva el contrato de ModalAlta y no redirige.
+export async function registrarReconocimientoSniiEnModal(_: EstadoAlta, formData: FormData): Promise<EstadoAlta> {
+  await requireModulo("reconocimientos");
+  const resultado = await registrarSniiInterno(formData);
+  if (resultado.registrado) {
+    return { exito: `Se registró el reconocimiento SNII para el CVU ${resultado.registrado} correctamente.` };
+  }
+  return {
+    error: resultado.error ?? "No se pudo registrar el reconocimiento SNII. Revisa los datos e inténtalo de nuevo.",
+    campo: resultado.campo,
+    valores: resultado.valores
+      ? {
+          ...resultado.valores,
+          confirmarCambioCvu: resultado.valores.confirmarCambioCvu ? "on" : "",
+          enRecursoReconsideracion: resultado.valores.enRecursoReconsideracion ? "on" : "",
+        }
+      : undefined,
+  };
 }
 
 export async function editarReconocimientoSnii(_: EstadoSnii, formData: FormData): Promise<EstadoSnii> {

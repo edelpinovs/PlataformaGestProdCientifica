@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Aviso, claseCampo, claseEtiqueta } from "@/components/ui";
+import { SelectorProfesor } from "@/components/selector-profesor";
 import { NIVELES_SNII, TIPOS_PARTICIPACION_SNII } from "@/modules/reconocimientos/snii";
 import type { EstadoSnii } from "./actions";
 
@@ -24,10 +25,11 @@ const ETIQUETAS_PARTICIPACION: Record<(typeof TIPOS_PARTICIPACION_SNII)[number],
   NUEVO_INGRESO: "Nuevo ingreso", RENOVACION: "Renovación", REINGRESO_NO_VIGENTE: "Reingreso no vigente",
 };
 
-export function FormularioSniiCampos({ profesores, valores, estado }: {
+export function FormularioSniiCampos({ profesores, valores, estado, marcarCambiosProfesor }: {
   profesores: ProfesorOpcion[];
   valores?: Partial<ValoresSnii>;
-  estado: EstadoSnii;
+  estado: Pick<EstadoSnii, "campo"> | { campo?: string };
+  marcarCambiosProfesor?: () => void;
 }) {
   const [profesorId, setProfesorId] = useState(valores?.profesorId ?? "");
   const [cvu, setCvu] = useState(valores?.cvu ?? profesores.find((profesor) => String(profesor.id) === profesorId)?.cvu ?? "");
@@ -38,23 +40,23 @@ export function FormularioSniiCampos({ profesores, valores, estado }: {
   return (
     <>
       <div className="grid gap-4 sm:grid-cols-2">
-        <label className={claseEtiqueta}>
-          Profesor
-          <select name="profesorId" required value={profesorId}
-            onChange={(evento) => {
-              const nuevoProfesorId = evento.currentTarget.value;
-              const nuevoProfesor = profesores.find((profesor) => String(profesor.id) === nuevoProfesorId);
-              setProfesorId(nuevoProfesorId);
+        <div className="sm:col-span-2">
+          <SelectorProfesor
+            etiqueta="Profesor *"
+            opciones={profesores}
+            valorInicial={profesorId ? Number(profesorId) : undefined}
+            error={estado.campo === "profesorId" ? "Selecciona un profesor." : undefined}
+            alSeleccionar={(nuevoProfesorId) => {
+              const nuevoProfesor = profesores.find((profesor) => profesor.id === nuevoProfesorId);
+              setProfesorId(nuevoProfesorId ? String(nuevoProfesorId) : "");
               setCvu(nuevoProfesor?.cvu ?? "");
               setConfirmarCambioCvu(false);
+              marcarCambiosProfesor?.();
             }}
-            aria-invalid={estado.campo === "profesorId"} className={claseCampo(estado.campo === "profesorId")}>
-            <option value="" disabled>Selecciona un profesor</option>
-            {profesores.map((profesor) => <option key={profesor.id} value={profesor.id}>{profesor.apellidos}, {profesor.nombres} ({profesor.codigo})</option>)}
-          </select>
-        </label>
+          />
+        </div>
         <label className={claseEtiqueta}>
-          CVU de CONAHCYT / SECIHTI
+          <span>CVU de CONAHCYT / SECIHTI <span aria-hidden className="text-peligro">*</span></span>
           <input name="cvu" required maxLength={30} inputMode="numeric" pattern="[0-9]+" autoComplete="off" value={cvu}
             onChange={(evento) => {
               setCvu(evento.currentTarget.value);
@@ -73,7 +75,7 @@ export function FormularioSniiCampos({ profesores, valores, estado }: {
           </div>
         )}
         <label className={claseEtiqueta}>
-          Nivel otorgado
+          <span>Nivel otorgado <span aria-hidden className="text-peligro">*</span></span>
           <select name="nivel" required defaultValue={valores?.nivel ?? ""}
             aria-invalid={estado.campo === "nivel"} className={claseCampo(estado.campo === "nivel")}>
             <option value="" disabled>Selecciona un nivel</option>
@@ -81,7 +83,7 @@ export function FormularioSniiCampos({ profesores, valores, estado }: {
           </select>
         </label>
         <label className={claseEtiqueta}>
-          Tipo de participación
+          <span>Tipo de participación <span aria-hidden className="text-peligro">*</span></span>
           <select name="tipoParticipacion" required defaultValue={valores?.tipoParticipacion ?? ""}
             aria-invalid={estado.campo === "tipoParticipacion"} className={claseCampo(estado.campo === "tipoParticipacion")}>
             <option value="" disabled>Selecciona un tipo</option>
@@ -89,12 +91,12 @@ export function FormularioSniiCampos({ profesores, valores, estado }: {
           </select>
         </label>
         <label className={claseEtiqueta}>
-          Fecha de inicio
+          <span>Fecha de inicio <span aria-hidden className="text-peligro">*</span></span>
           <input type="date" name="fechaInicio" required defaultValue={valores?.fechaInicio}
             aria-invalid={estado.campo === "fechaInicio"} className={claseCampo(estado.campo === "fechaInicio")} />
         </label>
         <label className={claseEtiqueta}>
-          Fecha de fin
+          <span>Fecha de fin <span aria-hidden className="text-peligro">*</span></span>
           <input type="date" name="fechaFin" required defaultValue={valores?.fechaFin}
             aria-invalid={estado.campo === "fechaFin"} className={claseCampo(estado.campo === "fechaFin")} />
         </label>
