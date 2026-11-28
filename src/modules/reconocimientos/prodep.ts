@@ -2,7 +2,7 @@ import { z } from "zod";
 import { condicionTexto, ordenarPor, type CondicionTexto, type ConsultaListado, type DefinicionListado } from "@/lib/listados/consulta";
 import type { Prisma } from "@/generated/prisma/client";
 import { porPalabras } from "./busqueda";
-import { condicionEstatus, ESTATUS } from "./estatus";
+import { condicionEstatus, estatusEnBusqueda, ESTATUS } from "./estatus";
 import { hayTraslape, type PeriodoVigencia } from "./vigencia";
 
 export const TIPOS_SOLICITUD_PRODEP = ["PRIMER_RECONOCIMIENTO", "RENOVACION"] as const;
@@ -286,6 +286,7 @@ export function filtroProdep(consulta: ConsultaListado, hoy: Date = new Date()):
   if (nombreCompleto) criterios.push(nombreCompleto);
   const busqueda = consulta.q.trim().toLocaleLowerCase("es-MX");
   const rangoFecha = rangoFechaBusqueda(consulta.q.trim());
+  const estadosBuscados = estatusEnBusqueda(busqueda);
 
   if (rangoFecha) {
     criterios.push(
@@ -305,6 +306,8 @@ export function filtroProdep(consulta: ConsultaListado, hoy: Date = new Date()):
       criterios.push({ resultado });
     }
   }
+  for (const estatusBuscado of estadosBuscados.estatus) criterios.push(condicionEstatus(estatusBuscado, hoy));
+  if (estadosBuscados.sinVigencia) criterios.push({ resultado: "NO_APROBADO" });
 
   const tipoSolicitud = TIPOS_SOLICITUD_PRODEP.find((tipo) => tipo === consulta.filtros.tipoSolicitud);
   const resultado = RESULTADOS_PRODEP.find((valor) => valor === consulta.filtros.resultado);

@@ -157,6 +157,16 @@ describe("listado PRODEP", () => {
     });
   });
 
+  it("busca por el estatus visible y por los reconocimientos sin vigencia", () => {
+    const hoy = new Date("2026-11-27T00:00:00.000Z");
+    expect(filtroProdep(analizarListado(LISTADO_PRODEP, { q: "Por vencer" }).consulta, hoy).OR).toContainEqual({
+      fin: { gte: hoy, lte: expect.any(Date) },
+      resultado: { in: ["APROBADO", "EN_RECONSIDERACION"] },
+    });
+    expect(filtroProdep(analizarListado(LISTADO_PRODEP, { q: "Sin vigencia" }).consulta, hoy).OR)
+      .toContainEqual({ resultado: "NO_APROBADO" });
+  });
+
   it("aplica únicamente los filtros finitos aceptados", () => {
     const aceptado = analizarListado(LISTADO_PRODEP, { tipoSolicitud: "RENOVACION", resultado: "APROBADO" });
     expect(filtroProdep(aceptado.consulta)).toMatchObject({

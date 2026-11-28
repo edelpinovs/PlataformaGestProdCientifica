@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect, RedirectType } from "next/navigation";
+import { valoresAlta, type EstadoAlta } from "@/components/modal-alta-logica";
 import { Prisma } from "@/generated/prisma/client";
 import { requireModulo } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
@@ -21,7 +22,6 @@ export type EstadoSnii = {
     fechaFin: string;
     enRecursoReconsideracion: boolean;
   };
-  registrado?: string;
 };
 
 function leerValores(formData: FormData) {
@@ -58,6 +58,10 @@ function validar(formData: FormData) {
     return { error: errorValidacion(valores, problema?.message ?? "Revisa los datos ingresados.", problema?.path[0] as EstadoSnii["campo"]) };
   }
   return { datos: datos.data, valores };
+}
+
+function errorAlta(formData: FormData, mensaje: string, campo?: string): EstadoAlta {
+  return { error: mensaje, campo, valores: valoresAlta(formData) };
 }
 
 async function guardarSnii(datos: ReconocimientoSnii, confirmarCambioCvu: boolean, id?: number) {
@@ -118,24 +122,26 @@ async function guardarSnii(datos: ReconocimientoSnii, confirmarCambioCvu: boolea
   });
 }
 
-export async function registrarReconocimientoSnii(_: EstadoSnii, formData: FormData): Promise<EstadoSnii> {
+export async function registrarReconocimientoSnii(_: EstadoAlta, formData: FormData): Promise<EstadoAlta> {
   await requireModulo("reconocimientos");
 
   const validacion = validar(formData);
-  if (validacion.error) return validacion.error;
+  if (validacion.error) {
+    return errorAlta(formData, validacion.error.error ?? "Revisa los datos ingresados.", validacion.error.campo);
+  }
 
   try {
     const guardado = await guardarSnii(validacion.datos, validacion.valores.confirmarCambioCvu);
-    if (guardado.error) return errorValidacion(validacion.valores, guardado.error, guardado.campo);
+    if (guardado.error) return errorAlta(formData, guardado.error, guardado.campo);
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-      return errorValidacion(validacion.valores, "Ese CVU ya está asociado a otro profesor.", "cvu");
+      return errorAlta(formData, "Ese CVU ya está asociado a otro profesor.", "cvu");
     }
     throw error;
   }
 
   revalidatePath("/reconocimientos/snii");
-  return { registrado: validacion.datos.cvu };
+  return { exito: `Se registró el reconocimiento para el CVU ${validacion.datos.cvu}.` };
 }
 
 export async function editarReconocimientoSnii(_: EstadoSnii, formData: FormData): Promise<EstadoSnii> {

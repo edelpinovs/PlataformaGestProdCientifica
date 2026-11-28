@@ -75,7 +75,7 @@ export default async function ProdepPage({ searchParams }: PageProps<"/reconocim
             columnas={COLUMNAS_PRODEP}
             errores={errores}
             etiquetaBusqueda="Buscar reconocimientos"
-            placeholder="Profesor, solicitud, resultado o fecha"
+            placeholder="Profesor, solicitud, resultado, estatus o fecha"
             filtros={[
               {
                 clave: "tipoSolicitud",

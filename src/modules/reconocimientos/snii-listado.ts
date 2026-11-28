@@ -1,7 +1,7 @@
 import type { Prisma } from "@/generated/prisma/client";
 import { condicionTexto, ordenarPor, type CondicionTexto, type ConsultaListado, type DefinicionListado } from "@/lib/listados/consulta";
 import { porPalabras } from "./busqueda";
-import { condicionEstatus, ESTATUS } from "./estatus";
+import { condicionEstatus, estatusEnBusqueda, ESTATUS } from "./estatus";
 import { rangoFechaBusqueda } from "./prodep";
 import { NIVELES_SNII, TIPOS_PARTICIPACION_SNII } from "./snii";
 
@@ -60,12 +60,15 @@ export function filtroSnii(consulta: ConsultaListado, hoy: Date = new Date()): P
   if (nombreCompleto) criterios.push(nombreCompleto);
   const busqueda = consulta.q.trim().toLocaleLowerCase("es-MX");
   const rango = rangoFechaBusqueda(consulta.q.trim());
+  const estadosBuscados = estatusEnBusqueda(busqueda);
   if (rango) {
     criterios.push({ inicio: { gte: rango.desde, lt: rango.hasta } }, { fin: { gte: rango.desde, lt: rango.hasta } });
   }
   for (const nivel of coinciden(NIVELES_SNII, ETIQUETAS_NIVEL_SNII, busqueda)) criterios.push({ nivel });
   for (const tipoParticipacion of coinciden(TIPOS_PARTICIPACION_SNII, ETIQUETAS_PARTICIPACION_SNII, busqueda)) criterios.push({ tipoParticipacion });
   for (const resultado of coinciden(RESULTADOS_SNII, ETIQUETAS_RESULTADO_SNII, busqueda)) criterios.push({ resultado });
+  for (const estatusBuscado of estadosBuscados.estatus) criterios.push(condicionEstatus(estatusBuscado, hoy));
+  if (estadosBuscados.sinVigencia) criterios.push({ resultado: "NO_APROBADO" });
 
   // analizarListado ya validó cada filtro contra su lista; aquí solo se buscan para tiparlos.
   const nivel = NIVELES_SNII.find((valor) => valor === consulta.filtros.nivel);

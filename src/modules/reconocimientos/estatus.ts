@@ -12,6 +12,18 @@ export type Estatus = (typeof ESTATUS)[number];
 export const ETIQUETAS_ESTATUS: Record<Estatus, string> = ETIQUETA_SEMAFORO;
 export const SIN_VIGENCIA = "Sin vigencia";
 
+/** Estados y registros sin vigencia cuya etiqueta visible coincide con el texto buscado. */
+export function estatusEnBusqueda(texto: string): { estatus: Estatus[]; sinVigencia: boolean } {
+  const busqueda = texto.trim().toLocaleLowerCase("es-MX");
+  if (!busqueda) return { estatus: [], sinVigencia: false };
+  return {
+    estatus: ESTATUS.filter((estatus) =>
+      estatus.toLocaleLowerCase("es-MX").includes(busqueda)
+      || ETIQUETAS_ESTATUS[estatus].toLocaleLowerCase("es-MX").includes(busqueda)),
+    sinVigencia: SIN_VIGENCIA.toLocaleLowerCase("es-MX").includes(busqueda),
+  };
+}
+
 /** Tono de la etiqueta de cada estatus (colores con nombre de la pauta). */
 export const TONO_ESTATUS: Record<Estatus, "exito" | "aviso" | "error"> = { VERDE: "exito", AMARILLO: "aviso", ROJO: "error" };
 

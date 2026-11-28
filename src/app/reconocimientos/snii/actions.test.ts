@@ -77,6 +77,16 @@ describe("RF-007: traslape de periodos SNII según el resultado guardado", () =>
     expect(dobles.$transaction).toHaveBeenCalledOnce();
   });
 
+  it("una alta correcta devuelve éxito confirmado para cerrar el modal", async () => {
+    const estado = await registrarReconocimientoSnii({}, formulario({
+      fechaInicio: "2028-01-01",
+      fechaFin: "2028-12-31",
+    }));
+
+    expect(estado).toEqual({ exito: "Se registró el reconocimiento para el CVU 123456." });
+    expect(dobles.$transaction).toHaveBeenCalledOnce();
+  });
+
   it("exige permiso antes de leer la base", async () => {
     dobles.requireModulo.mockRejectedValue(new Error("Sin permiso"));
     await expect(registrarReconocimientoSnii({}, formulario())).rejects.toThrow("Sin permiso");
