@@ -74,6 +74,32 @@ export default async function ProfesoresPage({ searchParams }: PageProps<"/profe
   const verId = verTexto === undefined ? null : idDeDetalle.safeParse(verTexto);
   const editarId = editarTexto === undefined ? null : idDeDetalle.safeParse(editarTexto);
   const detalle = verId?.success ? await leerDetalleProfesor(verId.data) : null;
+  const seccionesDetalle = detalle
+    ? [
+      ...seccionesDetalleProfesor(detalle),
+      {
+        titulo: "Años acumulados y renovaciones",
+        campos: [
+          {
+            etiqueta: "Años acumulados en SNII",
+            valor: `${new Intl.NumberFormat("es-MX", { maximumFractionDigits: 2 }).format(detalle.acumuladosReconocimientos.snii.aniosAcumulados)} años`,
+          },
+          {
+            etiqueta: "Renovaciones SNII",
+            valor: String(detalle.acumuladosReconocimientos.snii.renovaciones),
+          },
+          {
+            etiqueta: "Años acumulados en PRODEP",
+            valor: `${new Intl.NumberFormat("es-MX", { maximumFractionDigits: 2 }).format(detalle.acumuladosReconocimientos.prodep.aniosAcumulados)} años`,
+          },
+          {
+            etiqueta: "Renovaciones PRODEP",
+            valor: String(detalle.acumuladosReconocimientos.prodep.renovaciones),
+          },
+        ],
+      },
+    ]
+    : undefined;
   const avisoDetalle = verTexto === undefined ? null
     : !verId?.success ? "Ese detalle no es válido."
     : !detalle ? "Ese profesor ya no existe en el directorio."
@@ -101,7 +127,7 @@ export default async function ProfesoresPage({ searchParams }: PageProps<"/profe
       {detalle && verId?.success && (
         <ModalDetalle titulo="Detalle del profesor" subtitulo={subtituloDetalleProfesor(detalle)}
           urlCerrar={listadoUrl} focoAlCerrar={`ver-profesor-${verId.data}`}
-          secciones={seccionesDetalleProfesor(detalle)} editarHref={conParametro("editar", String(verId.data))} />
+          secciones={seccionesDetalle} editarHref={conParametro("editar", String(verId.data))} />
       )}
       <Panel>
         {resultado && <div className="mb-4"><Aviso tipo="exito">{resultado}</Aviso></div>}
