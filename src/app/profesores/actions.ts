@@ -6,7 +6,9 @@ import type { EstadoFila } from "@/components/fila-editable";
 import type { EstadoAlta } from "@/components/modal-alta-logica";
 import { Prisma } from "@/generated/prisma/client";
 import { requireModulo } from "@/lib/auth/session";
+import { registrarAuditoria } from "@/lib/auditoria";
 import { prisma } from "@/lib/prisma";
+import { eventoAuditoria, resumenEliminacion } from "@/modules/administracion/auditoria";
 import {
   buscarDuplicadoProfesor,
   datosProfesor,
@@ -228,8 +230,9 @@ export async function editarProfesor(_: EstadoFila, formData: FormData): Promise
 }
 
 // #59: elimina un profesor solo si no tiene perfil, reconocimientos, producción u otras relaciones.
+// El borrado y su constancia van en la misma transacción: si la bitácora falla, el profesor sigue.
 export async function eliminarProfesor(_: EstadoFila, formData: FormData): Promise<EstadoFila> {
-  await requireModulo("profesores");
+  const actor = await requireModulo("profesores");
 
   const id = idDeFormulario(formData);
   if (!id) return { error: NO_EXISTE };
@@ -237,6 +240,7 @@ export async function eliminarProfesor(_: EstadoFila, formData: FormData): Promi
   const actual = await prisma.profesor.findUnique({
     where: { id },
     select: {
+      codigo: true,
       nombres: true,
       apellidos: true,
       perfil: { select: { id: true } },
@@ -251,7 +255,23 @@ export async function eliminarProfesor(_: EstadoFila, formData: FormData): Promi
 
   let borrados = 0;
   try {
-    ({ count: borrados } = await prisma.profesor.deleteMany({ where: { id, ...sinRelaciones } }));
+    // Interactiva: la constancia solo se escribe si el borrado quitó la fila. Un conteo de 0
+    // (alguien lo relacionó en ese instante) no deja un evento de un borrado que no ocurrió.
+    borrados = await prisma.$transaction(async (tx) => {
+      const resultado = await tx.profesor.deleteMany({ where: { id, ...sinRelaciones } });
+      if (resultado.count === 0) return 0;
+      await registrarAuditoria(
+        tx,
+        eventoAuditoria(
+          "registro.eliminado",
+          actor,
+          { tipo: "Profesor", id: String(id) },
+          resumenEliminacion("el profesor", actual.codigo),
+          "profesores",
+        ),
+      );
+      return resultado.count;
+    });
   } catch (e) {
     if (!(e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2003")) throw e;
   }
