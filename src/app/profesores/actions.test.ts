@@ -1,16 +1,19 @@
 import { Prisma } from "@/generated/prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { crearProfesor, crearProfesorEnModal, leerDetalleProfesor } from "./actions";
+import { crearProfesor, crearProfesorEnModal, eliminarProfesor, leerDetalleProfesor } from "./actions";
 
 const dobles = vi.hoisted(() => ({
   requireModulo: vi.fn(),
   revalidatePath: vi.fn(),
-  profesor: { findMany: vi.fn(), findUnique: vi.fn(), create: vi.fn() },
+  redirect: vi.fn(),
+  profesor: { findMany: vi.fn(), findUnique: vi.fn(), create: vi.fn(), deleteMany: vi.fn() },
+  auditoria: { create: vi.fn() },
+  $transaction: vi.fn(),
 }));
 vi.mock("@/lib/auth/session", () => ({ requireModulo: dobles.requireModulo }));
 vi.mock("@/lib/prisma", () => ({ prisma: dobles }));
 vi.mock("next/cache", () => ({ revalidatePath: dobles.revalidatePath }));
-vi.mock("next/navigation", () => ({ redirect: vi.fn(), RedirectType: { replace: "replace" } }));
+vi.mock("next/navigation", () => ({ redirect: dobles.redirect, RedirectType: { replace: "replace" } }));
 
 function formulario(extra: Record<string, string> = {}) {
   const datos = new FormData();
@@ -111,5 +114,103 @@ describe("detalle de profesor (issue 341)", () => {
   it("devuelve null si ese profesor ya no existe", async () => {
     await expect(leerDetalleProfesor(4)).resolves.toBeNull();
     expect(dobles.profesor.findUnique).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 4 } }));
+  });
+});
+
+const ACTOR = { id: "11111111-1111-4111-8111-111111111111", correo: "admin@ejemplo.mx", rol: "ADMINISTRADOR" as const };
+
+function profesorSinUso() {
+  return {
+    codigo: "DEMO001",
+    nombres: "Persona",
+    apellidos: "Ficticia",
+    correo: "persona@demo.invalid",
+    perfil: null,
+    _count: {
+      reconocimientosSnii: 0,
+      reconocimientosProdep: 0,
+      cuerposAcademicos: 0,
+      cuerposLiderados: 0,
+      lgacs: 0,
+      participaciones: 0,
+      autorias: 0,
+      cortesEscaneo: 0,
+      programas: 0,
+    },
+  };
+}
+
+function formularioBorrado(id = "4") {
+  const datos = new FormData();
+  datos.set("id", id);
+  return datos;
+}
+
+describe("borrado de profesor en la bitácora", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    dobles.requireModulo.mockResolvedValue(ACTOR);
+    dobles.$transaction.mockImplementation(async (operacion: (tx: typeof dobles) => Promise<number>) => operacion(dobles));
+    dobles.profesor.deleteMany.mockResolvedValue({ count: 1 });
+    dobles.auditoria.create.mockResolvedValue({});
+    dobles.profesor.findUnique.mockResolvedValue(profesorSinUso());
+  });
+
+  it("exige el permiso del módulo antes de leer o borrar", async () => {
+    dobles.requireModulo.mockRejectedValue(new Error("sin permiso"));
+    await expect(eliminarProfesor({}, formularioBorrado())).rejects.toThrow("sin permiso");
+    expect(dobles.requireModulo).toHaveBeenCalledWith("profesores");
+    expect(dobles.profesor.findUnique).not.toHaveBeenCalled();
+    expect(dobles.$transaction).not.toHaveBeenCalled();
+    expect(dobles.auditoria.create).not.toHaveBeenCalled();
+  });
+
+  it("guarda el borrado y su constancia en la misma transacción, con el código y sin datos personales", async () => {
+    await eliminarProfesor({}, formularioBorrado());
+    expect(dobles.$transaction).toHaveBeenCalledTimes(1);
+    expect(dobles.profesor.deleteMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ id: 4 }) }),
+    );
+    expect(dobles.auditoria.create).toHaveBeenCalledWith({
+      data: {
+        actorId: ACTOR.id,
+        actorCorreo: ACTOR.correo,
+        modulo: "profesores",
+        accion: "registro.eliminado",
+        entidad: "Profesor",
+        entidadId: "4",
+        resumen: "Eliminó el profesor DEMO001.",
+      },
+    });
+    const resumen = String(dobles.auditoria.create.mock.calls[0][0].data.resumen);
+    expect(resumen).not.toContain("Persona");
+    expect(resumen).not.toContain("Ficticia");
+    expect(resumen).not.toContain("persona@demo.invalid");
+    expect(dobles.redirect).toHaveBeenCalledWith("/profesores?eliminado=Persona%20Ficticia", "replace");
+  });
+
+  it("no escribe la bitácora cuando el borrado se rechaza por tener registros relacionados", async () => {
+    dobles.profesor.findUnique.mockResolvedValue({ ...profesorSinUso(), perfil: { id: "perfil" } });
+    const resultado = await eliminarProfesor({}, formularioBorrado());
+    expect(resultado.error).toContain("perfil de acceso");
+    expect(dobles.$transaction).not.toHaveBeenCalled();
+    expect(dobles.auditoria.create).not.toHaveBeenCalled();
+  });
+
+  it("no escribe la bitácora si el borrado no quitó ninguna fila", async () => {
+    dobles.profesor.deleteMany.mockResolvedValue({ count: 0 });
+    dobles.profesor.findUnique
+      .mockResolvedValueOnce(profesorSinUso())
+      .mockResolvedValueOnce({ ...profesorSinUso(), perfil: { id: "perfil" } });
+    const resultado = await eliminarProfesor({}, formularioBorrado());
+    expect(resultado.error).toContain("perfil de acceso");
+    expect(dobles.auditoria.create).not.toHaveBeenCalled();
+  });
+
+  it("si la constancia falla, no confirma el borrado", async () => {
+    dobles.auditoria.create.mockRejectedValue(new Error("bitácora"));
+    await expect(eliminarProfesor({}, formularioBorrado())).rejects.toThrow("bitácora");
+    expect(dobles.profesor.deleteMany).toHaveBeenCalledOnce();
+    expect(dobles.redirect).not.toHaveBeenCalled();
   });
 });

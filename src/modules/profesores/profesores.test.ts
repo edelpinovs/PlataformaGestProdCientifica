@@ -19,9 +19,15 @@ import {
 
 const prismaFalso = vi.hoisted(() => ({
   profesor: { findMany: vi.fn(), findUnique: vi.fn(), create: vi.fn(), update: vi.fn(), deleteMany: vi.fn() },
+  auditoria: { create: vi.fn() },
+  $transaction: vi.fn(async (operacion: (tx: unknown) => Promise<unknown>) => operacion(prismaFalso)),
 }));
 const sesionFalsa = vi.hoisted(() => ({
-  requireModulo: vi.fn(async () => ({ rol: "ADMINISTRADOR" })),
+  requireModulo: vi.fn(async () => ({
+    id: "11111111-1111-4111-8111-111111111111",
+    correo: "admin@ejemplo.mx",
+    rol: "ADMINISTRADOR",
+  })),
 }));
 
 vi.mock("@/lib/prisma", () => ({ prisma: prismaFalso }));
@@ -577,6 +583,7 @@ describe("editarProfesor", () => {
 
 describe("eliminarProfesor", () => {
   const libre = {
+    codigo: "DEMO007",
     nombres: "Ana María",
     apellidos: "Pérez Ruiz",
     perfil: null,
@@ -587,6 +594,7 @@ describe("eliminarProfesor", () => {
     vi.clearAllMocks();
     prismaFalso.profesor.findUnique.mockResolvedValue(libre);
     prismaFalso.profesor.deleteMany.mockResolvedValue({ count: 1 });
+    prismaFalso.auditoria.create.mockResolvedValue({});
   });
 
   it("exige el permiso del módulo", async () => {
@@ -617,6 +625,17 @@ describe("eliminarProfesor", () => {
       `/profesores?eliminado=${encodeURIComponent("Ana María Pérez Ruiz")}`,
       "replace",
     );
+    expect(prismaFalso.auditoria.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        modulo: "profesores",
+        accion: "registro.eliminado",
+        entidadId: "7",
+        resumen: "Eliminó el profesor DEMO007.",
+      }),
+    });
+    const resumen = String(prismaFalso.auditoria.create.mock.calls[0][0].data.resumen);
+    expect(resumen).not.toContain("Ana");
+    expect(resumen).not.toContain("Pérez");
   });
 
   it("explica el motivo si el borrado no elimina ninguna fila", async () => {
@@ -629,6 +648,7 @@ describe("eliminarProfesor", () => {
     expect(resultado.error).toBe(
       "No se puede eliminar a «Ana María Pérez Ruiz»: tiene un perfil de acceso. Quita esas relaciones antes de eliminarlo.",
     );
+    expect(prismaFalso.auditoria.create).not.toHaveBeenCalled();
   });
 
   it("si el borrado falla por una relación que no se cuenta, no dice que el profesor ya no existe", async () => {
@@ -638,6 +658,7 @@ describe("eliminarProfesor", () => {
     expect(resultado.error).toBe(
       "No se puede eliminar a «Ana María Pérez Ruiz»: tiene otros registros relacionados. Quita esas relaciones antes de eliminarlo.",
     );
+    expect(prismaFalso.auditoria.create).not.toHaveBeenCalled();
   });
 
   it("avisa si el profesor desapareció durante el borrado", async () => {
@@ -646,5 +667,6 @@ describe("eliminarProfesor", () => {
     const { eliminarProfesor } = await import("../../app/profesores/actions");
     const resultado = await eliminarProfesor({}, formulario({ id: "7" }));
     expect(resultado.error).toBe("Ese profesor ya no existe en el directorio. Recarga la página.");
+    expect(prismaFalso.auditoria.create).not.toHaveBeenCalled();
   });
 });
