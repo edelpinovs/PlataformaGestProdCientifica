@@ -127,24 +127,19 @@ export function seccionesDetalleProfesor(datos: DatosDetalleProfesor): SeccionDe
       titulo: "Historial SNII",
       campos: datos.historialSnii.length === 0
         ? [{ etiqueta: "Historial", valor: "No hay historial SNII registrado." }]
-        : datos.historialSnii.flatMap((periodo, indice) => [
-            { etiqueta: `Periodo ${indice + 1} · Inicio`, valor: mostrarFechaPeriodo(periodo.inicio) },
-            { etiqueta: `Periodo ${indice + 1} · Fin`, valor: mostrarFechaPeriodo(periodo.fin) },
-            { etiqueta: `Periodo ${indice + 1} · Nivel`, valor: ETIQUETAS_NIVEL_SNII[periodo.nivel] },
-            { etiqueta: `Periodo ${indice + 1} · Participación`, valor: ETIQUETAS_PARTICIPACION_SNII[periodo.tipoParticipacion] },
-            { etiqueta: `Periodo ${indice + 1} · Resultado`, valor: ETIQUETAS_RESULTADO_SNII[periodo.resultado] },
-          ]),
+        : datos.historialSnii.map((periodo, indice) => ({
+            etiqueta: `Periodo ${indice + 1}`,
+            valor: `Inicio: ${mostrarFechaPeriodo(periodo.inicio)} · Fin: ${mostrarFechaPeriodo(periodo.fin)} · Nivel: ${ETIQUETAS_NIVEL_SNII[periodo.nivel]} · Participación: ${ETIQUETAS_PARTICIPACION_SNII[periodo.tipoParticipacion]} · Resultado: ${ETIQUETAS_RESULTADO_SNII[periodo.resultado]}`,
+          })),
     },
     {
       titulo: "Historial PRODEP",
       campos: datos.historialProdep.length === 0
         ? [{ etiqueta: "Historial", valor: "No hay historial PRODEP registrado." }]
-        : datos.historialProdep.flatMap((periodo, indice) => [
-            { etiqueta: `Periodo ${indice + 1} · Inicio`, valor: mostrarFechaPeriodo(periodo.inicio) },
-            { etiqueta: `Periodo ${indice + 1} · Fin`, valor: mostrarFechaPeriodo(periodo.fin) },
-            { etiqueta: `Periodo ${indice + 1} · Tipo`, valor: ETIQUETAS_TIPO_SOLICITUD_PRODEP[periodo.tipoSolicitud] },
-            { etiqueta: `Periodo ${indice + 1} · Resultado`, valor: ETIQUETAS_RESULTADO_PRODEP[periodo.resultado] },
-          ]),
+        : datos.historialProdep.map((periodo, indice) => ({
+            etiqueta: `Periodo ${indice + 1}`,
+            valor: `Inicio: ${mostrarFechaPeriodo(periodo.inicio)} · Fin: ${mostrarFechaPeriodo(periodo.fin)} · Tipo: ${ETIQUETAS_TIPO_SOLICITUD_PRODEP[periodo.tipoSolicitud]} · Resultado: ${ETIQUETAS_RESULTADO_PRODEP[periodo.resultado]}`,
+          })),
     },
     {
       titulo: "Registro",

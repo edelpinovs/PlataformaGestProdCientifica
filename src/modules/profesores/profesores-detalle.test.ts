@@ -113,16 +113,18 @@ describe("detalle de profesor", () => {
       }],
     });
 
-    expect(secciones.find((seccion) => seccion.titulo === "Historial SNII")?.campos).toEqual(expect.arrayContaining([
-      expect.objectContaining({ etiqueta: "Periodo 1 · Inicio", valor: "01 ene 2024" }),
-      expect.objectContaining({ etiqueta: "Periodo 1 · Fin", valor: "31 dic 2026" }),
-      expect.objectContaining({ etiqueta: "Periodo 1 · Nivel", valor: "Nivel 2" }),
-      expect.objectContaining({ etiqueta: "Periodo 1 · Resultado", valor: "Aprobado" }),
-    ]));
-    expect(secciones.find((seccion) => seccion.titulo === "Historial PRODEP")?.campos).toEqual(expect.arrayContaining([
-      expect.objectContaining({ etiqueta: "Periodo 1 · Inicio", valor: "01 ene 2023" }),
-      expect.objectContaining({ etiqueta: "Periodo 1 · Tipo", valor: "Renovación" }),
-      expect.objectContaining({ etiqueta: "Periodo 1 · Resultado", valor: "En reconsideración" }),
-    ]));
+    const historialSnii = secciones.find((seccion) => seccion.titulo === "Historial SNII")?.campos ?? [];
+    expect(historialSnii).toHaveLength(1);
+    expect(historialSnii[0]).toEqual({
+      etiqueta: "Periodo 1",
+      valor: "Inicio: 01 ene 2024 · Fin: 31 dic 2026 · Nivel: Nivel 2 · Participación: Renovación · Resultado: Aprobado",
+    });
+
+    const historialProdep = secciones.find((seccion) => seccion.titulo === "Historial PRODEP")?.campos ?? [];
+    expect(historialProdep).toHaveLength(1);
+    expect(historialProdep[0]).toEqual({
+      etiqueta: "Periodo 1",
+      valor: "Inicio: 01 ene 2023 · Fin: 31 dic 2028 · Tipo: Renovación · Resultado: En reconsideración",
+    });
   });
 });

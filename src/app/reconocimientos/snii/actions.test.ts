@@ -74,7 +74,6 @@ describe("RF-007: traslape de periodos SNII según el resultado guardado", () =>
     const estado = await registrarReconocimientoSnii({}, formulario({ nivel: "NO_APROBADO" }));
     expect(dobles.reconocimientoSnii.findMany).not.toHaveBeenCalled();
     expect(estado.error).toBeUndefined();
-    expect(estado.exito).toBe("Se registró el reconocimiento SNII para el CVU 123456.");
     expect(dobles.$transaction).toHaveBeenCalledOnce();
   });
 

@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { Aviso, claseCampo, claseEtiqueta } from "@/components/ui";
-import { SelectorProfesor } from "@/components/selector-profesor";
 import { NIVELES_SNII, TIPOS_PARTICIPACION_SNII } from "@/modules/reconocimientos/snii";
 import type { EstadoSnii } from "./actions";
 
@@ -25,55 +24,41 @@ const ETIQUETAS_PARTICIPACION: Record<(typeof TIPOS_PARTICIPACION_SNII)[number],
   NUEVO_INGRESO: "Nuevo ingreso", RENOVACION: "Renovación", REINGRESO_NO_VIGENTE: "Reingreso no vigente",
 };
 
-export function FormularioSniiCampos({ profesores, estado, valores, valor, marcarCambios }: {
+export function FormularioSniiCampos({ profesores, valores, estado }: {
   profesores: ProfesorOpcion[];
-  estado: EstadoSnii;
   valores?: Partial<ValoresSnii>;
-  valor?: (nombre: string, inicial?: string) => string;
-  marcarCambios?: () => void;
+  estado: EstadoSnii;
 }) {
-  const obtenerValor = (nombre: string, inicial = "") => {
-    if (valor) return valor(nombre, inicial);
-    const contenido = valores?.[nombre as keyof ValoresSnii];
-    if (typeof contenido === "boolean") return contenido ? "on" : "";
-    return typeof contenido === "string" ? contenido : inicial;
-  };
-  const profesorIdInicial = obtenerValor("profesorId");
-  const [profesorId, setProfesorId] = useState(profesorIdInicial);
-  const cvuInicial = obtenerValor("cvu", profesorIdInicial
-    ? profesores.find((profesor) => String(profesor.id) === profesorIdInicial)?.cvu ?? ""
-    : "");
-  const [cvu, setCvu] = useState(cvuInicial);
-  const [confirmarCambioCvu, setConfirmarCambioCvu] = useState(obtenerValor("confirmarCambioCvu") === "on");
+  const [profesorId, setProfesorId] = useState(valores?.profesorId ?? "");
+  const [cvu, setCvu] = useState(valores?.cvu ?? profesores.find((profesor) => String(profesor.id) === profesorId)?.cvu ?? "");
+  const [confirmarCambioCvu, setConfirmarCambioCvu] = useState(valores?.confirmarCambioCvu ?? false);
   const profesorSeleccionado = profesores.find((profesor) => String(profesor.id) === profesorId);
   const requiereConfirmacion = Boolean(profesorSeleccionado?.cvu && profesorSeleccionado.cvu !== cvu.trim());
 
   return (
     <>
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="sm:col-span-2">
-          <SelectorProfesor
-            opciones={profesores}
-            etiqueta="Profesor"
-            valorInicial={profesorId ? Number(profesorId) : undefined}
-            alSeleccionar={(id) => {
-              const nuevoProfesorId = id ? String(id) : "";
-              const nuevoProfesor = profesores.find((profesor) => profesor.id === id);
+        <label className={claseEtiqueta}>
+          Profesor
+          <select name="profesorId" required value={profesorId}
+            onChange={(evento) => {
+              const nuevoProfesorId = evento.currentTarget.value;
+              const nuevoProfesor = profesores.find((profesor) => String(profesor.id) === nuevoProfesorId);
               setProfesorId(nuevoProfesorId);
               setCvu(nuevoProfesor?.cvu ?? "");
               setConfirmarCambioCvu(false);
-              marcarCambios?.();
             }}
-            error={estado.campo === "profesorId" ? estado.error : undefined}
-          />
-        </div>
+            aria-invalid={estado.campo === "profesorId"} className={claseCampo(estado.campo === "profesorId")}>
+            <option value="" disabled>Selecciona un profesor</option>
+            {profesores.map((profesor) => <option key={profesor.id} value={profesor.id}>{profesor.apellidos}, {profesor.nombres} ({profesor.codigo})</option>)}
+          </select>
+        </label>
         <label className={claseEtiqueta}>
           CVU de CONAHCYT / SECIHTI
           <input name="cvu" required maxLength={30} inputMode="numeric" pattern="[0-9]+" autoComplete="off" value={cvu}
             onChange={(evento) => {
               setCvu(evento.currentTarget.value);
               setConfirmarCambioCvu(false);
-              marcarCambios?.();
             }}
             aria-invalid={estado.campo === "cvu"} className={claseCampo(estado.campo === "cvu")} />
         </label>
@@ -89,7 +74,7 @@ export function FormularioSniiCampos({ profesores, estado, valores, valor, marca
         )}
         <label className={claseEtiqueta}>
           Nivel otorgado
-          <select name="nivel" required defaultValue={obtenerValor("nivel")}
+          <select name="nivel" required defaultValue={valores?.nivel ?? ""}
             aria-invalid={estado.campo === "nivel"} className={claseCampo(estado.campo === "nivel")}>
             <option value="" disabled>Selecciona un nivel</option>
             {NIVELES_SNII.map((nivel) => <option key={nivel} value={nivel}>{ETIQUETAS_NIVEL[nivel]}</option>)}
@@ -97,7 +82,7 @@ export function FormularioSniiCampos({ profesores, estado, valores, valor, marca
         </label>
         <label className={claseEtiqueta}>
           Tipo de participación
-          <select name="tipoParticipacion" required defaultValue={obtenerValor("tipoParticipacion")}
+          <select name="tipoParticipacion" required defaultValue={valores?.tipoParticipacion ?? ""}
             aria-invalid={estado.campo === "tipoParticipacion"} className={claseCampo(estado.campo === "tipoParticipacion")}>
             <option value="" disabled>Selecciona un tipo</option>
             {TIPOS_PARTICIPACION_SNII.map((tipo) => <option key={tipo} value={tipo}>{ETIQUETAS_PARTICIPACION[tipo]}</option>)}
@@ -105,17 +90,17 @@ export function FormularioSniiCampos({ profesores, estado, valores, valor, marca
         </label>
         <label className={claseEtiqueta}>
           Fecha de inicio
-          <input type="date" name="fechaInicio" required defaultValue={obtenerValor("fechaInicio")}
+          <input type="date" name="fechaInicio" required defaultValue={valores?.fechaInicio}
             aria-invalid={estado.campo === "fechaInicio"} className={claseCampo(estado.campo === "fechaInicio")} />
         </label>
         <label className={claseEtiqueta}>
           Fecha de fin
-          <input type="date" name="fechaFin" required defaultValue={obtenerValor("fechaFin")}
+          <input type="date" name="fechaFin" required defaultValue={valores?.fechaFin}
             aria-invalid={estado.campo === "fechaFin"} className={claseCampo(estado.campo === "fechaFin")} />
         </label>
       </div>
       <label className="flex items-center gap-2 text-sm text-texto-2">
-        <input type="checkbox" name="enRecursoReconsideracion" defaultChecked={obtenerValor("enRecursoReconsideracion") === "true" || obtenerValor("enRecursoReconsideracion") === "on"}
+        <input type="checkbox" name="enRecursoReconsideracion" defaultChecked={valores?.enRecursoReconsideracion}
           aria-invalid={estado.campo === "enRecursoReconsideracion"} className="accent-marca" />
         En recurso de reconsideración
       </label>
