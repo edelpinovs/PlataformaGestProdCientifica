@@ -18,6 +18,11 @@ import {
   type UsoProfesor,
 } from "@/modules/profesores/profesores";
 import type { DatosDetalleProfesor } from "@/modules/profesores/profesores-detalle";
+import { calcularAcumuladosProfesor } from "@/modules/reconocimientos/acumulados";
+
+type DatosDetalleProfesorConAcumulados = DatosDetalleProfesor & {
+  acumuladosReconocimientos: ReturnType<typeof calcularAcumuladosProfesor>;
+};
 
 export type CampoProfesor =
   | "codigo"
@@ -285,7 +290,7 @@ const seleccionDetalle = {
 
 // #341: lectura del detalle. La página ya exigió el módulo; esta acción lo exige otra vez
 // para que no se pueda consultar un profesor sin permiso.
-export async function leerDetalleProfesor(id: number): Promise<DatosDetalleProfesor | null> {
+export async function leerDetalleProfesor(id: number): Promise<DatosDetalleProfesorConAcumulados | null> {
   await requireModulo("profesores");
   const fila = await prisma.profesor.findUnique({
     where: { id },
@@ -294,9 +299,29 @@ export async function leerDetalleProfesor(id: number): Promise<DatosDetalleProfe
       departamento: { select: { nombre: true, division: { select: { nombre: true } } } },
       perfil: { select: { id: true } },
       _count: { select: seleccionDetalle },
+      reconocimientosSnii: {
+        select: { inicio: true, fin: true, resultado: true, tipoParticipacion: true },
+      },
+      reconocimientosProdep: {
+        select: { inicio: true, fin: true, resultado: true, tipoSolicitud: true },
+      },
     },
   });
   if (!fila) return null;
+  const acumuladosReconocimientos = calcularAcumuladosProfesor(
+    fila.reconocimientosSnii.map((reconocimiento) => ({
+      inicio: reconocimiento.inicio,
+      fin: reconocimiento.fin,
+      resultado: reconocimiento.resultado,
+      esRenovacion: reconocimiento.tipoParticipacion === "RENOVACION",
+    })),
+    fila.reconocimientosProdep.map((reconocimiento) => ({
+      inicio: reconocimiento.inicio,
+      fin: reconocimiento.fin,
+      resultado: reconocimiento.resultado,
+      esRenovacion: reconocimiento.tipoSolicitud === "RENOVACION",
+    })),
+  );
   return {
     codigo: fila.codigo,
     nombres: fila.nombres,
@@ -325,5 +350,6 @@ export async function leerDetalleProfesor(id: number): Promise<DatosDetalleProfe
     participaciones: fila._count.participaciones,
     autorias: fila._count.autorias,
     programas: fila._count.programas,
+    acumuladosReconocimientos,
   };
 }

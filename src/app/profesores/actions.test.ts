@@ -112,4 +112,60 @@ describe("detalle de profesor (issue 341)", () => {
     await expect(leerDetalleProfesor(4)).resolves.toBeNull();
     expect(dobles.profesor.findUnique).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 4 } }));
   });
+
+  it("incluye años y renovaciones aprobadas de SNII y PRODEP", async () => {
+    const fecha = (dia: string) => new Date(`${dia}T00:00:00.000Z`);
+    dobles.profesor.findUnique.mockResolvedValue({
+      codigo: "DEMO0004",
+      nombres: "Persona",
+      apellidos: "Ficticia",
+      correo: "persona4@demo.invalid",
+      genero: "F",
+      tipoContratacion: "TIEMPO_COMPLETO",
+      estatusLaboral: "ACTIVO",
+      goceDeSueldo: false,
+      grado: null,
+      departamento: null,
+      cvu: null,
+      orcid: null,
+      scopusId: null,
+      scholarId: null,
+      creadoEn: fecha("2020-01-01"),
+      actualizadoEn: fecha("2020-01-01"),
+      perfil: null,
+      _count: {
+        reconocimientosSnii: 1,
+        reconocimientosProdep: 1,
+        cuerposAcademicos: 0,
+        cuerposLiderados: 0,
+        lgacs: 0,
+        participaciones: 0,
+        autorias: 0,
+        programas: 0,
+      },
+      reconocimientosSnii: [
+        {
+          inicio: fecha("2020-01-01"),
+          fin: fecha("2020-12-31"),
+          resultado: "APROBADO",
+          tipoParticipacion: "RENOVACION",
+        },
+      ],
+      reconocimientosProdep: [
+        {
+          inicio: fecha("2020-01-01"),
+          fin: fecha("2020-12-31"),
+          resultado: "EN_RECONSIDERACION",
+          tipoSolicitud: "RENOVACION",
+        },
+      ],
+    });
+
+    await expect(leerDetalleProfesor(4)).resolves.toMatchObject({
+      acumuladosReconocimientos: {
+        snii: { aniosAcumulados: 1, renovaciones: 1 },
+        prodep: { aniosAcumulados: 0, renovaciones: 0 },
+      },
+    });
+  });
 });
