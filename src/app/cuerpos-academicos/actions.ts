@@ -3,8 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { redirect, RedirectType } from "next/navigation";
 import { Prisma } from "@/generated/prisma/client";
+import { registrarAuditoria } from "@/lib/auditoria";
 import { requireModulo } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
+import { eventoAuditoria } from "@/modules/administracion/auditoria";
+import { ENTIDAD_CA, MODULO_AUDITORIA_CA, resumenCuerpoEliminado } from "@/modules/cuerpos-academicos/auditoria";
 import { cuerpoAcademico, motivoNoEliminable, revisarCuerpo } from "@/modules/cuerpos-academicos/cuerpo";
 
 export type ValoresCuerpo = {
@@ -127,22 +130,30 @@ export async function editarCuerpo(_: EstadoFila, formData: FormData): Promise<E
 
 // #59: elimina un CA solo si no tiene integrantes ni LGAC.
 export async function eliminarCuerpo(_: EstadoFila, formData: FormData): Promise<EstadoFila> {
-  await requireModulo("cuerpos-academicos");
+  const actor = await requireModulo("cuerpos-academicos");
 
   const id = leerId(formData);
   if (!id) return { error: NO_EXISTE };
 
   const cuerpo = await prisma.cuerpoAcademico.findUnique({
     where: { id },
-    select: { nombre: true, _count: { select: { integrantes: true, lgacs: true } } },
+    select: { clave: true, nombre: true, _count: { select: { integrantes: true, lgacs: true } } },
   });
   if (!cuerpo) return { error: NO_EXISTE };
 
   const motivo = motivoNoEliminable(cuerpo.nombre, cuerpo._count.integrantes, cuerpo._count.lgacs);
   if (motivo) return { error: motivo };
 
-  const { count } = await prisma.cuerpoAcademico.deleteMany({
-    where: { id, integrantes: { none: {} }, lgacs: { none: {} } },
+  // El borrado y su constancia en la bitácora se guardan juntos o no se guarda ninguno (#379).
+  const count = await prisma.$transaction(async (tx) => {
+    const { count } = await tx.cuerpoAcademico.deleteMany({
+      where: { id, integrantes: { none: {} }, lgacs: { none: {} } },
+    });
+    if (count > 0) {
+      await registrarAuditoria(tx, eventoAuditoria("registro.eliminado", actor,
+        { tipo: ENTIDAD_CA.cuerpo, id: String(id) }, resumenCuerpoEliminado(cuerpo.clave, id), MODULO_AUDITORIA_CA));
+    }
+    return count;
   });
   if (count === 0) {
     const actual = await prisma.cuerpoAcademico.findUnique({

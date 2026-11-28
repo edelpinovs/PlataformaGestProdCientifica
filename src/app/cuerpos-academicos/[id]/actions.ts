@@ -3,8 +3,17 @@
 import { revalidatePath } from "next/cache";
 import { redirect, RedirectType } from "next/navigation";
 import { Prisma } from "@/generated/prisma/client";
+import { registrarAuditoria } from "@/lib/auditoria";
 import { requireModulo } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
+import { eventoAuditoria } from "@/modules/administracion/auditoria";
+import {
+  ENTIDAD_CA,
+  MODULO_AUDITORIA_CA,
+  idIntegrante,
+  resumenIntegranteQuitado,
+  resumenLgacEliminada,
+} from "@/modules/cuerpos-academicos/auditoria";
 import {
   altaIntegrante,
   nombreProfesor,
@@ -231,7 +240,7 @@ export async function quitarIntegrante(
   _: EstadoFilaIntegrante,
   formData: FormData,
 ): Promise<EstadoFilaIntegrante> {
-  await requireModulo("cuerpos-academicos");
+  const actor = await requireModulo("cuerpos-academicos");
 
   const cuerpoId = leerProfesorId(formData, "cuerpoId");
   const profesorId = leerProfesorId(formData, "id");
@@ -242,13 +251,15 @@ export async function quitarIntegrante(
   if (motivo) return { error: motivo };
 
   const nombre = integrantes.find((i) => i.profesorId === profesorId)?.nombre ?? "integrante";
-  const cuerpo = await prisma.cuerpoAcademico.findUnique({
-    where: { id: cuerpoId },
-    select: { liderId: true },
-  });
-  const eraLider = cuerpo?.liderId === profesorId;
+  const [cuerpo, profesor] = await Promise.all([
+    prisma.cuerpoAcademico.findUnique({ where: { id: cuerpoId }, select: { clave: true, liderId: true } }),
+    prisma.profesor.findUnique({ where: { id: profesorId }, select: { codigo: true } }),
+  ]);
+  if (!cuerpo) return { error: NO_CUERPO };
+  const eraLider = cuerpo.liderId === profesorId;
 
   try {
+    // Quitar al integrante y su constancia en la bitácora van en la misma transacción (#379).
     await prisma.$transaction(async (tx) => {
       const { count } = await tx.integranteCa.deleteMany({ where: { cuerpoId, profesorId } });
       if (count === 0) throw new Error("NO_INTEGRANTE");
@@ -257,6 +268,9 @@ export async function quitarIntegrante(
         data: { liderId: null },
       });
       await desvincularDeLgacs(tx, cuerpoId, profesorId);
+      await registrarAuditoria(tx, eventoAuditoria("registro.eliminado", actor,
+        { tipo: ENTIDAD_CA.integrante, id: idIntegrante(cuerpoId, profesorId) },
+        resumenIntegranteQuitado(cuerpo.clave, { id: profesorId, codigo: profesor?.codigo }), MODULO_AUDITORIA_CA));
     });
   } catch (e) {
     if (e instanceof Error && e.message === "NO_INTEGRANTE") {
@@ -436,16 +450,27 @@ export async function editarLgac(_: EstadoFilaLgac, formData: FormData): Promise
 
 // #59: elimina la LGAC del CA.
 export async function eliminarLgac(_: EstadoFilaLgac, formData: FormData): Promise<EstadoFilaLgac> {
-  await requireModulo("cuerpos-academicos");
+  const actor = await requireModulo("cuerpos-academicos");
 
   const id = idDeFormulario(formData);
   const cuerpoId = leerProfesorId(formData, "cuerpoId");
   if (!id || !cuerpoId) return { error: NO_LGAC };
 
-  const actual = await prisma.lgac.findFirst({ where: { id, cuerpoId }, select: { nombre: true } });
+  const actual = await prisma.lgac.findFirst({
+    where: { id, cuerpoId },
+    select: { nombre: true, cuerpo: { select: { clave: true } } },
+  });
   if (!actual) return { error: NO_LGAC };
 
-  const { count } = await prisma.lgac.deleteMany({ where: { id, cuerpoId } });
+  // El borrado y su constancia en la bitácora se guardan juntos o no se guarda ninguno (#379).
+  const count = await prisma.$transaction(async (tx) => {
+    const { count } = await tx.lgac.deleteMany({ where: { id, cuerpoId } });
+    if (count > 0) {
+      await registrarAuditoria(tx, eventoAuditoria("registro.eliminado", actor,
+        { tipo: ENTIDAD_CA.lgac, id: String(id) }, resumenLgacEliminada(id, actual.cuerpo.clave), MODULO_AUDITORIA_CA));
+    }
+    return count;
+  });
   if (count === 0) return { error: NO_LGAC };
 
   revalidatePath(ruta(cuerpoId));
