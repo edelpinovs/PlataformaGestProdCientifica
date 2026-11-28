@@ -18,6 +18,7 @@ import {
   type UsoProfesor,
 } from "@/modules/profesores/profesores";
 import type { DatosDetalleProfesor } from "@/modules/profesores/profesores-detalle";
+import { ordenarPeriodosProdep, ordenarPeriodosSnii } from "@/modules/reconocimientos/historial";
 
 export type CampoProfesor =
   | "codigo"
@@ -293,6 +294,12 @@ export async function leerDetalleProfesor(id: number): Promise<DatosDetalleProfe
       grado: { select: { nombre: true, nomenclatura: true } },
       departamento: { select: { nombre: true, division: { select: { nombre: true } } } },
       perfil: { select: { id: true } },
+      reconocimientosSnii: {
+        select: { id: true, nivel: true, tipoParticipacion: true, resultado: true, inicio: true, fin: true },
+      },
+      reconocimientosProdep: {
+        select: { id: true, tipoSolicitud: true, resultado: true, inicio: true, fin: true },
+      },
       _count: { select: seleccionDetalle },
     },
   });
@@ -319,6 +326,8 @@ export async function leerDetalleProfesor(id: number): Promise<DatosDetalleProfe
     perfil: fila.perfil !== null,
     reconocimientosSnii: fila._count.reconocimientosSnii,
     reconocimientosProdep: fila._count.reconocimientosProdep,
+    historialSnii: ordenarPeriodosSnii(fila.reconocimientosSnii),
+    historialProdep: ordenarPeriodosProdep(fila.reconocimientosProdep),
     cuerpos: fila._count.cuerposAcademicos,
     liderazgos: fila._count.cuerposLiderados,
     lgacs: fila._count.lgacs,
