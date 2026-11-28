@@ -37,6 +37,15 @@ describe("listado SNII: búsqueda y filtros", () => {
     expect(filtroSnii(consulta({ q: "reconsideración" }).consulta).OR).toContainEqual({ resultado: "EN_RECONSIDERACION" });
   });
 
+  it("busca por el estatus visible y por los reconocimientos sin vigencia", () => {
+    const hoy = new Date("2026-11-27T00:00:00.000Z");
+    expect(filtroSnii(consulta({ q: "Por vencer" }).consulta, hoy).OR).toContainEqual({
+      fin: { gte: hoy, lte: expect.any(Date) },
+      resultado: { in: ["APROBADO", "EN_RECONSIDERACION"] },
+    });
+    expect(filtroSnii(consulta({ q: "Sin vigencia" }).consulta, hoy).OR).toContainEqual({ resultado: "NO_APROBADO" });
+  });
+
   it("busca por año, mes o día en las fechas de inicio y fin", () => {
     expect(filtroSnii(consulta({ q: "2027-01" }).consulta).OR).toContainEqual({
       inicio: { gte: new Date("2027-01-01T00:00:00.000Z"), lt: new Date("2027-02-01T00:00:00.000Z") },

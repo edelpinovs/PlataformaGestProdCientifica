@@ -53,10 +53,15 @@ export default async function SniiPage({ searchParams }: PageProps<"/reconocimie
     <Marco correo={perfil.correo} rol={perfil.rol} activo="reconocimientos" titulo="Reconocimiento SNII"
       volver={{ href: "/reconocimientos", texto: "Reconocimientos" }}>
       {mensaje && <Aviso tipo="exito">{mensaje}</Aviso>}
-      <Panel titulo="Registrar reconocimiento">
-        {profesores.length === 0 ? <EstadoVacio>Registra primero un profesor para agregar un reconocimiento SNII.</EstadoVacio>
-          : <FormularioSnii profesores={profesores} />}
-      </Panel>
+      {profesores.length === 0 ? (
+        <Panel titulo="Registrar reconocimiento">
+          <EstadoVacio>Registra primero un profesor para agregar un reconocimiento SNII.</EstadoVacio>
+        </Panel>
+      ) : (
+        <div className="flex justify-end">
+          <FormularioSnii profesores={profesores} />
+        </div>
+      )}
       <Panel titulo={`Reconocimientos registrados (${total})`}>
         <div className="flex flex-col gap-4">
           <BarraListado
@@ -64,7 +69,7 @@ export default async function SniiPage({ searchParams }: PageProps<"/reconocimie
             columnas={COLUMNAS_SNII}
             errores={errores}
             etiquetaBusqueda="Buscar reconocimientos"
-            placeholder="Profesor, código, CVU, nivel o fecha"
+            placeholder="Profesor, CVU, nivel, participación, resultado, estatus o fecha"
             filtros={[
               { clave: "nivel", etiqueta: "Nivel", opciones: NIVELES_SNII.map((valor) => ({ valor, texto: ETIQUETAS_NIVEL_SNII[valor] })) },
               {

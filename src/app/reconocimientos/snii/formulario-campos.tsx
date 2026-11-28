@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { Aviso, claseCampo, claseEtiqueta } from "@/components/ui";
 import { NIVELES_SNII, TIPOS_PARTICIPACION_SNII } from "@/modules/reconocimientos/snii";
-import type { EstadoSnii } from "./actions";
 
 export type ProfesorOpcion = { id: number; codigo: string; nombres: string; apellidos: string; cvu: string | null };
 export type ValoresSnii = {
@@ -24,14 +23,22 @@ const ETIQUETAS_PARTICIPACION: Record<(typeof TIPOS_PARTICIPACION_SNII)[number],
   NUEVO_INGRESO: "Nuevo ingreso", RENOVACION: "Renovación", REINGRESO_NO_VIGENTE: "Reingreso no vigente",
 };
 
-export function FormularioSniiCampos({ profesores, valores, estado }: {
+export function FormularioSniiCampos({ profesores, valores, estado, valor }: {
   profesores: ProfesorOpcion[];
   valores?: Partial<ValoresSnii>;
-  estado: EstadoSnii;
+  estado: { campo?: string };
+  valor?: (nombre: string, inicial?: string) => string;
 }) {
-  const [profesorId, setProfesorId] = useState(valores?.profesorId ?? "");
-  const [cvu, setCvu] = useState(valores?.cvu ?? profesores.find((profesor) => String(profesor.id) === profesorId)?.cvu ?? "");
-  const [confirmarCambioCvu, setConfirmarCambioCvu] = useState(valores?.confirmarCambioCvu ?? false);
+  const valorCampo = (nombre: keyof ValoresSnii, inicial = "") => {
+    const guardado = valores?.[nombre];
+    const textoInicial = typeof guardado === "boolean" ? (guardado ? "on" : "") : guardado ?? inicial;
+    return valor ? valor(nombre, textoInicial) : textoInicial;
+  };
+  const profesorIdInicial = valorCampo("profesorId");
+  const cvuProfesor = profesores.find((profesor) => String(profesor.id) === profesorIdInicial)?.cvu ?? "";
+  const [profesorId, setProfesorId] = useState(profesorIdInicial);
+  const [cvu, setCvu] = useState(valorCampo("cvu", cvuProfesor));
+  const [confirmarCambioCvu, setConfirmarCambioCvu] = useState(valorCampo("confirmarCambioCvu") === "on");
   const profesorSeleccionado = profesores.find((profesor) => String(profesor.id) === profesorId);
   const requiereConfirmacion = Boolean(profesorSeleccionado?.cvu && profesorSeleccionado.cvu !== cvu.trim());
 
@@ -74,7 +81,7 @@ export function FormularioSniiCampos({ profesores, valores, estado }: {
         )}
         <label className={claseEtiqueta}>
           Nivel otorgado
-          <select name="nivel" required defaultValue={valores?.nivel ?? ""}
+          <select name="nivel" required defaultValue={valorCampo("nivel")}
             aria-invalid={estado.campo === "nivel"} className={claseCampo(estado.campo === "nivel")}>
             <option value="" disabled>Selecciona un nivel</option>
             {NIVELES_SNII.map((nivel) => <option key={nivel} value={nivel}>{ETIQUETAS_NIVEL[nivel]}</option>)}
@@ -82,7 +89,7 @@ export function FormularioSniiCampos({ profesores, valores, estado }: {
         </label>
         <label className={claseEtiqueta}>
           Tipo de participación
-          <select name="tipoParticipacion" required defaultValue={valores?.tipoParticipacion ?? ""}
+          <select name="tipoParticipacion" required defaultValue={valorCampo("tipoParticipacion")}
             aria-invalid={estado.campo === "tipoParticipacion"} className={claseCampo(estado.campo === "tipoParticipacion")}>
             <option value="" disabled>Selecciona un tipo</option>
             {TIPOS_PARTICIPACION_SNII.map((tipo) => <option key={tipo} value={tipo}>{ETIQUETAS_PARTICIPACION[tipo]}</option>)}
@@ -90,17 +97,17 @@ export function FormularioSniiCampos({ profesores, valores, estado }: {
         </label>
         <label className={claseEtiqueta}>
           Fecha de inicio
-          <input type="date" name="fechaInicio" required defaultValue={valores?.fechaInicio}
+          <input type="date" name="fechaInicio" required defaultValue={valorCampo("fechaInicio")}
             aria-invalid={estado.campo === "fechaInicio"} className={claseCampo(estado.campo === "fechaInicio")} />
         </label>
         <label className={claseEtiqueta}>
           Fecha de fin
-          <input type="date" name="fechaFin" required defaultValue={valores?.fechaFin}
+          <input type="date" name="fechaFin" required defaultValue={valorCampo("fechaFin")}
             aria-invalid={estado.campo === "fechaFin"} className={claseCampo(estado.campo === "fechaFin")} />
         </label>
       </div>
       <label className="flex items-center gap-2 text-sm text-texto-2">
-        <input type="checkbox" name="enRecursoReconsideracion" defaultChecked={valores?.enRecursoReconsideracion}
+        <input type="checkbox" name="enRecursoReconsideracion" defaultChecked={valorCampo("enRecursoReconsideracion") === "on"}
           aria-invalid={estado.campo === "enRecursoReconsideracion"} className="accent-marca" />
         En recurso de reconsideración
       </label>
