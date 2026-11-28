@@ -1,5 +1,8 @@
 import { z } from "zod";
 import { admiteGoceDeSueldo, ETIQUETA_CONTRATACION, ETIQUETA_ESTATUS } from "./profesores";
+import { ETIQUETAS_NIVEL_SNII, ETIQUETAS_PARTICIPACION_SNII, ETIQUETAS_RESULTADO_SNII } from "@/modules/reconocimientos/snii-listado";
+import { ETIQUETAS_RESULTADO_PRODEP, ETIQUETAS_TIPO_SOLICITUD_PRODEP } from "@/modules/reconocimientos/prodep";
+import { mostrarFechaPeriodo, type PeriodoProdepHistorial, type PeriodoSniiHistorial } from "@/modules/reconocimientos/historial";
 
 // Detalle de solo lectura del directorio (issue 341). La página pide un profesor
 // y esta función arma las secciones; no consulta la base.
@@ -35,6 +38,8 @@ export type DatosDetalleProfesor = {
   perfil: boolean;
   reconocimientosSnii: number;
   reconocimientosProdep: number;
+  historialSnii: PeriodoSniiHistorial[];
+  historialProdep: PeriodoProdepHistorial[];
   cuerpos: number;
   liderazgos: number;
   lgacs: number;
@@ -117,6 +122,29 @@ export function seccionesDetalleProfesor(datos: DatosDetalleProfesor): SeccionDe
         { etiqueta: "Programas educativos", valor: String(datos.programas) },
         { etiqueta: "Perfil de acceso", valor: datos.perfil ? "Sí" : "No" },
       ],
+    },
+    {
+      titulo: "Historial SNII",
+      campos: datos.historialSnii.length === 0
+        ? [{ etiqueta: "Historial", valor: "No hay historial SNII registrado." }]
+        : datos.historialSnii.flatMap((periodo, indice) => [
+            { etiqueta: `Periodo ${indice + 1} · Inicio`, valor: mostrarFechaPeriodo(periodo.inicio) },
+            { etiqueta: `Periodo ${indice + 1} · Fin`, valor: mostrarFechaPeriodo(periodo.fin) },
+            { etiqueta: `Periodo ${indice + 1} · Nivel`, valor: ETIQUETAS_NIVEL_SNII[periodo.nivel] },
+            { etiqueta: `Periodo ${indice + 1} · Participación`, valor: ETIQUETAS_PARTICIPACION_SNII[periodo.tipoParticipacion] },
+            { etiqueta: `Periodo ${indice + 1} · Resultado`, valor: ETIQUETAS_RESULTADO_SNII[periodo.resultado] },
+          ]),
+    },
+    {
+      titulo: "Historial PRODEP",
+      campos: datos.historialProdep.length === 0
+        ? [{ etiqueta: "Historial", valor: "No hay historial PRODEP registrado." }]
+        : datos.historialProdep.flatMap((periodo, indice) => [
+            { etiqueta: `Periodo ${indice + 1} · Inicio`, valor: mostrarFechaPeriodo(periodo.inicio) },
+            { etiqueta: `Periodo ${indice + 1} · Fin`, valor: mostrarFechaPeriodo(periodo.fin) },
+            { etiqueta: `Periodo ${indice + 1} · Tipo`, valor: ETIQUETAS_TIPO_SOLICITUD_PRODEP[periodo.tipoSolicitud] },
+            { etiqueta: `Periodo ${indice + 1} · Resultado`, valor: ETIQUETAS_RESULTADO_PRODEP[periodo.resultado] },
+          ]),
     },
     {
       titulo: "Registro",

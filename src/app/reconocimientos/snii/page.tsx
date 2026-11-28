@@ -53,10 +53,10 @@ export default async function SniiPage({ searchParams }: PageProps<"/reconocimie
     <Marco correo={perfil.correo} rol={perfil.rol} activo="reconocimientos" titulo="Reconocimiento SNII"
       volver={{ href: "/reconocimientos", texto: "Reconocimientos" }}>
       {mensaje && <Aviso tipo="exito">{mensaje}</Aviso>}
-      <Panel titulo="Registrar reconocimiento">
+      <div className="flex justify-end">
         {profesores.length === 0 ? <EstadoVacio>Registra primero un profesor para agregar un reconocimiento SNII.</EstadoVacio>
           : <FormularioSnii profesores={profesores} />}
-      </Panel>
+      </div>
       <Panel titulo={`Reconocimientos registrados (${total})`}>
         <div className="flex flex-col gap-4">
           <BarraListado

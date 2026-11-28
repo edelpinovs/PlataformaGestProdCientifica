@@ -10,6 +10,7 @@ import { hayTraslape } from "@/modules/reconocimientos/vigencia";
 
 export type EstadoSnii = {
   error?: string;
+  exito?: string;
   campo?: "profesorId" | "cvu" | "nivel" | "tipoParticipacion" | "fechaInicio" | "fechaFin" | "enRecursoReconsideracion";
   valores?: {
     profesorId: string;
@@ -21,7 +22,6 @@ export type EstadoSnii = {
     fechaFin: string;
     enRecursoReconsideracion: boolean;
   };
-  registrado?: string;
 };
 
 function leerValores(formData: FormData) {
@@ -135,7 +135,7 @@ export async function registrarReconocimientoSnii(_: EstadoSnii, formData: FormD
   }
 
   revalidatePath("/reconocimientos/snii");
-  return { registrado: validacion.datos.cvu };
+  return { exito: `Se registró el reconocimiento SNII para el CVU ${validacion.datos.cvu}.` };
 }
 
 export async function editarReconocimientoSnii(_: EstadoSnii, formData: FormData): Promise<EstadoSnii> {

@@ -27,6 +27,8 @@ const base: DatosDetalleProfesor = {
   perfil: false,
   reconocimientosSnii: 0,
   reconocimientosProdep: 1,
+  historialSnii: [],
+  historialProdep: [],
   cuerpos: 2,
   liderazgos: 0,
   lgacs: 0,
@@ -81,5 +83,46 @@ describe("detalle de profesor", () => {
     expect(secciones[1]?.campos[1]?.valor).toBe("Doctorado (DR)");
     expect(secciones[2]?.campos.find((c) => c.etiqueta === "ORCID")?.valor).toBe("0000-0000-0000-000X");
     expect(secciones[3]?.campos.find((c) => c.etiqueta === "Perfil de acceso")?.valor).toBe("Sí");
+  });
+
+  it("muestra estados vacíos en español para los historiales sin registros", () => {
+    const secciones = seccionesDetalleProfesor(base);
+    expect(secciones.find((seccion) => seccion.titulo === "Historial SNII")?.campos[0]?.valor)
+      .toBe("No hay historial SNII registrado.");
+    expect(secciones.find((seccion) => seccion.titulo === "Historial PRODEP")?.campos[0]?.valor)
+      .toBe("No hay historial PRODEP registrado.");
+  });
+
+  it("muestra fechas, nivel o tipo y resultado de cada periodo", () => {
+    const secciones = seccionesDetalleProfesor({
+      ...base,
+      historialSnii: [{
+        id: 1,
+        nivel: "NIVEL_2",
+        tipoParticipacion: "RENOVACION",
+        resultado: "APROBADO",
+        inicio: new Date("2024-01-01T00:00:00.000Z"),
+        fin: new Date("2026-12-31T00:00:00.000Z"),
+      }],
+      historialProdep: [{
+        id: 2,
+        tipoSolicitud: "RENOVACION",
+        resultado: "EN_RECONSIDERACION",
+        inicio: new Date("2023-01-01T00:00:00.000Z"),
+        fin: new Date("2028-12-31T00:00:00.000Z"),
+      }],
+    });
+
+    expect(secciones.find((seccion) => seccion.titulo === "Historial SNII")?.campos).toEqual(expect.arrayContaining([
+      expect.objectContaining({ etiqueta: "Periodo 1 · Inicio", valor: "01 ene 2024" }),
+      expect.objectContaining({ etiqueta: "Periodo 1 · Fin", valor: "31 dic 2026" }),
+      expect.objectContaining({ etiqueta: "Periodo 1 · Nivel", valor: "Nivel 2" }),
+      expect.objectContaining({ etiqueta: "Periodo 1 · Resultado", valor: "Aprobado" }),
+    ]));
+    expect(secciones.find((seccion) => seccion.titulo === "Historial PRODEP")?.campos).toEqual(expect.arrayContaining([
+      expect.objectContaining({ etiqueta: "Periodo 1 · Inicio", valor: "01 ene 2023" }),
+      expect.objectContaining({ etiqueta: "Periodo 1 · Tipo", valor: "Renovación" }),
+      expect.objectContaining({ etiqueta: "Periodo 1 · Resultado", valor: "En reconsideración" }),
+    ]));
   });
 });

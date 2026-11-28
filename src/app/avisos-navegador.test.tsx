@@ -58,7 +58,9 @@ describe("avisos del navegador (issue 350)", () => {
   });
 
   it("SNII, PRODEP y la publicación manual conservan fecha y enlace, sin el aviso nativo", () => {
-    tieneNoValidate(renderToStaticMarkup(<FormularioSnii profesores={[profesor]} />));
+    const snii = renderToStaticMarkup(<FormularioSnii profesores={[profesor]} />);
+    expect(snii).toContain("Registrar reconocimiento");
+    expect(readFileSync(new URL("../components/modal-alta.tsx", import.meta.url), "utf8")).toMatch(/<form[^>]*noValidate/);
     tieneNoValidate(renderToStaticMarkup(<FormularioProdep profesores={[profesor]} />));
     tieneNoValidate(renderToStaticMarkup(
       <FormularioEdicionSnii cerrar={() => undefined} profesores={[profesor]} reconocimiento={{
